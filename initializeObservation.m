@@ -3,9 +3,7 @@ function obs = initializeObservation(observation,Nt)
 % initialization
 obs = struct('sensors', [], ...
              'binTime', observation.time, ...
-             'binTheta', linspace(0,pi,observation.Ndir+1), ...
-             'movie', observation.movie, ...
-             'check', observation.check );
+             'binTheta', linspace(0,pi,observation.Ndir+1) );
 % vector of times
 obs.t = (obs.binTime(1:end-1)+obs.binTime(2:end))/2;
 
@@ -27,10 +25,4 @@ obs.rp = rp;
 % [radius of sensor, angle of crossing, time of crossing, direction of
 % crossing]
 obs.sensors = cell(Nt,1);
-
-% % following some particles
-% if obs.check
-%     Np = 5;
-%     obs.path = zeros(Nt,3,Np);
-% end
 

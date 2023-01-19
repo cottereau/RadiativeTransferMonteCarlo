@@ -1,7 +1,7 @@
 function M = plotGrid(type,obs,cmax)
-if ~obs.movie
-    disp('no movie demanded')
-    return
+% energy on grid
+if ~isfield(obs,'gridEnergy')
+    obs = computeGridEnergy(obs,obs.acoustics);
 end
 figure;
 Nt = length(obs.t);
