@@ -7,9 +7,6 @@ P = struct('t', zeros(N,1), ...
 % initial position of each particle: radius follows a Gaussian law with
 % standard deviation lambda, and angle follows a uniform law.
 P.r = abs(randn(N,1)*source.lambda);
-%P.theta = zeros(N,1);
-%P.x = P.r*ones(N,1);
-%P.y = zeros(N,1);
 
 
 % initial polarisation of each particle
@@ -21,9 +18,8 @@ if isfield(source,'polarization') && source.polarization=='S'
 end
 
 % initial direction of propagation of each particle (angle)
-% P.theta = zeros(N,1);
-% P.costheta = cos(P.theta);
-P.costheta = ones(N,1);
+P.theta = zeros(N,1);
+P.costheta = cos(P.theta);
 
 % material velocity of the background for each particle
 if isfield(material,'v')

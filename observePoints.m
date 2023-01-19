@@ -34,22 +34,23 @@ end
 end
 
 function sensors = intersectionPathDirect(rp,P0,P)
-halfb = P0.r.*P0.costheta;
-c = P0.r.^2-rp^2;
-quarterDelta = halfb.^2-c;
-indDelta = quarterDelta>0;
+r0 = P0.r;
+halfb = r0.*P0.costheta;
+c = r0.^2-rp^2;
+quarterDelta = (halfb.^2)-c;
+indDelta = quarterDelta>=0;
 halfsqrtDelta = sqrt(abs(quarterDelta));
 L1 = -halfb-halfsqrtDelta;
-sensors1 = sensorsSolution1(P,P0.r,rp,L1,indDelta);
+sensors1 = sensorsSolution1(P,r0,rp,L1,indDelta);
 L2 = -halfb+halfsqrtDelta;
-sensors2 = sensorsSolution1(P,P0.r,rp,L2,indDelta);
+sensors2 = sensorsSolution1(P,r0,rp,L2,indDelta);
 sensors = [sensors1;sensors2];
 end
 
 function sensors = sensorsSolution1(P,r0,rp,L1,indDelta)
 ind = indDelta & (L1>0) & (L1<=P.L);
 ll = L1(ind);
-costheta = (ll+(rp^2-r0(ind).^2)./ll)./(2*rp);
+costheta = (ll.^2+rp^2-r0(ind).^2)./(2*rp*ll);
 sensors = [costheta P.t(ind) P.p(ind)];
 end
 

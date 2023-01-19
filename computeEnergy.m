@@ -1,4 +1,4 @@
-function obs = computeEnergy(acoustics,obs,N,ip,it)
+function obs = computeEnergy(acoustics,obs,N,it)
 
 % remove any non-necessary time steps
 obs.sensors = obs.sensors(1:it-1);
@@ -12,7 +12,7 @@ obs.sensors = cat(1,obs.sensors{:});
 % initialize energies
 Np = length(obs.rp);
 if ~isfield(obs,'energy')
-    obs.energy = zeros(length(obs.theta)/2,length(obs.t),Np);
+    obs.energy = zeros(length(obs.binTheta)-1,length(obs.t),Np);
 end
 
 % energy density as a function of [direction t rp]

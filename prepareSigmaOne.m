@@ -9,6 +9,6 @@ Sigma = integral(sigma,0,2*pi);
 sigmaNorm = @(th) sigma(th)/Sigma;
 xth = linspace(0,2*pi,Nth);
 pdf = sigmaNorm(xth);
-cdf = cumsum(pdf)*2*pi/Nth;
+cdf = cumsum(pdf)*(2*pi/Nth);
 invcdf = griddedInterpolant(cdf,xth);
 end

@@ -19,10 +19,9 @@ for ip = 1:Np
 
     % initialization
     % P current status for each particle:
-    %  .x, .y,       : position in cartesian coordinates   % x=r y=0
-    %  .r, .theta,   : position in cylindrical coordinates % theta=0
+    %  .r            : distance of particle from origin
     %  .t,           : time
-    %  .d,           : propagation direction (angle between -pi and pi)
+    %  .d,           : propagation direction (angle between 0 and pi)
     %  .p,           : polarization (used only in elasticity)
     %  .meanFreePath : mean free path
     %  .v            : propagation velocity
@@ -44,7 +43,7 @@ for ip = 1:Np
     end
 
     % compute energies
-    obs = computeEnergy(acoustics,obs,Npk*Np,ip,it);
+    obs = computeEnergy(acoustics,obs,Npk*Np,it);
 
 % end of loop on packages
 end

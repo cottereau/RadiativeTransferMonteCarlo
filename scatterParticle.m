@@ -26,5 +26,9 @@ else
     th(~p0&~p) = mat.invcdfSS(rand(nnz(~p0&~p),1));
 end
 %P.d = P.d+th;
-P.costheta = cos(acos(P.costheta)+th);
+P.theta = mod(P.theta+th,2*pi);
+ind = P.theta>pi;
+P.theta(ind) = -(P.theta(ind)-2*pi);
+P.costheta = cos(P.theta);
+%P.costheta = cos(acos(P.costheta)+th);
 
