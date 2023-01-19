@@ -1,7 +1,4 @@
-function obs = computeEnergy(acoustics,obs,N,it)
-
-% remove any non-necessary time steps
-obs.sensors = obs.sensors(1:it-1);
+function obs = computeEnergy(acoustics,obs,N)
 
 % reshape sensors
 obs.sensors = cat(1,obs.sensors{:});

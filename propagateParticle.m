@@ -1,20 +1,62 @@
-function [P,P0] = propagateParticle(P)
+function P = propagateParticle(mat,P)
 
-% initialization
-P0 = P;
+% maximum number of jumps
+Nj = max(P.Nj);
+T = [zeros(P.N,1) P.tj];
 
-% length of propagation path (exponentially distributed with coefficient
-% meanFreePath
-L = -log(1-rand(P.N,1)).*P.meanFreePath;
-P.L = L;
+% loop on jumps
+for i1 = 1:Nj
 
-% final positions and times of particles
-% using Al-Kashi theorem
-%P.x = P.x + P.L.*cos(P.d);
-%P.y = P.y + P.L.*sin(P.d);
-P.t = P.t + L./P.v;
-P.r = sqrt(L.^2+P0.r.^2+2*L.*P0.r.*P0.costheta);
-P.costheta = (L.^2+P.r.^2-P0.r.^2)./(2*L.*P.r);
-P.costheta(P.costheta>1)=1;
-P.costheta(P.costheta<-1)=-1;
-P.theta = acos(P.costheta);
+    % select particles with that number of jumps and above
+    ind = P.Nj>=i1;
+
+    % propagate particles
+    tj = T(ind,i1+1)-T(ind,i1);
+    Lj = P.v(ind)./tj;
+    dj = P.d(ind);
+    P.x(ind) = P.x(ind)+Lj.*cos(dj);
+    P.y(ind) = P.y(ind)+Lj.*sin(dj);
+
+    % scatter particles
+    P.d(ind) = dj + mat.invcdf(rand(sum(ind),1));
+
+end
+
+% compute position in cylindrical coordinates
+[P.theta,P.r] = cart2pol(P.x,P.y);
+
+end
+
+function P = scatterParticle(mat,P)
+%function [dtot,p,v,meanFreePath] = scatterParticle(d,mat,p,v,meanFreePath)
+N = P.N;
+rd = rand(N,1);
+th = mat.invcdf(rd);
+% % elastics
+% else
+%     p0 = p;
+%     % change polarization
+%     probabilityOfChange = mat.P2P*p + mat.S2S*(1-p);
+%     change = rand(N,1)>probabilityOfChange;
+%     p(change)=~p(change);
+%     % velocity for each particle
+%     v(change&p) = mat.vp;
+%     v(change&~p) = mat.vs;
+%     % meanFreePath for each particle
+%     meanFreePath(change&p) = mat.meanFreePathP;
+%     meanFreePath(change&~p) = mat.meanFreePathS;    
+%     % change direction depending on polarizations
+%     th = zeros(N,1);
+%     th(p0&p) = mat.invcdfPP(rand(nnz(p0&p),1));
+%     th(p0&~p) = mat.invcdfPS(rand(nnz(p0&~p),1));
+%     th(~p0&p) = mat.invcdfSP(rand(nnz(~p0&p),1));
+%     th(~p0&~p) = mat.invcdfSS(rand(nnz(~p0&~p),1));
+% end
+%P.d = P.d+th;
+P.theta = mod(P.theta+th,2*pi);
+ind = P.theta>pi;
+P.theta(ind) = -(P.theta(ind)-2*pi);
+P.costheta = cos(P.theta);
+%P.costheta = cos(acos(P.costheta)+th);
+
+end
