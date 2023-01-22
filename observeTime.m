@@ -1,3 +1,4 @@
 function obs = observeTime(obs,it,P)
 
-obs.energy(:,:,it) = histcounts2( P.r, P.d-P.theta, obs.binX, obs.binTheta )/P.N;
+dir = mod(P.d-P.theta,2*pi);
+obs.energy(:,:,it) = histcounts2( P.r, dir, obs.binX, obs.binTheta )/P.N;

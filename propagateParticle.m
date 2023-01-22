@@ -1,24 +1,26 @@
 function P = propagateParticle(mat,P)
 
 % maximum number of jumps
-Nj = max(P.Nj);
-T = [zeros(P.N,1) P.tj];
+Nj = size(P.tj,2);
+dt = max(P.tj(~isinf(P.tj)));
 
 % loop on jumps
-for i1 = 1:Nj
+for i1 = 2:Nj
 
-    % select particles with that number of jumps and above
-    ind = P.Nj>=i1;
+    % select jumping particles
+    ind = ~isinf(P.tj(:,i1));
 
     % propagate particles
-    tj = T(ind,i1+1)-T(ind,i1);
-    Lj = P.v(ind)./tj;
+    tj = P.tj(ind,i1)-P.tj(ind,i1-1);
+    Lj = P.v(ind).*tj;
     dj = P.d(ind);
     P.x(ind) = P.x(ind)+Lj.*cos(dj);
     P.y(ind) = P.y(ind)+Lj.*sin(dj);
 
-    % scatter particles
-    P.d(ind) = dj + mat.invcdf(rand(sum(ind),1));
+    % scatter particles (except in last jump)
+    ind2 = (P.tj(:,i1)~=dt);
+    ind = ind & ind2;
+    P.d(ind) = P.d(ind) + mat.invcdf(rand(sum(ind),1));
 
 end
 
