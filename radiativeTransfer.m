@@ -11,14 +11,14 @@ function obs = radiativeTransfer( source, material, observation )
 % binX      : bins for histograms in positions
 % x         : sensor positions
 % Nx        : number of positions
-% energy    : matrix of observations
+% energy    : matrix of observations size [Nx Nth Nt]
 obs = initializeObservation(observation); 
 material = prepareSigma(material);        % prepare scattering cross sections 
 obs.d = material.dimension;               % space dimensions
 obs.acoustics = material.acoustics;       % true for acoustics, false for elastics
 
 % loop on packages of particles
-Npk = 5e4;                                % size of packages (5e4 seems optimal)
+Npk = 5e4;                                % size of packages (5e4 seems optimal on my computer)
 Np = ceil(source.numberParticles/Npk);    % number of packages
 for ip = 1:Np
 
@@ -54,5 +54,6 @@ for ip = 1:Np
 % end of loop on packages
 end
 
-% energy density as a function of [t rp]
+% energy density as a function of [x t]
 obs.totalEnergy = squeeze(sum(obs.energy,2));
+
