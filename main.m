@@ -25,6 +25,6 @@ geometry = struct('sourcePosition', -2, ... % vertical position of the source
 % radiative transfer solution - 2D - acoustic
 %obs = radiativeTransferHS( source, material, observation, geometry );
 obs = radiativeTransfer( source, material, observation );
-M = plotGrid('full',obs,0.05);
+M = plotGrid('full',obs,1);
 %M = plotGrid('half',obs,0.01);
 scatterDirections(obs,30);

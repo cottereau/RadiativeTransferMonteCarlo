@@ -5,8 +5,8 @@ function obs = radiativeTransfer( source, material, observation )
 % acoustics : true=acoustics, false=elastics
 % t         : time instants
 % Nt        : number of time instants
-% binTheta  : bins for histograms in direction
 % theta     : propagation directions
+% binTheta  : bins for histograms in direction
 % Nth       : number of directions
 % binX      : bins for histograms in positions
 % x         : sensor positions
@@ -25,7 +25,7 @@ for ip = 1:Np
     % PARTICLES
     % N            : number of particles
     % x,y          : cartesian coordinates
-    % theta        : cylindrical coordinates
+    % r, theta        : cylindrical coordinates
     % d            : propagation direction (angle between 0 and 2pi)
     % p            : polarization (used only in elasticity)
     % meanFreePath : mean free path
