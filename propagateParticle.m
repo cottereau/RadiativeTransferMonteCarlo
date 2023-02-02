@@ -8,7 +8,8 @@ ind = dt>0;
 while any(ind)
 
     % select number of jumps on remaining intervals
-    Nj = poissrnd(dt./P.meanFreePath);
+    Nj = zeros(P.N,1);
+    Nj(ind) = poissrnd(dt(ind)./P.meanFreePath(ind));
     ind2 = Nj>0;
 
     % flying time until next jump (or end of interval)
