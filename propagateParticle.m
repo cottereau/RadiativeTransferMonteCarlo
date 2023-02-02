@@ -19,12 +19,16 @@ while any(ind)
 
     % propagate particles
     Lj = P.v(ind).*dt(ind);
-    dj = P.d(ind);
-    P.x(ind) = P.x(ind)+Lj.*cos(dj);
-    P.y(ind) = P.y(ind)+Lj.*sin(dj);
+    dphij = P.dphi(ind);
+    dthj = P.dth(ind);
+    P.x(ind) = P.x(ind) + Lj.*cos(dphij).*sin(dthj);
+    P.y(ind) = P.y(ind) + Lj.*sin(dphij).*sin(dthj);
+    P.z(ind) = P.z(ind) + Lj.*cos(dthj);
 
     % scatter particles (except in last jump)
-    P.d(ind2) = P.d(ind2) + mat.invcdf(rand(sum(ind2),1));
+    P.dphi(ind2) = P.dphi(ind2) + mat.invcdf(rand(sum(ind2),1));
+    % this one is commented to stay in 2D -- uncomment when ready
+    % P.dth(ind2) = P.dth(ind2) + rand(sum(ind2),1);
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
@@ -34,7 +38,10 @@ while any(ind)
 end
 
 % compute position in cylindrical coordinates
-[P.theta,P.r] = cart2pol(P.x,P.y);
+[P.phi,P.theta,P.r] = cart2sph(P.x,P.y,P.z);
+%P.theta = mod(P.theta,pi);
+%P.phi = mod(P.phi,2*pi);
+
 
 end
 
