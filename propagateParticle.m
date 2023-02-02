@@ -38,6 +38,8 @@ end
 end
 
 % draw time of next jump
+% if need be, there is a known distribution for the minimum of n uniform
+% random variables over [0 1]: pdf=n*(1-x)^(n-1)
 function tj = timeNextJump(Nj,dt)
 N = size(Nj,1);
 m = max(Nj);
