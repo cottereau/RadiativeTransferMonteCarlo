@@ -30,20 +30,16 @@ for ip = 1:Np
     % p            : polarization (used only in elasticity)
     % meanFreePath : mean free path
     % v            : propagation velocity
+    % t            : current time for the particle
     % Nj           : number of jumps
-    % tj           : time of jumps
     P = initializeParticle(Npk,source,material);
     obs = observeTime(obs,1,P);
 
     % loop on time
     for i1 = 2:obs.Nt
 
-        % draw number of jumps
-        dt = obs.t(i1)-obs.t(i1-1);
-        P = timeJumps(P,dt);
-
         % propagate particles
-        P = propagateParticle(material,P);
+        P = propagateParticle(material,P,obs.t(i1));
 
         % observe energies
         obs = observeTime(obs,i1,P);

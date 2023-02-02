@@ -20,6 +20,9 @@ if isfield(source,'polarization') && source.polarization=='S'
     p = false(N,1);
 end
 
+% current time for the particle
+t = zeros(N,1);
+
 % material velocity of the background for each particle
 if isfield(material,'v')
     v = material.v*ones(N,1);
@@ -49,7 +52,7 @@ P = struct('N', N, ...              % number of particles
            'd', d, ...              % propagation direction
            'p', p, ...              % polarization (used only in elasticity)
            'meanFreePath', mfp, ... % mean free path
-           'v', v);                 % propagation velocity
-          % Nj                      : number of jumps
-          % tj                      : time of jumps
+           'v', v, ...              % propagation velocity
+           't', t );                % current time for the particle
+          % Nj                      % number of jumps
 

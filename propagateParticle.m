@@ -1,32 +1,53 @@
-function P = propagateParticle(mat,P)
+function P = propagateParticle(mat,P,T)
 
-% maximum number of jumps
-Nj = size(P.tj,2);
-dt = max(P.tj(~isinf(P.tj)));
+% initialization 
+dt = T-P.t;
+ind = dt>0;
 
 % loop on jumps
-for i1 = 2:Nj
+while any(ind)
 
-    % select jumping particles
-    ind = ~isinf(P.tj(:,i1));
+    % select number of jumps on remaining intervals
+    Nj = poissrnd(dt./P.meanFreePath);
+    ind2 = Nj>0;
+
+    % flying time until next jump (or end of interval)
+    if any(ind2)
+        dt(ind2) = timeNextJump(Nj(ind2),dt(ind2));
+    end
 
     % propagate particles
-    tj = P.tj(ind,i1)-P.tj(ind,i1-1);
-    Lj = P.v(ind).*tj;
+    Lj = P.v(ind).*dt(ind);
     dj = P.d(ind);
     P.x(ind) = P.x(ind)+Lj.*cos(dj);
     P.y(ind) = P.y(ind)+Lj.*sin(dj);
 
     % scatter particles (except in last jump)
-    ind2 = (P.tj(:,i1)~=dt);
-    ind = ind & ind2;
-    P.d(ind) = P.d(ind) + mat.invcdf(rand(sum(ind),1));
+    P.d(ind2) = P.d(ind2) + mat.invcdf(rand(sum(ind2),1));
+
+    % remaining jumping particles
+    P.t(ind) = P.t(ind) + dt(ind);
+    dt(ind) = T - P.t(ind);
+    ind = dt>0;
 
 end
 
 % compute position in cylindrical coordinates
 [P.theta,P.r] = cart2pol(P.x,P.y);
 
+end
+
+% draw time of next jump
+function tj = timeNextJump(Nj,dt)
+N = size(Nj,1);
+m = max(Nj);
+tj = inf(N,m);
+for i2 = 1:m
+    ind = Nj>=i2;
+    tj(ind,i2) = rand(sum(ind),1).*dt(ind);
+end
+tj = sort(tj,2);
+tj = tj(:,1);
 end
 
 function P = scatterParticle(mat,P)
