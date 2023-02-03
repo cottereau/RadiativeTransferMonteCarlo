@@ -1,5 +1,9 @@
 function obs = radiativeTransfer( source, material, observation )
 
+% discretization in packets of particles  (for optimal vectorization)
+Npk = 5e4;                             % size of packets (5e4 seems optimal on my computer)
+Np = ceil(source.numberParticles/Npk); % number of packets
+
 % OBSERVATION STRUCTURE
 % d         : dimension of the problem
 % acoustics : true=acoustics, false=elastics
@@ -12,14 +16,12 @@ function obs = radiativeTransfer( source, material, observation )
 % x         : sensor positions
 % Nx        : number of positions
 % energy    : matrix of observations size [Nx Nth Nt]
-obs = initializeObservation(observation); 
-obs.d = material.dimension;               % space dimensions
-obs.acoustics = material.acoustics;       % true for acoustics, false for elastics
+% dV        : small volume of domain
+% dE        : energy of a single particle
+obs = initializeObservation(observation,material,Np*Npk);
 material = prepareSigma(material);        % prepare scattering cross sections 
 
-% loop on packages of particles (for optimal vectorization)
-Npk = 5e4;                                % size of packages (5e4 seems optimal on my computer)
-Np = ceil(source.numberParticles/Npk);    % number of packages
+% loop on packages of particles
 for ip = 1:Np
 
     % PARTICLES
@@ -32,7 +34,7 @@ for ip = 1:Np
     % v            : propagation velocity
     % t            : current time for the particle
     P = initializeParticle(Npk,source,material);
-    obs = observeTime(obs,1,P);
+    obs.energy(:,:,1) = obs.energy(:,:,1) + observeTime(obs,P);
 
     % loop on time
     for i1 = 2:obs.Nt
@@ -41,7 +43,7 @@ for ip = 1:Np
         P = propagateParticle(material,P,obs.t(i1));
 
         % observe energies (as a function of [x Psi t])
-        obs = observeTime(obs,i1,P);
+        obs.energy(:,:,i1) = obs.energy(:,:,i1) + observeTime(obs,P);
 
     % end of loop on time
     end
@@ -49,6 +51,8 @@ for ip = 1:Np
 % end of loop on packages
 end
 
-% energy density as a function of [x t]
-obs.totalEnergy = squeeze(sum(obs.energy,2));
+% renormalization of energies
 
+% energy density as a function of [x t] and [t]
+obs.energyDensity = squeeze(sum(obs.energy,2));
+obs.energyDomain = obs.dV*obs.energyDensity;

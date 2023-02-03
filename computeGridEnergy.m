@@ -10,7 +10,7 @@ rg = sqrt(X.^2+Y.^2);
 obs.grid = xg;
 obs.gridEnergy = zeros(Ng,Ng,Nt);
 for i1 = 1:Nt
-    obs.gridEnergy(:,:,i1) = interp1(obs.x,obs.totalEnergy(:,i1),rg);
+    obs.gridEnergy(:,:,i1) = interp1(obs.x,obs.energyDensity(:,i1),rg);
 end
 if ~acoustics
     obs.gridEnergyP = zeros(length(xg),length(xg),Nt);

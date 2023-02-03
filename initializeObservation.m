@@ -1,4 +1,8 @@
-function obs = initializeObservation(observation)
+function obs = initializeObservation(observation,material,N)
+
+% basic characteristics of the problem
+d = material.dimension;     
+acoustics = material.acoustics;
 
 % times
 t = [0 setdiff(observation.time,0)];
@@ -17,6 +21,10 @@ Nx = length(x);
 % initialize matrix of observations
 energy = zeros(Nx,Npsi,Nt);
 
+% energy in a small volume of the domain
+dV = volumeEnergy(d,x);
+dE = 1/N;
+
 % initialize structure
 obs = struct('t', t, ...               % time instants
              'Nt', Nt, ...             % number of time instants
@@ -26,6 +34,14 @@ obs = struct('t', t, ...               % time instants
              'binX', binX, ...         % bins for histograms in positions
              'x', x, ...               % sensor positions
              'Nx', Nx, ...             % number of positions
-             'energy', energy );       % matrix of observations
-             % 'd'                     % dimension of the problem
-             % 'acoustics'             % true=acoustics, false=elastics
+             'energy', energy, ...     % matrix of observations
+             'dV', dV, ...             % small volume of domain
+             'dE', dE, ...             % energy of a single particle
+             'acoustics', acoustics ); % true=acoustics, false=elastics
+
+end
+
+function dV = volumeEnergy(d,r)
+dr = mean(diff(r));
+dV = (pi*dr)*(2*r).^(d-1);
+end
