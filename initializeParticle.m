@@ -9,18 +9,18 @@ r = abs(randn(N,1)*source.lambda);
 
 % initial angles and directions
 if d==2
-    theta = (pi/2)*ones(N,1);
+    phi = (pi/2)*ones(N,1);
 elseif d==3
-    theta = 2*pi*rand(N,1);
+    phi = 2*pi*rand(N,1);
 end
-phi = 2*pi*rand(N,1);
-dth = theta;
-dphi = phi;
+theta = 2*pi*rand(N,1);
+dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
+perp = [-sin(theta) cos(theta) zeros(N,1)];
 
 % initial positions in cartesian coordinates
-x = r.*sin(theta).*cos(phi);
-y = r.*cos(theta).*sin(phi);
-z = r.*cos(theta);
+x = r.*cos(theta).*sin(phi);
+y = r.*sin(theta).*sin(phi);
+z = r.*cos(phi);
 
 % initial polarisation of each particle
 % in acoustics, this variable is unused (and set always to true)
@@ -55,14 +55,12 @@ end
 
 % initialize structure
 P = struct('N', N, ...              % number of particles
-           'r', r, ...              % spherical coordinates
-           'theta', theta, ...      %  theta in [0  pi]        
-           'phi', phi, ...          %  phi   in [0 2pi]
+           'r', r, ...              % radius
            'x', x, ...              % cartesian coordinates
            'y', y, ...              
            'z', z, ...              
-           'dth', dth, ...          % propagation direction
-           'dphi', dphi, ...        
+           'dir', dir, ...          % direction of propagation
+           'perp', perp, ...        % orthogonal to direction of propagation
            'p', p, ...              % polarization (used only in elasticity)
            'meanFreePath', mfp, ... % mean free path
            'v', v, ...              % propagation velocity

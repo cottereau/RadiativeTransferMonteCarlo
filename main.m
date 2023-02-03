@@ -1,11 +1,11 @@
 % This code works in 2D and assumes the source is centered on [0 0]. The
 % initial distance from (0,0) is modeled gaussian with standard deviation 
 % source.lambda and uniformly-distributed angle. The initial direction is 
-% uniform.
+% the same as the initial angle.
 
 % Point source
 source = struct( 'numberParticles', 1e6, ...
-                 'lambda', 0.1);
+                 'lambda', 0.1 );
              
 % material properties
 material = struct( 'acoustics', true, ...
@@ -25,6 +25,6 @@ geometry = struct('sourcePosition', -2, ... % vertical position of the source
 % radiative transfer solution - 2D - acoustic
 %obs = radiativeTransferHS( source, material, observation, geometry );
 obs = radiativeTransfer( source, material, observation );
-M = plotGrid('full',obs,1);
+%M = plotGrid('full',obs,1);
 %M = plotGrid('half',obs,0.01);
-scatterDirections(obs,30);
+%scatterDirections(obs,30);

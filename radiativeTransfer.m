@@ -5,9 +5,9 @@ function obs = radiativeTransfer( source, material, observation )
 % acoustics : true=acoustics, false=elastics
 % t         : time instants
 % Nt        : number of time instants
-% theta     : propagation directions
-% binTheta  : bins for histograms in direction
-% Nth       : number of directions
+% psi       : propagation directions
+% binPsi    : bins for histograms in direction
+% Npsi      : number of directions
 % binX      : bins for histograms in positions
 % x         : sensor positions
 % Nx        : number of positions
@@ -26,7 +26,7 @@ for ip = 1:Np
     % N            : number of particles
     % x,y,z        : cartesian coordinates
     % r,theta,phi  : cylindrical coordinates
-    % dth,dphi     : propagation direction (angle between 0 and 2pi)
+    % d            : direction of propagation
     % p            : polarization (used only in elasticity)
     % meanFreePath : mean free path
     % v            : propagation velocity
@@ -40,7 +40,7 @@ for ip = 1:Np
         % propagate particles
         P = propagateParticle(material,P,obs.t(i1));
 
-        % observe energies
+        % observe energies (as a function of [x Psi t])
         obs = observeTime(obs,i1,P);
 
     % end of loop on time

@@ -1,5 +1,8 @@
 function P = propagateParticle(mat,P,T)
 
+% constants
+d = mat.dimension;
+
 % initialization 
 dt = T-P.t;
 ind = dt>0;
@@ -18,17 +21,28 @@ while any(ind)
     end
 
     % propagate particles
-    Lj = P.v(ind).*dt(ind);
-    dphij = P.dphi(ind);
-    dthj = P.dth(ind);
-    P.x(ind) = P.x(ind) + Lj.*cos(dphij).*sin(dthj);
-    P.y(ind) = P.y(ind) + Lj.*sin(dphij).*sin(dthj);
-    P.z(ind) = P.z(ind) + Lj.*cos(dthj);
+    L = P.v(ind).*dt(ind);
+    P.x(ind,:) = P.x(ind) + L.*P.dir(ind,1);
+    P.y(ind) = P.y(ind) + L.*P.dir(ind,2);
+    P.z(ind) = P.z(ind) + L.*P.dir(ind,3);
 
     % scatter particles (except in last jump)
-    P.dphi(ind2) = P.dphi(ind2) + mat.invcdf(rand(sum(ind2),1));
-    % this one is commented to stay in 2D -- uncomment when ready
-    % P.dth(ind2) = P.dth(ind2) + rand(sum(ind2),1);
+    theta = mat.invcdf(rand(sum(ind2),1));
+    costheta = repmat(cos(theta),[1 3]);
+    sintheta = repmat(sin(theta),[1 3]);
+    if d==3
+        phi = rand(sum(ind2),1);
+    elseif d==2
+        phi = zeros(sum(ind2),1);
+    end
+    cosphi = repmat(cos(phi),[1 3]);
+    sinphi = repmat(sin(phi),[1 3]);
+    dir1 = P.dir(ind2,:);
+    dir2 = P.perp(ind2,:);
+    dir3 = cross(dir1,dir2);
+    perp = cosphi.*dir2+sinphi.*dir3;
+    P.dir(ind2,:) = costheta.*dir1 + sintheta.*perp;
+    P.perp(ind2,:) = -sintheta.*dir1 + costheta.*perp;
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
@@ -36,12 +50,6 @@ while any(ind)
     ind = dt>0;
 
 end
-
-% compute position in cylindrical coordinates
-[P.phi,P.theta,P.r] = cart2sph(P.x,P.y,P.z);
-%P.theta = mod(P.theta,pi);
-%P.phi = mod(P.phi,2*pi);
-
 
 end
 
