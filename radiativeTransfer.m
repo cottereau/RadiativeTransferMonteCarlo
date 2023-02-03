@@ -42,7 +42,7 @@ for ip = 1:Np
         % propagate particles
         P = propagateParticle(material,P,obs.t(i1));
 
-        % observe energies (as a function of [x Psi t])
+        % observe energies (as a function of [Psi x t])
         obs.energy(:,:,i1) = obs.energy(:,:,i1) + observeTime(obs,P);
 
     % end of loop on time
@@ -51,8 +51,6 @@ for ip = 1:Np
 % end of loop on packages
 end
 
-% renormalization of energies
-
 % energy density as a function of [x t] and [t]
-obs.energyDensity = squeeze(sum(obs.energy,2));
-obs.energyDomain = obs.dV*obs.energyDensity;
+obs.energyDensity = squeeze(tensorprod(obs.dpsi',obs.energy,1));
+obs.energyDomain = squeeze(tensorprod(obs.dx',obs.energyDensity,1));
