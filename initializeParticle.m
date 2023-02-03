@@ -18,9 +18,7 @@ dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
 perp = [-sin(theta) cos(theta) zeros(N,1)];
 
 % initial positions in cartesian coordinates
-x = r.*cos(theta).*sin(phi);
-y = r.*sin(theta).*sin(phi);
-z = r.*cos(phi);
+x = [r.*cos(theta).*sin(phi) r.*sin(theta).*sin(phi) r.*cos(phi)];
 
 % initial polarisation of each particle
 % in acoustics, this variable is unused (and set always to true)
@@ -55,10 +53,7 @@ end
 
 % initialize structure
 P = struct('N', N, ...              % number of particles
-           'r', r, ...              % radius
            'x', x, ...              % cartesian coordinates
-           'y', y, ...              
-           'z', z, ...              
            'dir', dir, ...          % direction of propagation
            'perp', perp, ...        % orthogonal to direction of propagation
            'p', p, ...              % polarization (used only in elasticity)

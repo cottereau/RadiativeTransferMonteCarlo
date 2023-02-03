@@ -22,9 +22,8 @@ while any(ind)
 
     % propagate particles
     L = P.v(ind).*dt(ind);
-    P.x(ind,:) = P.x(ind) + L.*P.dir(ind,1);
-    P.y(ind) = P.y(ind) + L.*P.dir(ind,2);
-    P.z(ind) = P.z(ind) + L.*P.dir(ind,3);
+    L = repmat(L,[1 3]);
+    P.x(ind,:) = P.x(ind,:) + L.*P.dir(ind,:);
 
     % scatter particles (except in last jump)
     theta = mat.invcdf(rand(sum(ind2),1));

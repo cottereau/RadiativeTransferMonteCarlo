@@ -24,9 +24,9 @@ for ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
-    % x,y,z        : cartesian coordinates
-    % r,theta,phi  : cylindrical coordinates
-    % d            : direction of propagation
+    % x            : cartesian coordinates
+    % dir          : direction of propagation
+    % perp         : orthogonal to direction of propagation
     % p            : polarization (used only in elasticity)
     % meanFreePath : mean free path
     % v            : propagation velocity
