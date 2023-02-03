@@ -1,39 +1,40 @@
 function obs = radiativeTransfer( source, material, observation )
 
+% discretization in packets of particles  (for optimal vectorization)
+Npk = 5e4;                             % size of packets (5e4 seems optimal on my computer)
+Np = ceil(source.numberParticles/Npk); % number of packets
+
 % OBSERVATION STRUCTURE
 % d         : dimension of the problem
 % acoustics : true=acoustics, false=elastics
 % t         : time instants
 % Nt        : number of time instants
-% theta     : propagation directions
-% binTheta  : bins for histograms in direction
-% Nth       : number of directions
+% psi       : propagation directions
+% binPsi    : bins for histograms in direction
+% Npsi      : number of directions
 % binX      : bins for histograms in positions
 % x         : sensor positions
 % Nx        : number of positions
 % energy    : matrix of observations size [Nx Nth Nt]
-obs = initializeObservation(observation); 
+% dV        : small volume of domain
+% dE        : energy of a single particle
+obs = initializeObservation(observation,material,Np*Npk);
 material = prepareSigma(material);        % prepare scattering cross sections 
-obs.d = material.dimension;               % space dimensions
-obs.acoustics = material.acoustics;       % true for acoustics, false for elastics
 
 % loop on packages of particles
-Npk = 5e4;                                % size of packages (5e4 seems optimal on my computer)
-Np = ceil(source.numberParticles/Npk);    % number of packages
 for ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
-    % x,y          : cartesian coordinates
-    % r, theta        : cylindrical coordinates
-    % d            : propagation direction (angle between 0 and 2pi)
+    % x            : cartesian coordinates
+    % dir          : direction of propagation
+    % perp         : orthogonal to direction of propagation
     % p            : polarization (used only in elasticity)
     % meanFreePath : mean free path
     % v            : propagation velocity
     % t            : current time for the particle
-    % Nj           : number of jumps
     P = initializeParticle(Npk,source,material);
-    obs = observeTime(obs,1,P);
+    obs.energy(:,:,1) = obs.energy(:,:,1) + observeTime(obs,P);
 
     % loop on time
     for i1 = 2:obs.Nt
@@ -41,8 +42,8 @@ for ip = 1:Np
         % propagate particles
         P = propagateParticle(material,P,obs.t(i1));
 
-        % observe energies
-        obs = observeTime(obs,i1,P);
+        % observe energies (as a function of [Psi x t])
+        obs.energy(:,:,i1) = obs.energy(:,:,i1) + observeTime(obs,P);
 
     % end of loop on time
     end
@@ -50,6 +51,6 @@ for ip = 1:Np
 % end of loop on packages
 end
 
-% energy density as a function of [x t]
-obs.totalEnergy = squeeze(sum(obs.energy,2));
-
+% energy density as a function of [x t] and [t]
+obs.energyDensity = squeeze(tensorprod(obs.dpsi',obs.energy,1));
+obs.energyDomain = squeeze(tensorprod(obs.dx',obs.energyDensity,1));

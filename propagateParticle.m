@@ -1,5 +1,8 @@
 function P = propagateParticle(mat,P,T)
 
+% constants
+d = mat.dimension;
+
 % initialization 
 dt = T-P.t;
 ind = dt>0;
@@ -18,13 +21,27 @@ while any(ind)
     end
 
     % propagate particles
-    Lj = P.v(ind).*dt(ind);
-    dj = P.d(ind);
-    P.x(ind) = P.x(ind)+Lj.*cos(dj);
-    P.y(ind) = P.y(ind)+Lj.*sin(dj);
+    L = P.v(ind).*dt(ind);
+    L = repmat(L,[1 3]);
+    P.x(ind,:) = P.x(ind,:) + L.*P.dir(ind,:);
 
     % scatter particles (except in last jump)
-    P.d(ind2) = P.d(ind2) + mat.invcdf(rand(sum(ind2),1));
+    theta = mat.invcdf(rand(sum(ind2),1));
+    costheta = repmat(cos(theta),[1 3]);
+    sintheta = repmat(sin(theta),[1 3]);
+    if d==3
+        phi = rand(sum(ind2),1);
+    elseif d==2
+        phi = zeros(sum(ind2),1);
+    end
+    cosphi = repmat(cos(phi),[1 3]);
+    sinphi = repmat(sin(phi),[1 3]);
+    dir1 = P.dir(ind2,:);
+    dir2 = P.perp(ind2,:);
+    dir3 = cross(dir1,dir2);
+    perp = cosphi.*dir2+sinphi.*dir3;
+    P.dir(ind2,:) = costheta.*dir1 + sintheta.*perp;
+    P.perp(ind2,:) = -sintheta.*dir1 + costheta.*perp;
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
@@ -32,9 +49,6 @@ while any(ind)
     ind = dt>0;
 
 end
-
-% compute position in cylindrical coordinates
-[P.theta,P.r] = cart2pol(P.x,P.y);
 
 end
 
