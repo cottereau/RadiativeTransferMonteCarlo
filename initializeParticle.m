@@ -1,7 +1,8 @@
 function P = initializeParticle( N, physics, source, material )
 
 % dimension
-d = material.dimension;
+d = physics.dimension;
+acoustics = physics.acoustics;
 
 % initial position of each particle: radius follows a Gaussian law with
 % standard deviation lambda, and angle follows a uniform law.
@@ -52,12 +53,14 @@ else
 end
 
 % initialize structure
-P = struct('N', N, ...              % number of particles
-           'x', x, ...              % cartesian coordinates
-           'dir', dir, ...          % direction of propagation
-           'perp', perp, ...        % orthogonal to direction of propagation
-           'p', p, ...              % polarization (used only in elasticity)
-           'meanFreePath', mfp, ... % mean free path
-           'v', v, ...              % propagation velocity
-           't', t );                % current time for the particle
+P = struct( 'd', d, ...                 % dimension of the problem
+            'acoustics', acoustics, ... % true=acoustics, false=elastics
+            'N', N, ...                 % number of particles
+            'x', x, ...                 % cartesian coordinates
+            'dir', dir, ...             % direction of propagation
+            'perp', perp, ...           % orthogonal to direction of propagation
+            'p', p, ...                 % polarization (used only in elasticity)
+            'meanFreePath', mfp, ...    % mean free path
+            'v', v, ...                 % propagation velocity
+            't', t );                   % current time for the particle
 

@@ -26,6 +26,8 @@ for ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
+    % d            : dimension of the problem
+    % acoustics    : true=acoustics, false=elastics
     % x            : cartesian coordinates
     % dir          : direction of propagation
     % perp         : orthogonal to direction of propagation

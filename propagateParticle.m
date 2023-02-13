@@ -1,8 +1,5 @@
 function P = propagateParticle(mat,P,T)
 
-% constants
-d = mat.dimension;
-
 % initialization 
 dt = T-P.t;
 ind = dt>0;
@@ -28,9 +25,9 @@ while any(ind)
     % scatter particles (except in last jump)
     % select new polarization and angle
     theta = mat.invcdf(rand(sum(ind2),1));
-    if d==3
+    if P.d==3
         phi = rand(sum(ind2),1);
-    elseif d==2
+    elseif P.d==2
         phi = zeros(sum(ind2),1);
     end
 
