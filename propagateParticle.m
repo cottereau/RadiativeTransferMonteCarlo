@@ -26,14 +26,17 @@ while any(ind)
     P.x(ind,:) = P.x(ind,:) + L.*P.dir(ind,:);
 
     % scatter particles (except in last jump)
+    % select new polarization and angle
     theta = mat.invcdf(rand(sum(ind2),1));
-    costheta = repmat(cos(theta),[1 3]);
-    sintheta = repmat(sin(theta),[1 3]);
     if d==3
         phi = rand(sum(ind2),1);
     elseif d==2
         phi = zeros(sum(ind2),1);
     end
+
+    % compute new propagation direction
+    costheta = repmat(cos(theta),[1 3]);
+    sintheta = repmat(sin(theta),[1 3]);
     cosphi = repmat(cos(phi),[1 3]);
     sinphi = repmat(sin(phi),[1 3]);
     dir1 = P.dir(ind2,:);
