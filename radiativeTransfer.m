@@ -1,4 +1,4 @@
-function obs = radiativeTransfer( source, material, observation )
+function obs = radiativeTransfer( physics, source, material, observation )
 
 % discretization in packets of particles  (for optimal vectorization)
 Npk = 5e4;                             % size of packets (5e4 seems optimal on my computer)
@@ -18,7 +18,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % energy    : matrix of observations size [Nx Nth Nt]
 % dV        : small volume of domain
 % dE        : energy of a single particle
-obs = initializeObservation(observation,material,Np*Npk);
+obs = initializeObservation( physics, observation, Np*Npk );
 material = prepareSigma(material);        % prepare scattering cross sections 
 
 % loop on packages of particles
@@ -33,7 +33,7 @@ for ip = 1:Np
     % meanFreePath : mean free path
     % v            : propagation velocity
     % t            : current time for the particle
-    P = initializeParticle(Npk,source,material);
+    P = initializeParticle( Npk, physics, source, material );
     obs.energy(:,:,1) = obs.energy(:,:,1) + observeTime(obs,P);
 
     % loop on time

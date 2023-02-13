@@ -1,4 +1,4 @@
-function P = initializeParticle(N,source,material)
+function P = initializeParticle( N, physics, source, material )
 
 % dimension
 d = material.dimension;
@@ -22,7 +22,7 @@ x = [r.*cos(theta).*sin(phi) r.*sin(theta).*sin(phi) r.*cos(phi)];
 
 % initial polarisation of each particle
 % in acoustics, this variable is unused (and set always to true)
-% in elastics, true corresponds to P waves, and false to S waves
+% in elastics, true corresponds to P waves (default), and false to S waves
 p = true(N,1);
 if isfield(source,'polarization') && source.polarization=='S'
     p = false(N,1);
@@ -32,9 +32,9 @@ end
 t = zeros(N,1);
 
 % material velocity of the background for each particle
-if isfield(material,'v')
+if physics.acoustics && isfield(material,'v')
     v = material.v*ones(N,1);
-elseif isfield(material,'vp') && isfield(material,'vs')
+elseif ~physics.acoustics && isfield(material,'vp') && isfield(material,'vs')
     v = material.vs*ones(N,1);
     v(p) = material.vp;
 else

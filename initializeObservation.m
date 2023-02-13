@@ -1,8 +1,8 @@
-function obs = initializeObservation(observation,material,N)
+function obs = initializeObservation( physics, observation, N )
 
-% basic characteristics of the problem
-d = material.dimension;     
-acoustics = material.acoustics;
+% physics
+d = physics.dimension;
+acoustics = physics.acoustics;
 
 % times
 t = [0 setdiff(observation.time,0)];
@@ -38,6 +38,7 @@ obs = struct('t', t, ...               % time instants
              'dx', dx, ...             % weight of small interval of radius
              'energy', energy, ...     % matrix of observations
              'dE', dE, ...             % energy of a single particle
+             'd', d, ...               % dimension of the problem
              'acoustics', acoustics ); % true=acoustics, false=elastics
 
 end
