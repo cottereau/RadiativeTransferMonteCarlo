@@ -23,14 +23,13 @@ for ip = 1:Np
     % PARTICLES
     % N            : number of particles
     % x,y          : cartesian coordinates
-    % r, theta        : cylindrical coordinates
+    % r, theta     : cylindrical coordinates
     % d            : propagation direction (angle between 0 and 2pi)
     % p            : polarization (used only in elasticity)
     % meanFreePath : mean free path
     % v            : propagation velocity
     % t            : current time for the particle
-    % Nj           : number of jumps to next time step
-    P = initializeParticle(Npk,source,material);
+    P = initializeParticle(Npk,physics,source,material);
     obs = observeTime(obs,1,P);
 
     % loop on time
