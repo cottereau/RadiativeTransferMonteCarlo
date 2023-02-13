@@ -1,15 +1,21 @@
-% this code works in 2D and assumes invariance by rotation around the 
-% source, so the source is always assumed centered on [0 0]. Its shape is a
-% Gaussian (cylindrical) with typical size lambda, and can have any 
-% polarization.
-%
+% This code works in 2D/3D and assumes the source is centered on 0. The
+% initial distance from 0 is modeled gaussian with standard deviation 
+% source.lambda and uniformly-distributed angle(s). The initial direction is 
+% uniform.
+
+% Physics
+physics = struct( 'acoustics', true, ...
+                  'dimension', 2 );
+
 % Point source
-source = struct( 'numberParticles', 100000, ...
+source = struct( 'numberParticles', 1e6, ...
                  'lambda', 0.1, ...
                  'polarization', 'P');  % 'P' or 'S'
              
 % material properties
-material = struct( 'vp', 1.5, ...
+material = struct( 'acoustics', false, ...
+                   'dimension', 2, ...
+                   'vp', 1.5, ...
                    'vs', 1, ...
                    'sigmaPP', @(th) 1/8/pi*ones(size(th)), ...
                    'sigmaPS', @(th) 2*1.5^2/20/pi*ones(size(th)), ...
@@ -17,13 +23,12 @@ material = struct( 'vp', 1.5, ...
                    'sigmaSS', @(th) 1/8/pi*ones(size(th)) );
                
 % observations
-observation = struct('sensors', 0.001:0.05:10, ... % to observe at given sensors
-                     'check', false, ... % to perform some checks for debug
-                     'time', 0:0.1:10, ... % times at which to evaluate passage in points
-                     'movie', true ); % create a movie from the sensors (using rotational invariance)
+observation = struct('sensors', 0:0.05:10, ... % bins for histograms
+                     'time', 0:0.1:10, ...     % observation times
+                     'Ndir', 100 );            % direction discretization
 
 % radiative transfer solution - 2D - elastic
-obs = radiativeTransferElastic( source, material, observation );
-plotPoints(obs)
-M = plotGrid('full',obs,0.01);
-
+%obs = radiativeTransferElastic( source, material, observation );
+obs = radiativeTransfer( physics, source, material, observation );
+M = plotGrid('full',obs,1);
+scatterDirections(obs,30);

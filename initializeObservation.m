@@ -1,4 +1,8 @@
-function obs = initializeObservation(observation)
+function obs = initializeObservation( physics, observation )
+
+% physics
+d = physics.dimension;
+acoustics = physics.acoustics;
 
 % vector of times
 t = [0 setdiff(observation.time,0)];
@@ -26,6 +30,6 @@ obs = struct('t', t, ...               % time instants
              'binX', binX, ...         % bins for histograms in positions
              'x', x, ...               % sensor positions
              'Nx', Nx, ...             % number of positions
-             'energy', energy );       % matrix of observations
-             % 'd'                     % dimension of the problem
-             % 'acoustics'             % true=acoustics, false=elastics
+             'energy', energy, ...     % matrix of observations
+             'd', d, ...               % dimension of the problem
+             'acoustics', acoustics ); % true=acoustics, false=elastics

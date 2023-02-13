@@ -1,4 +1,4 @@
-function obs = radiativeTransfer( source, material, observation )
+function obs = radiativeTransfer( physics, source, material, observation )
 
 % OBSERVATION STRUCTURE
 % d         : dimension of the problem
@@ -12,10 +12,8 @@ function obs = radiativeTransfer( source, material, observation )
 % x         : sensor positions
 % Nx        : number of positions
 % energy    : matrix of observations size [Nx Nth Nt]
-obs = initializeObservation(observation); 
+obs = initializeObservation( physics, observation); 
 material = prepareSigma(material);        % prepare scattering cross sections 
-obs.d = material.dimension;               % space dimensions
-obs.acoustics = material.acoustics;       % true for acoustics, false for elastics
 
 % loop on packages of particles
 Npk = 5e4;                                % size of packages (5e4 seems optimal on my computer)
@@ -31,7 +29,7 @@ for ip = 1:Np
     % meanFreePath : mean free path
     % v            : propagation velocity
     % t            : current time for the particle
-    % Nj           : number of jumps
+    % Nj           : number of jumps to next time step
     P = initializeParticle(Npk,source,material);
     obs = observeTime(obs,1,P);
 
