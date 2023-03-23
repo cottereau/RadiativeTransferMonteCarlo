@@ -7,11 +7,8 @@ figure;
 Nt = length(obs.t);
 switch type
     case 'half'
-        vv = VideoWriter('halfSpace.avi');
-        open(vv);
         x = obs.boxX;
         z = obs.boxZ;
-        M(Nt) = struct('cdata',[],'colormap',[]);
         axis tight manual
         set(gca,'nextplot','replacechildren');
         for i1=1:Nt
@@ -20,17 +17,12 @@ switch type
             set(gca,'xlim',[min(x) max(x)],'ylim',[min(z) max(z)])
             set(gca,'PlotBoxAspectRatio',[range(x) range(z) 1])
             title(['time T = ' num2str(obs.t(i1)) 's'])
-  %          clim([0 cmax])
-            M(i1) = getframe;
-            writeVideo(vv,M(i1));
+            clim([0 cmax])
+            exportgraphics(gcf,'testAnimated.gif','Append',true);
         end
-        close(vv);
     case 'full'
-        vv = VideoWriter('fullSpace.avi');
-        open(vv);
         x = obs.grid;
         mM = [min(x) max(x)];
-        M(Nt) = struct('cdata',[],'colormap',[]);
         for i1=1:Nt
             surf(x,x,obs.gridEnergy(:,:,i1));
             view(2); colorbar; shading flat
@@ -38,13 +30,14 @@ switch type
             set(gca,'PlotBoxAspectRatio',[range(x) range(x) 1])
             title(['time T = ' num2str(obs.t(i1)) 's'])
             clim([0 cmax])
-            M(i1) = getframe;
-            writeVideo(vv,M(i1));
+            exportgraphics(gcf,'testAnimated.gif','Append',true);
         end
-        close(vv);
     otherwise
         error('unknown type of problem')
 end
+% once imageMagick is installed on macOS (with macports), use
+% # convert 'GIFname.gif' PNGname%03d.png
+% to convert the gif into independent images
 end
 
 function obs = computeGridEnergy(obs,acoustics)
