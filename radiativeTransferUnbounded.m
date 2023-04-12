@@ -1,4 +1,7 @@
-function obs = radiativeTransferUnbounded( physics, source, material, observation )
+function obs = radiativeTransferUnbounded( d, source, material, observation )
+
+% physics
+acoustics = material.acoustics;
 
 % discretization in packets of particles  (for optimal vectorization)
 Npk = 5e4;                             % size of packets (5e4 seems optimal on my computer)
@@ -18,7 +21,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % energy    : matrix of observations size [Nx Nth Nt]
 % dV        : small volume of domain
 % dE        : energy of a single particle
-obs = initializeObservation( physics, observation, Np*Npk );
+obs = initializeObservation( d, acoustics, observation, Np*Npk );
 material = prepareSigma(material);        % prepare scattering cross sections 
 
 % loop on packages of particles
@@ -35,7 +38,7 @@ for ip = 1:Np
     % meanFreePath : mean free path
     % v            : propagation velocity
     % t            : current time for the particle
-    P = initializeParticle( Npk, physics, source, material );
+    P = initializeParticle( Npk, d, acoustics, source, material );
     obs.energy(:,:,1) = obs.energy(:,:,1) + observeTime(obs,P);
 
     % loop on time

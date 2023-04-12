@@ -1,12 +1,12 @@
-function obs = radiativeTransfer( physics, source, material, observation, geometry )
+function obs = radiativeTransfer( source, material, observation, geometry )
 
 % construct set of virtual sources
 Lmax = material.v*max(observation.time);
-[ns,posS,signS,Rmax] = virtualSources( geometry, source.position, Lmax, physics.dimension);
+[ns,posS,signS,Rmax] = virtualSources( geometry, source.position, Lmax);
 observation.sensors = linspace(0,Rmax,ceil(Rmax/observation.dx));
  
 % compute solution in full space
-obs = radiativeTransferUnbounded( physics, source, material, observation );
+obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
 % construct superposition of solutions for different sources
 dx = ceil( geometry.size(1)/observation.dx );

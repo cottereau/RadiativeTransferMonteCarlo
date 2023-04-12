@@ -1,4 +1,4 @@
-function [ns,posS,signS,Rmax] = virtualSources( geom, posS, L, d )
+function [ns,posS,signS,Rmax] = virtualSources( geom, posS, L )
 
 % create plotting box
 boxCorners = [0            posS(2) -geom.size(3); 
@@ -57,7 +57,7 @@ if strcmp(geom.type,'box')
         i1 = 3-i1;
     end
     % along y
-    if d>2
+    if geom.dimension>2
         ind = true;
         i1 = 1;
         y0 = [0 geom.size(2)];

@@ -2,19 +2,14 @@
 % with standard deviation source.lambda and uniformly-distributed angle(s).
 % The initial direction is uniform.
 
-% Physics
-physics = struct( 'acoustics', true, ...
-                  'dimension', 2 );
-% acoustics could be integrated directly in material
-% dimension could be integrated in geometry
-                   
 % Point source
 source = struct( 'numberParticles', 1e6, ...
                  'position', [2 0 -2], ... 
                  'lambda', 0.1 );
              
 % material properties
-material = struct( 'v', 1, ...
+material = struct( 'acoustics', true, ...
+                   'v', 1, ...
                    'sigma', @(th) 1/4/pi*ones(size(th)));
                
 % observations
@@ -40,10 +35,11 @@ observation = struct('dx', 0.05, ...           % size of bins in space
 % The plotting box is always drawn in the plane of the source (in y). For
 % now, only homogeneous Neumann boundary conditions are enforced
 geometry = struct( 'type', 'box', ...
-                   'size', [4 3 3]);
+                   'size', [4 3 3], ...
+                   'dimension', 2 );
 
 % radiative transfer solution - 2D - acoustic
-obs = radiativeTransfer( physics, source, material, observation, geometry );
+obs = radiativeTransfer( source, material, observation, geometry );
 %M = plotGrid('full',obs,1);
 M = plotGrid('half',obs,0.5);
 %scatterDirections(obs,30);

@@ -1,8 +1,4 @@
-function obs = initializeObservation( physics, observation, N )
-
-% physics
-d = physics.dimension;
-acoustics = physics.acoustics;
+function obs = initializeObservation( d, acoustics, observation, N )
 
 % times
 t = [0 setdiff(observation.time,0)];
