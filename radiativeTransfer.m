@@ -21,20 +21,5 @@ for i1 = 1:ns
 end
 E = permute(reshape(E,length(obs.boxZ),length(obs.boxX),obs.Nt),[2 1 3]);
 obs.energyDensityBox = E;
-end
 
-% - idea to be able to consider non-isotropic initial conditions: perform the 
-% simulation with initial direction uniform, and keep in memory the initial
-% direction of each particle. And, when performing the histogram, keep one
-% more dimension in the histograms that identicates exactly that initial
-% direction. Then, when considering a non-isotropic initial condition, it
-% is only necessary to perform a multiplication along that dimension with
-% the desired distribution for the initial direction
-%
-% - create a routine that would take as input the PSD directly of
-% mechanical/acoustical parameters and return the scattering cross sections
-% in the acoustical and elasticity cases (Shahram me les a déjà envoyées ?)
-%
-% - create routines that allow to choose loadings and forces depending
-% directly on the corresponding quantities for the wave equation
-%
+end
