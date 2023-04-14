@@ -1,8 +1,4 @@
-function P = initializeParticle( N, physics, source, material )
-
-% dimension
-d = physics.dimension;
-acoustics = physics.acoustics;
+function P = initializeParticle( N, d, acoustics, source, material )
 
 % initial position of each particle: radius follows a Gaussian law with
 % standard deviation lambda, and angle follows a uniform law.
@@ -33,7 +29,7 @@ end
 t = zeros(N,1);
 
 % material velocity of the background for each particle
-if physics.acoustics && isfield(material,'v')
+if acoustics && isfield(material,'v')
     v = material.v*ones(N,1);
 elseif ~physics.acoustics && isfield(material,'vp') && isfield(material,'vs')
     v = material.vs*ones(N,1);
