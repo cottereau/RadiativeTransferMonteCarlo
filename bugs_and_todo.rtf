@@ -11,6 +11,8 @@
 \
 - the validation by Shahram seems to give an order of magnitude of difference. Investigate whether the quantities that are plotted are normalized in the same way.\
 \
+- the way I compute the series of sources, it looks like I am stopping the series too early. This is probably a very small error that I am making and only at large times but it might be worth to check it and correct\
+\
 TODO:\
 \
 - idea to be able to consider non-isotropic initial conditions: perform the simulation with initial direction uniform, and keep in memory the initial direction of each particle. And, when performing the histogram, keep one more dimension in the histograms that identifies exactly that initial direction. Then, when considering a non-isotropic initial condition, it is only necessary to perform a multiplication along that dimension with the desired distribution for the initial direction\
@@ -19,8 +21,9 @@ TODO:\
 \
  - create routines that allow to choose loadings and forces depending directly on the corresponding quantities for the wave equation\
 \
- - rather than computing histograms with uniform angles, compute histograms with uniform angle*cosine\
+ - rather than computing histograms with uniform angles, compute histograms with uniform angle*cosine. The idea here is that the volume of each bin should be as homogeneous as possible in order for the number of particles to be the same more or less in each bin, and hence to ensure that convergence is uniform \'85. In the same range of ideas, it might be interesting to consider discretization in r that induces such uniform coverage\
 \
 - plots: preparer a routine to plot (movies of) scattering cross sections at particular points\
+\
 \
 }
