@@ -21,7 +21,7 @@ if m>n, a=a'; end
 if m<n, b=b'; end
 
 if d==2
-    E = b.*(1-b.^2./a.^2).^(-1/2).*exp(sqrt(a.^2-b.^2)-a).*heaviside(a-b);
+    E = b./(2*pi*sqrt(a.^2-b.^2)).*exp(sqrt(a.^2-b.^2)-a).*heaviside(a-b);
     
     aa = repmat(a,[length(b) 1]);
     ind = (a==b);
