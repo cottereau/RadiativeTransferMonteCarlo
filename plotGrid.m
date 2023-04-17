@@ -9,6 +9,7 @@ x = obs.boxX;
 z = obs.boxZ;
 %axis tight manual
 %set(gca,'nextplot','replacechildren');
+lappend = false;
 for i1=1:Nt
     surf(x,z,obs.energyDensityBox(:,:,i1)');
     view(2); colorbar; shading flat
@@ -16,7 +17,8 @@ for i1=1:Nt
     set(gca,'PlotBoxAspectRatio',[range(x) range(z) 1])
     title(['time T = ' num2str(obs.t(i1)) 's'])
     clim([0 cmax])
-    exportgraphics(gcf,'testAnimated.gif','Append',true);
+    exportgraphics(gcf,'testAnimated.gif','Append',lappend);
+    lappend = true;
 end
 end
 
