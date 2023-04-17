@@ -16,7 +16,7 @@ obs.boxZ = linspace( -geometry.size(3), 0, dz );
 [boxx,boxz] = meshgrid(obs.boxX,obs.boxZ);
 E = zeros(numel(boxx),obs.Nt);
 for i1 = 1:ns
-    r = sqrt((boxx-posS(i1,1)).^2+(boxz-posS(i1,3)).^2);
+    r = sqrt((boxx-posS(i1,1)).^2+(posS(1,2)-posS(i1,2)).^2+(boxz-posS(i1,3)).^2);
     E = E + signS(i1)*interp1(obs.x',obs.energyDensity,r(:),'linear',0);
 end
 E = permute(reshape(E,length(obs.boxZ),length(obs.boxX),obs.Nt),[2 1 3]);
