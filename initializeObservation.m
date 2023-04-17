@@ -10,9 +10,14 @@ psi = (binPsi(1:end-1)+binPsi(2:end))/2;
 Npsi = length(psi);
 
 % sensor positions
-binX = observation.sensors;
-x = (binX(1:end-1)+binX(2:end))/2;
+x = observation.sensors;
 Nx = length(x);
+dx = mean(diff(x));
+binX = (x(1:end-1)+x(2:end))/2;
+binX = [-dx/2 binX binX(end)+dx/2];
+
+% binX = observation.sensors;
+% x = (binX(1:end-1)+binX(2:end))/2;
 
 % initialize matrix of observations
 energy = zeros(Npsi,Nx,Nt);
@@ -44,9 +49,11 @@ dr = mean(diff(r));
 dphi = mean(diff(phi));
 if d==2
     dx = r*dr;
+    dx(1) = dr^2/8;
     dphi = 2*pi*ones(size(phi));
 elseif d==3
-    dx = r.^2*dr;
+    dx = r.^2*dr + dr^2/12;
+    dx(1) = dr^3/24;
     dphi = 2*pi*sin(phi).*dphi;
 end
 end
