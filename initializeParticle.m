@@ -38,14 +38,14 @@ else
     error('unknown velocity of the background')
 end
 
-% meanFreePath for each particle
-if isfield(material,'meanFreePath')
-    mfp = material.meanFreePath*ones(N,1);
-elseif isfield(material,'meanFreePathP') && isfield(material,'meanFreePathS')
-    mfp = material.meanFreePathS*ones(N,1);
-    mfp(p) = material.meanFreePathP;
+% meanFreeTime for each particle
+if isfield(material,'meanFreeTime')
+    mft = material.meanFreeTime*ones(N,1);
+elseif isfield(material,'meanFreeTimeP') && isfield(material,'meanFreeTimeS')
+    mft = material.meanFreeTimeS*ones(N,1);
+    mft(p) = material.meanFreeTimeP;
 else
-    error('unknown meanFreePath')
+    error('unknown meanFreeTime')
 end
 
 % initialize structure
@@ -56,7 +56,7 @@ P = struct( 'd', d, ...                 % dimension of the problem
             'dir', dir, ...             % direction of propagation
             'perp', perp, ...           % orthogonal to direction of propagation
             'p', p, ...                 % polarization (used only in elasticity)
-            'meanFreePath', mfp, ...    % mean free path
+            'meanFreeTime', mft, ...    % mean free time
             'v', v, ...                 % propagation velocity
             't', t );                   % current time for the particle
 

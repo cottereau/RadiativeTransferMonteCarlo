@@ -35,7 +35,7 @@ for ip = 1:Np
     % dir          : direction of propagation
     % perp         : orthogonal to direction of propagation
     % p            : polarization (used only in elasticity)
-    % meanFreePath : mean free path
+    % meanFreeTime : mean free time
     % v            : propagation velocity
     % t            : current time for the particle
     P = initializeParticle( Npk, d, acoustics, source, material );
