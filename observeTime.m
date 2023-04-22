@@ -1,7 +1,4 @@
-function E = observeTime(obs,P)
-
-% compute energy normalization
-dE = obs.dE./(obs.dpsi'*obs.dx);
+function E = observeTime(P,dE,binPsi,binX)
 
 % compute radius and angle between direction of propagation and position
 % check normalization of dir
@@ -12,4 +9,4 @@ cospsi(cospsi<-1)=-1;
 psi = acos(cospsi);
 
 % accumulate energies
-E = histcounts2( psi, r, obs.binPsi, obs.binX ).*dE;
+E = histcounts2( psi, r, binPsi, binX ).*dE;

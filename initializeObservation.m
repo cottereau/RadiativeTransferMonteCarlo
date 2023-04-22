@@ -1,4 +1,5 @@
-function obs = initializeObservation( d, acoustics, observation, N )
+function [ obs, energy, Npsi, binPsi, Nx, binX, Nt, t, dE ] = ...
+                      initializeObservation( d, acoustics, observation, N )
 
 % times
 t = [0 setdiff(observation.time,0)];
@@ -24,7 +25,7 @@ energy = zeros(Npsi,Nx,Nt);
 
 % energy in a small volume of the domain
 [dx,dpsi]= volumeEnergy(d,x,psi);
-dE = 1/N;
+dE = (1/N)./(dpsi'*dx);
 
 % initialize structure
 obs = struct('t', t, ...               % time instants
@@ -37,10 +38,10 @@ obs = struct('t', t, ...               % time instants
              'x', x, ...               % sensor positions
              'Nx', Nx, ...             % number of positions
              'dx', dx, ...             % weight of small interval of radius
-             'energy', energy, ...     % matrix of observations
              'dE', dE, ...             % energy of a single particle
              'd', d, ...               % dimension of the problem
              'acoustics', acoustics ); % true=acoustics, false=elastics
+%             'energy', energy, ...     % matrix of observations
 
 end
 

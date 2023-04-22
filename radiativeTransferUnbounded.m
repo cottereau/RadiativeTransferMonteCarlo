@@ -21,11 +21,14 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % energy    : matrix of observations size [Nx Nth Nt]
 % dV        : small volume of domain
 % dE        : energy of a single particle
-obs = initializeObservation( d, acoustics, observation, Np*Npk );
-material = prepareSigma(material);        % prepare scattering cross sections 
+[ obs, energy, Npsi, binPsi, Nx, binX, Nt, t, dE ] = ...
+                initializeObservation( d, acoustics, observation, Np*Npk );
+
+% prepare scattering cross sections 
+material = prepareSigma(material);      
 
 % loop on packages of particles
-for ip = 1:Np
+parfor ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
@@ -39,22 +42,26 @@ for ip = 1:Np
     % v            : propagation velocity
     % t            : current time for the particle
     P = initializeParticle( Npk, d, acoustics, source, material );
-    obs.energy(:,:,1) = obs.energy(:,:,1) + observeTime(obs,P);
+    energyi = zeros( Npsi, Nx, Nt );
+    energyi(:,:,1) = observeTime( P, dE, binPsi, binX );
 
     % loop on time
-    for i1 = 2:obs.Nt
+    for it = 2:Nt
 
         % propagate particles
-        P = propagateParticle(material,P,obs.t(i1));
+        P = propagateParticle( material, P, t(it) );
 
         % observe energies (as a function of [Psi x t])
-        obs.energy(:,:,i1) = obs.energy(:,:,i1) + observeTime(obs,P);
+        energyi(:,:,it) = observeTime( P, dE, binPsi, binX );
 
     % end of loop on time
     end
+    
+    energy = energy + energyi;
 
 % end of loop on packages
 end
+obs.energy = energy;
 
 % energy density as a function of [x t] and [t]
 obs.energyDensity = squeeze(tensorprod(obs.dpsi',obs.energy,1));
