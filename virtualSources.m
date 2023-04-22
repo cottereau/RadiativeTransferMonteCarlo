@@ -1,4 +1,4 @@
-function [ns,posS,signS,Rmax] = virtualSources( geom, posS, L )
+function [ns,posS,Rmax] = virtualSources( geom, posS, L )
 
 % create plotting box
 boxCorners = [0            posS(2) -geom.size(3); 
@@ -8,17 +8,13 @@ boxCorners = [0            posS(2) -geom.size(3);
 
 % for full-space problem, only one source
 ns = 1;
-signS = 1;
 
 % construct symmetrical source for half space
 if  strcmp(geom.type,'halfspace')
     S1 = [posS(:,1:2) -posS(:,3)];
     ind = distance2box('min',S1,boxCorners)<L;
     posS = [posS; S1(ind,:)];
-    % should be a - for dirichlet ???
-    % signS = [signS; geom.planeZ(1,2)*signS(ind)];
-    signS = [signS; signS(ind)];
-    ns = length(signS);
+    ns = size(posS,1);
 end
 
 % construct family of sources in z for slabs and boxes
@@ -31,10 +27,7 @@ if strcmp(geom.type,'box') || strcmp(geom.type,'slab')
         S1 = setdiff(S1,posS,'rows'); % is this necessary ????
         ind = distance2box('min',S1,boxCorners)<L;
         posS = [posS; S1(ind,:)];
-        % should be a - for dirichlet ???
-        % signS = [signS; geom.planeZ(1,2)*signS(ind)];
-        signS = [signS; signS(ind)];
-        ns = length(signS);
+        ns = size(posS,1);
         i1 = 3-i1;
     end
 end
@@ -50,10 +43,7 @@ if strcmp(geom.type,'box')
         S1 = setdiff(S1,posS,'rows'); % is this necessary ????
         ind = distance2box('min',S1,boxCorners)<L;
         posS = [posS; S1(ind,:)];
-        % should be a - for dirichlet ???
-        % signS = [signS; geom.planeZ(1,2)*signS(ind)];
-        signS = [signS; signS(ind)];
-        ns = length(signS);
+        ns = size(posS,1);
         i1 = 3-i1;
     end
     % along y
@@ -66,10 +56,7 @@ if strcmp(geom.type,'box')
             S1 = setdiff(S1,posS,'rows'); % is this necessary ????
             ind = distance2box('min',S1,boxCorners)<L;
             posS = [posS; S1(ind,:)];
-            % should be a - for dirichlet ???
-            % signS = [signS; geom.planeZ(1,2)*signS(ind)];
-            signS = [signS; signS(ind)];
-            ns = length(signS);
+            ns = size(posS,1);
             i1 = 3-i1;
         end
     end
