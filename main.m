@@ -12,10 +12,12 @@ material = struct( 'acoustics', true, ...
                    'v', 1, ...
                
 % observations
-observation = struct('dx', 0.05, ...           % size of bins in space
-                     'time', 0:0.1:10, ...     % observation times
-                     'Ndir', 100 );            % number of bins for directions
-
+observation = struct('dr', 0.05, ...           % size of bins in space
+                     'time', 0:0.1:15, ...     % observation times
+                     'Ndir', 100, ...          % number of bins for directions
+                     'sensors', [2 1.5 -1;
+                                 2.9 1.5 -1]); % positions to plot directional energy            
+ 
 % - 'type' is either 'fullspace', 'halfspace', 'slab', or 'box'.
 % 'halfspace' is defined for z<0. 'slab' is bounded between two planes of
 % constant z. In 2D, 'box' is bounded in x and z.
@@ -35,6 +37,8 @@ observation = struct('dx', 0.05, ...           % size of bins in space
 % now, only homogeneous Neumann boundary conditions are enforced
 geometry = struct( 'type', 'box', ...
                    'size', [4 3 3], ...
+                   'dimension', 2 );
 
 % radiative transfer solution - 2D - acoustic
 obs = radiativeTransfer( source, material, observation, geometry );
+scatterDirections(obs,1e-3);

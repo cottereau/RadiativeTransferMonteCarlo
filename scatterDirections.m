@@ -1,18 +1,18 @@
-function scatterDirections(obs,station)
+function scatterDirections(obs,rmax)
 
 % dimensions
 Nt = length(obs.t);
+Ns = size(obs.sensors,1);
 
 figure;
-for i1 = 1:length(station)
-    v = VideoWriter(['scatterPlot' num2str(station(i1)) '.avi']);
-    open(v);
-    for i2=1:Nt
-        pol = obs.energy(:,station(i1),i2);
-        polarplot(obs.psi,pol);
-        title(['time T = ' num2str(obs.t(i2)) 's'])
-        M(i2) = getframe;
-        writeVideo(v,M(i2));
+lappend = false;
+for i2 = 1:Nt
+    for i1 = 1:Ns
+        subplot(1,Ns,i1)
+        polarplot(obs.psi2pi,obs.energyDirectional(:,i2,i1));
+        rlim([0 rmax])
     end
-    close(v);
+    title(['time T = ' num2str(obs.t(i2)) 's'])
+    exportgraphics(gcf,'testScatter.gif','Append',lappend);
+    lappend = true;
 end
