@@ -18,7 +18,7 @@ binR = (r(1:end-1)+r(2:end))/2;
 binR = [-dr/2 binR binR(end)+dr/2];
 
 % initialize matrix of observations
-energy = zeros(Npsi,Nx,Nt);
+energy = zeros(Npsi,Nr,Nt);
 
 % energy in a small volume of the domain
 [dr,dpsi]= volumeEnergy(d,r,psi);

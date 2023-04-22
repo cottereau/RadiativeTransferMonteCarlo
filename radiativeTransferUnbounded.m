@@ -65,4 +65,4 @@ obs.energy = energy;
 
 % energy density as a function of [x t] and [t]
 obs.energyDensity = squeeze(tensorprod(obs.dpsi',obs.energy,1));
-obs.energyDomain = squeeze(tensorprod(obs.dx',obs.energyDensity,1));
+obs.energyDomain = squeeze(tensorprod(obs.dr',obs.energyDensity,1));
