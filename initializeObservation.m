@@ -1,4 +1,4 @@
-function [ obs, energy, Npsi, binPsi, Nx, binX, Nt, t, dE ] = ...
+function [ obs, energy, Npsi, binPsi, Nr, binR, Nt, t, dE ] = ...
                       initializeObservation( d, acoustics, observation, N )
 
 % times
@@ -11,21 +11,18 @@ psi = (binPsi(1:end-1)+binPsi(2:end))/2;
 Npsi = length(psi);
 
 % sensor positions
-x = observation.sensors;
-Nx = length(x);
-dx = mean(diff(x));
-binX = (x(1:end-1)+x(2:end))/2;
-binX = [-dx/2 binX binX(end)+dx/2];
-
-% binX = observation.sensors;
-% x = (binX(1:end-1)+binX(2:end))/2;
+r = observation.r;
+Nr = length(r);
+dr = mean(diff(r));
+binR = (r(1:end-1)+r(2:end))/2;
+binR = [-dr/2 binR binR(end)+dr/2];
 
 % initialize matrix of observations
 energy = zeros(Npsi,Nx,Nt);
 
 % energy in a small volume of the domain
-[dx,dpsi]= volumeEnergy(d,x,psi);
-dE = (1/N)./(dpsi'*dx);
+[dr,dpsi]= volumeEnergy(d,r,psi);
+dE = (1/N)./(dpsi'*dr);
 
 % initialize structure
 obs = struct('t', t, ...               % time instants
@@ -34,10 +31,10 @@ obs = struct('t', t, ...               % time instants
              'psi', psi, ...           % propagation directions
              'Npsi', Npsi, ...         % number of directions
              'dpsi', dpsi, ...         % weight of small interval of angle
-             'binX', binX, ...         % bins for histograms in positions
-             'x', x, ...               % sensor positions
-             'Nx', Nx, ...             % number of positions
-             'dx', dx, ...             % weight of small interval of radius
+             'binR', binR, ...         % bins for histograms in positions
+             'r', r, ...               % sensor positions
+             'Nr', Nr, ...             % number of positions
+             'dr', dr, ...             % weight of small interval of radius
              'dE', dE, ...             % energy of a single particle
              'd', d, ...               % dimension of the problem
              'acoustics', acoustics ); % true=acoustics, false=elastics
@@ -45,16 +42,16 @@ obs = struct('t', t, ...               % time instants
 
 end
 
-function [dx,dphi] = volumeEnergy(d,r,phi)
-dr = mean(diff(r));
+function [dr,dphi] = volumeEnergy(d,r,phi)
+d0r = mean(diff(r));
 dphi = mean(diff(phi));
 if d==2
-    dx = r*dr;
-    dx(1) = dr^2/8;
+    dr = r*d0r;
+    dr(1) = d0r^2/8;
     dphi = 2*pi*ones(size(phi));
 elseif d==3
-    dx = r.^2*dr + dr^2/12;
-    dx(1) = dr^3/24;
+    dr = r.^2*d0r + d0r^2/12;
+    dr(1) = d0r^3/24;
     dphi = 2*pi*sin(phi).*dphi;
 end
 end

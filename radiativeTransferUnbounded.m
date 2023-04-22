@@ -21,7 +21,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % energy    : matrix of observations size [Nx Nth Nt]
 % dV        : small volume of domain
 % dE        : energy of a single particle
-[ obs, energy, Npsi, binPsi, Nx, binX, Nt, t, dE ] = ...
+[ obs, energy, Npsi, binPsi, Nr, binR, Nt, t, dE ] = ...
                 initializeObservation( d, acoustics, observation, Np*Npk );
 
 % prepare scattering cross sections 
@@ -42,8 +42,8 @@ parfor ip = 1:Np
     % v            : propagation velocity
     % t            : current time for the particle
     P = initializeParticle( Npk, d, acoustics, source, material );
-    energyi = zeros( Npsi, Nx, Nt );
-    energyi(:,:,1) = observeTime( P, dE, binPsi, binX );
+    energyi = zeros( Npsi, Nr, Nt );
+    energyi(:,:,1) = observeTime( P, dE, binPsi, binR );
 
     % loop on time
     for it = 2:Nt
@@ -52,7 +52,7 @@ parfor ip = 1:Np
         P = propagateParticle( material, P, t(it) );
 
         % observe energies (as a function of [Psi x t])
-        energyi(:,:,it) = observeTime( P, dE, binPsi, binX );
+        energyi(:,:,it) = observeTime( P, dE, binPsi, binR );
 
     % end of loop on time
     end
