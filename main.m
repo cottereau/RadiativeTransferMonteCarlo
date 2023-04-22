@@ -10,7 +10,6 @@ source = struct( 'numberParticles', 1e6, ...
 % material properties
 material = struct( 'acoustics', true, ...
                    'v', 1, ...
-                   'sigma', @(th) 1/4/pi*ones(size(th)));
                
 % observations
 observation = struct('dx', 0.05, ...           % size of bins in space
@@ -36,9 +35,6 @@ observation = struct('dx', 0.05, ...           % size of bins in space
 % now, only homogeneous Neumann boundary conditions are enforced
 geometry = struct( 'type', 'box', ...
                    'size', [4 3 3], ...
-                   'dimension', 3 );
 
 % radiative transfer solution - 2D - acoustic
 obs = radiativeTransfer( source, material, observation, geometry );
-plotGrid(obs,5);
-%scatterDirections(obs,30);

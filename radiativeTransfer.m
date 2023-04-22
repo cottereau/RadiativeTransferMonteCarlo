@@ -22,4 +22,11 @@ end
 E = permute(reshape(E,length(obs.boxZ),length(obs.boxX),obs.Nt),[2 1 3]);
 obs.energyDensityBox = E;
 
+% construct directional energy at sensors
+obs.sensors = observation.sensors;
+i1 = 1; i2 = 1;
+r = sum((obs.sensors(i1,:)-posS(i2,:)).^2);
+Es = interp1(obs.r',obs.energyDensity,r(:),'linear',0)
+rxz = sum((obs.sensors(i1,[1 3])-posS(i2,[1 3])).^2);
+theta = 
 end
