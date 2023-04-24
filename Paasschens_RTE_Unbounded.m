@@ -14,9 +14,9 @@ d = geometry.dimension;
 v = material.v;
 t = observation.time;
 
-Lmax = v*max(t);
-[~,~,~,Rmax] = virtualSources(geometry, source.position, Lmax);
-r = linspace(0,Rmax,ceil(Rmax/observation.dx));
+Lmax = material.v*max(observation.time);
+[~,~,Rmax] = virtualSources( geometry, source.position, Lmax);
+r = linspace(0,Rmax,ceil(Rmax/observation.dr));
 
 Sigma = prepareSigmaOne(material.sigma);
 meanFreeTime = 1/v/Sigma;
