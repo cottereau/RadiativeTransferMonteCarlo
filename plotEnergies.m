@@ -51,7 +51,7 @@ for i1=1:Nt
 
     % export graphics
     title(til,['time t = ' num2str(obs.t(i1)) 's'])
-    exportgraphics(gcf,'testAnimated.gif','Append',lappend);
+    exportgraphics(gcf,'movieEnergy.gif','Append',lappend);
     lappend = true;
 end
 

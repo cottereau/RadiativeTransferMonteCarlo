@@ -44,7 +44,7 @@ obs = radiativeTransfer( source, material, observation, geometry );
 % plotting output
 sensors = [3   1.5 -0.5; 
            3.9 1.5 -2.5;
+           0.2 1.5 -1.5;
            1.5 1.5 -2.5;
-           0.2 1.5 -1.5
            3.5 1.5 -2.8];
 plotEnergies( obs, 5, sensors );
