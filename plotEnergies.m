@@ -6,7 +6,7 @@ if nargin<3
 end
 
 % compute directional energy
-[psi2pi,E] = directionEnergy( obs, sensors );
+[psi2pi,Ec,Ei] = directionEnergy( obs, sensors );
 
 % constants
 Ns = size(sensors,1);
@@ -44,7 +44,8 @@ for i1=1:Nt
     % loop on sensors
     for i2 = 1:Ns
         nexttile(numTile(i2))
-        polarplot(psi2pi,E(:,i1,i2));
+        polarplot(psi2pi,Ei(:,i1,i2),'b');
+        hold on; polarplot(psi2pi,Ec(:,i1,i2),'r'); hold off;
         rlim([0 rmax])
         title(titleS{i2})
     end

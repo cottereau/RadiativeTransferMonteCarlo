@@ -42,6 +42,7 @@ while any(ind)
     perp = cosphi.*dir2+sinphi.*dir3;
     P.dir(ind2,:) = costheta.*dir1 + sintheta.*perp;
     P.perp(ind2,:) = -sintheta.*dir1 + costheta.*perp;
+    P.coherent(ind2&P.coherent) = false;
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);

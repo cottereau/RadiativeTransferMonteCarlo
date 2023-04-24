@@ -48,6 +48,9 @@ else
     error('unknown meanFreeTime')
 end
 
+% coherent flag (false when particle has been scattered at least once)
+coherent = true(N,1);
+ 
 % initialize structure
 P = struct( 'd', d, ...                 % dimension of the problem
             'acoustics', acoustics, ... % true=acoustics, false=elastics
@@ -58,5 +61,6 @@ P = struct( 'd', d, ...                 % dimension of the problem
             'p', p, ...                 % polarization (used only in elasticity)
             'meanFreeTime', mft, ...    % mean free time
             'v', v, ...                 % propagation velocity
-            't', t );                   % current time for the particle
+            't', t, ...                 % current time for the particle
+            'coherent', coherent );     % false when particle has been scattered
 
