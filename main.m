@@ -10,13 +10,12 @@ source = struct( 'numberParticles', 1e6, ...
 % material properties
 material = struct( 'acoustics', true, ...
                    'v', 1, ...
+                   'sigma', @(th) 1/30/pi*ones(size(th)));
                
 % observations
 observation = struct('dr', 0.05, ...           % size of bins in space
-                     'time', 0:0.1:15, ...     % observation times
-                     'Ndir', 100, ...          % number of bins for directions
-                     'sensors', [2 1.5 -1;
-                                 2.9 1.5 -1]); % positions to plot directional energy            
+                     'time', 0:0.1:30, ...     % observation times
+                     'Ndir', 100 );            % number of bins for directions           
  
 % - 'type' is either 'fullspace', 'halfspace', 'slab', or 'box'.
 % 'halfspace' is defined for z<0. 'slab' is bounded between two planes of
@@ -41,4 +40,11 @@ geometry = struct( 'type', 'box', ...
 
 % radiative transfer solution - 2D - acoustic
 obs = radiativeTransfer( source, material, observation, geometry );
-scatterDirections(obs,1e-3);
+
+% plotting output
+sensors = [3   1.5 -0.5; 
+           3.9 1.5 -2.5;
+           1.5 1.5 -2.5;
+           0.2 1.5 -1.5
+           3.5 1.5 -2.8];
+plotEnergies( obs, 5, sensors );
