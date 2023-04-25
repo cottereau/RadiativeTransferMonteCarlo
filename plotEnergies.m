@@ -40,6 +40,7 @@ for i1=1:Nt
     if Ns>0
         hold on; scatter3(sensors(:,1),sensors(:,3),Y,50,'r','filled');
     end
+    hold on; scatter3(obs.positionSources(1,1),obs.positionSources(1,3),Y,50,'k','filled');
 
     % loop on sensors
     for i2 = 1:Ns

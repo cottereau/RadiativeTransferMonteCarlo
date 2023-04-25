@@ -3,7 +3,7 @@
 % The initial direction is uniform.
 
 % Point source
-source = struct( 'numberParticles', 1e6, ...
+source = struct( 'numberParticles', 1e8, ...
                  'position', [3 1.5 -2], ... 
                  'lambda', 0.1 );
              
@@ -13,8 +13,8 @@ material = struct( 'acoustics', true, ...
                    'sigma', @(th) 1/30/pi*ones(size(th)));
                
 % observations
-observation = struct('dr', 0.05, ...           % size of bins in space
-                     'time', 0:0.1:30, ...     % observation times
+observation = struct('dr', 0.02, ...           % size of bins in space
+                     'time', 0:0.2:50, ...     % observation times
                      'Ndir', 100 );            % number of bins for directions           
  
 % - 'type' is either 'fullspace', 'halfspace', 'slab', or 'box'.
