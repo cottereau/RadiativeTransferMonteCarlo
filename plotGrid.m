@@ -1,8 +1,8 @@
 function plotGrid(obs,cmax)
 % energy on grid
-if ~isfield(obs,'gridEnergy')
-    obs = computeGridEnergy(obs,obs.acoustics);
-end
+% if ~isfield(obs,'gridEnergy')
+%     obs = computeGridEnergy(obs,obs.acoustics);
+% end
 figure;
 Nt = length(obs.t);
 x = obs.boxX;

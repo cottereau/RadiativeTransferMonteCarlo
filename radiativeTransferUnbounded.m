@@ -41,9 +41,10 @@ parfor ip = 1:Np
     % meanFreeTime : mean free time
     % v            : propagation velocity
     % t            : current time for the particle
+    % coherent     : false when particle has been scattered at least once
     P = initializeParticle( Npk, d, acoustics, source, material );
-    energyi = zeros( Npsi, Nr, Nt );
-    energyi(:,:,1) = observeTime( P, dE, binPsi, binR );
+    energyi = zeros( Npsi, Nr, Nt, 2 );
+    energyi(:,:,1,:) = observeTime( P, dE, binPsi, binR );
 
     % loop on time
     for it = 2:Nt
@@ -52,7 +53,7 @@ parfor ip = 1:Np
         P = propagateParticle( material, P, t(it) );
 
         % observe energies (as a function of [Psi x t])
-        energyi(:,:,it) = observeTime( P, dE, binPsi, binR );
+        energyi(:,:,it,:) = observeTime( P, dE, binPsi, binR );
 
     % end of loop on time
     end
@@ -64,5 +65,5 @@ end
 obs.energy = energy;
 
 % energy density as a function of [x t] and [t]
-obs.energyDensity = squeeze(tensorprod(obs.dpsi',obs.energy,1));
+obs.energyDensity = squeeze(tensorprod(obs.dpsi',sum(obs.energy,4),1));
 obs.energyDomain = squeeze(tensorprod(obs.dr',obs.energyDensity,1));

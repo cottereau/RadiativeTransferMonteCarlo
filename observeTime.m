@@ -8,5 +8,9 @@ cospsi(cospsi>1)=1;
 cospsi(cospsi<-1)=-1;
 psi = acos(cospsi);
 
+% coherent
+ind = P.coherent;
+
 % accumulate energies
-E = histcounts2( psi, r, binPsi, binR ).*dE;
+E = cat( 4, histcounts2( psi(ind), r(ind), binPsi, binR ).*dE, ...
+            histcounts2( psi(~ind), r(~ind), binPsi, binR ).*dE );
