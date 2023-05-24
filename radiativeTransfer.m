@@ -36,8 +36,8 @@ if strcmp(geometry.type,'box')
     maskout = maskout.*(1+exp(-(boxx(:)-xout(1)).^2/source.lambda^2));
     maskout = maskout.*(1+exp(-(boxx(:)-xout(2)).^2/source.lambda^2));
 end
-energyCoherent = squeeze(tensorprod(obs.dpsi',obs.energy(:,:,:,1),1));
-energyIncoherent = squeeze(tensorprod(obs.dpsi',obs.energy(:,:,:,2),1));
+energyCoherent = squeeze(sum(obs.energy(:,:,:,1),2));
+energyIncoherent = squeeze(sum(obs.energy(:,:,:,2),2));
 
 % construct superposition of total energy for different sources
 E = zeros(numel(boxx),obs.Nt);
@@ -47,9 +47,9 @@ for i1 = 1:ns
     z = boxz-posSources(i1,3);
     r = sqrt(x.^2+y.^2+z.^2);
     Ecoherent = interp1(obs.r',energyCoherent,r(:),'linear',0);
-    Ecoherent = Ecoherent .* repmat(maskin.*maskout,[1 obs.Nt]);
+%    Ecoherent = Ecoherent .* repmat(maskin.*maskout,[1 obs.Nt]);
     Eincoherent = interp1(obs.r',energyIncoherent,r(:),'linear',0);
-    Eincoherent = Eincoherent .* repmat(maskout,[1 obs.Nt]);
+%    Eincoherent = Eincoherent .* repmat(maskout,[1 obs.Nt]);
     E = E + Ecoherent + Eincoherent;
 end
 E = permute(reshape(E,length(obs.boxZ),length(obs.boxX),obs.Nt),[2 1 3]);

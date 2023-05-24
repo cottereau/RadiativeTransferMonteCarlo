@@ -1,4 +1,4 @@
-function [ obs, energy, Npsi, binPsi, Nr, binR, Nt, t, dE ] = ...
+function [ obs, energy, Npsi, binPsi, Nr, binR, Nt, t ] = ...
                       initializeObservation( d, acoustics, observation, N )
 
 % times
@@ -6,8 +6,15 @@ t = [0 setdiff(observation.time,0)];
 Nt = length(t);
 
 % angles between propagation direction and position vector
-binPsi = linspace(0,pi,observation.Ndir);
-psi = (binPsi(1:end-1)+binPsi(2:end))/2;
+% for d==3, the bins correspond to cos(psi)
+if d==2
+    binPsi = linspace(0,pi,observation.Ndir);
+    psi = (binPsi(1:end-1)+binPsi(2:end))/2;
+elseif d==3
+    binPsi = linspace(-1,1,observation.Ndir);
+    cosPsi = linspace(-1,1,observation.Ndir-1);
+    psi = acos(cosPsi);
+end
 Npsi = length(psi);
 
 % sensor positions
@@ -18,40 +25,40 @@ binR = (r(1:end-1)+r(2:end))/2;
 binR = [-dr/2 binR binR(end)+dr/2];
 
 % initialize matrix of observations
-energy = zeros(Npsi,Nr,Nt,2);
+energy = zeros(Nr,Npsi,Nt,2);
 
 % energy in a small volume of the domain
-[dr,dpsi]= volumeEnergy(d,r,psi);
-dE = (1/N)./(dpsi'*dr);
+dr = volumeEnergy(d,r);
 
 % initialize structure
-obs = struct('t', t, ...               % time instants
+obs = struct('N', N, ...               % total number of particles
+             't', t, ...               % time instants
              'Nt', Nt, ...             % number of time instants
              'binPsi', binPsi, ...     % bins for histograms in direction
              'psi', psi, ...           % propagation directions
              'Npsi', Npsi, ...         % number of directions
-             'dpsi', dpsi, ...         % weight of small interval of angle
              'binR', binR, ...         % bins for histograms in positions
              'r', r, ...               % sensor positions
              'Nr', Nr, ...             % number of positions
              'dr', dr, ...             % weight of small interval of radius
-             'dE', dE, ...             % energy of a single particle
              'd', d, ...               % dimension of the problem
              'acoustics', acoustics ); % true=acoustics, false=elastics
 %             'energy', energy, ...     % matrix of observations
 
 end
 
-function [dr,dphi] = volumeEnergy(d,r,phi)
+% volume energy (optimized for efficiency in 3D)
+% total energy in 2D (the direction variable is psi) 
+%       int_r( int_psi ( a(r,psi) dpsi ) (r dr) )
+% total energy in 3D (the direction variable is cos(psi))
+%       int_r( int_cospsi ( a(r,cospsi) dcospsi ) (r^2 dr) )
+function dr = volumeEnergy(d,r)
 d0r = mean(diff(r));
-dphi = mean(diff(phi));
 if d==2
     dr = r*d0r;
     dr(1) = d0r^2/8;
-    dphi = 2*pi*ones(size(phi));
 elseif d==3
-    dr = r.^2*d0r + d0r^2/12;
+    dr = r.^2*d0r + d0r^3/12;
     dr(1) = d0r^3/24;
-    dphi = 2*pi*sin(phi).*dphi;
 end
 end

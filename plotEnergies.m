@@ -14,7 +14,7 @@ Nt = length(obs.t);
 x = obs.boxX;
 z = obs.boxZ;
 lappend = false;
-rmax = 1e-3;
+rmax = 1e-2;
 numTile = [4 7+(1:(Ns-1))];
 Y = max(obs.energyDensityBox(:))+1;
 

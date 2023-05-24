@@ -10,18 +10,19 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % OBSERVATION STRUCTURE
 % d         : dimension of the problem
 % acoustics : true=acoustics, false=elastics
+% N         : total number of particles
 % t         : time instants
 % Nt        : number of time instants
 % psi       : propagation directions
 % binPsi    : bins for histograms in direction
 % Npsi      : number of directions
-% binX      : bins for histograms in positions
-% x         : sensor positions
-% Nx        : number of positions
-% energy    : matrix of observations size [Nx Nth Nt]
-% dV        : small volume of domain
-% dE        : energy of a single particle
-[ obs, energy, Npsi, binPsi, Nr, binR, Nt, t, dE ] = ...
+% binR      : bins for histograms in positions
+% r         : sensor positions
+% Nr        : number of sensor positions
+% dr        : weight of small interval of radius
+% energy    : matrix of observations, size [Nr Npsi Nt]
+% dE        : energy of a single particle (depends on r)
+[ obs, energy, Npsi, binPsi, Nr, binR, Nt, t ] = ...
                 initializeObservation( d, acoustics, observation, Np*Npk );
 
 % prepare scattering cross sections 
@@ -43,8 +44,8 @@ parfor ip = 1:Np
     % t            : current time for the particle
     % coherent     : false when particle has been scattered at least once
     P = initializeParticle( Npk, d, acoustics, source, material );
-    energyi = zeros( Npsi, Nr, Nt, 2 );
-    energyi(:,:,1,:) = observeTime( P, dE, binPsi, binR );
+    energyi = zeros( Nr, Npsi, Nt, 2 );
+    energyi(:,:,1,:) = observeTime( d, P, binPsi, binR );
 
     % loop on time
     for it = 2:Nt
@@ -53,7 +54,7 @@ parfor ip = 1:Np
         P = propagateParticle( material, P, t(it) );
 
         % observe energies (as a function of [Psi x t])
-        energyi(:,:,it,:) = observeTime( P, dE, binPsi, binR );
+        energyi(:,:,it,:) = observeTime( d, P, binPsi, binR );
 
     % end of loop on time
     end
@@ -62,8 +63,8 @@ parfor ip = 1:Np
 
 % end of loop on packages
 end
-obs.energy = energy;
+obs.energy = (1./(obs.dr'*obs.N)).*energy;
 
 % energy density as a function of [x t] and [t]
-obs.energyDensity = squeeze(tensorprod(obs.dpsi',sum(obs.energy,4),1));
-obs.energyDomain = squeeze(tensorprod(obs.dr',obs.energyDensity,1));
+obs.energyDensity = squeeze(sum(obs.energy,[2 4]));
+obs.energyDomain = obs.dr*obs.energyDensity;

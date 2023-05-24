@@ -3,7 +3,7 @@
 % The initial direction is uniform.
 
 % Point source
-source = struct( 'numberParticles', 1e8, ...
+source = struct( 'numberParticles', 1e7, ...
                  'position', [3 1.5 -2], ... 
                  'lambda', 0.1 );
              
@@ -13,8 +13,8 @@ material = struct( 'acoustics', true, ...
                    'sigma', @(th) 1/30/pi*ones(size(th)));
                
 % observations
-observation = struct('dr', 0.02, ...           % size of bins in space
-                     'time', 0:0.2:50, ...     % observation times
+observation = struct('dr', 0.05, ...           % size of bins in space
+                     'time', 0:0.2:10, ...     % observation times
                      'Ndir', 100 );            % number of bins for directions           
  
 % - 'type' is either 'fullspace', 'halfspace', 'slab', or 'box'.
@@ -36,7 +36,10 @@ observation = struct('dr', 0.02, ...           % size of bins in space
 % now, only homogeneous Neumann boundary conditions are enforced
 geometry = struct( 'type', 'box', ...
                    'size', [4 3 3], ...
-                   'dimension', 2 );
+                   'dimension', 3 );
+% geometry = struct( 'type', 'full', ...
+%                    'size', [4 3 3], ...
+%                    'dimension', 3 );
 
 % radiative transfer solution - 2D - acoustic
 obs = radiativeTransfer( source, material, observation, geometry );
