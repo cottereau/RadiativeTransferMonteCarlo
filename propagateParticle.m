@@ -7,10 +7,11 @@ ind = dt>0;
 % loop on jumps
 while any(ind)
 
-    % select number of jumps on remaining intervals
+    % select number of jumps on remaining interval dt
     Nj = zeros(P.N,1);
     Nj(ind) = poissrnd(dt(ind)./P.meanFreeTime(ind));
     ind2 = Nj>0;
+    Nind2 = sum(ind2);
 
     % flying time until next jump (or end of interval)
     if any(ind2)
@@ -18,36 +19,35 @@ while any(ind)
     end
 
     % propagate particles
-    L = P.v(ind).*dt(ind);
-    L = repmat(L,[1 3]);
-    P.x(ind,:) = P.x(ind,:) + L.*P.dir(ind,:);
+    P.x(ind,:) = P.x(ind,:) + (P.v(ind).*dt(ind)).*P.dir(ind,:);
 
-    % scatter particles (except in last jump)
-    % select new polarization and angle
-    theta = mat.invcdf(rand(sum(ind2),1));
-    if P.d==3
-        phi = rand(sum(ind2),1);
-    elseif P.d==2
-        phi = zeros(sum(ind2),1);
+    % scatter particles
+    theta = mat.invcdf(rand(Nind2,1));
+    if P.d==2
+        rotheta = randi([0 1],Nind2,1,'logical');
+        theta(rotheta) = -theta(rotheta);
     end
-
-    % compute new propagation direction
-    costheta = repmat(cos(theta),[1 3]);
-    sintheta = repmat(sin(theta),[1 3]);
-    cosphi = repmat(cos(phi),[1 3]);
-    sinphi = repmat(sin(phi),[1 3]);
-    dir1 = P.dir(ind2,:);
-    dir2 = P.perp(ind2,:);
-    dir3 = cross(dir1,dir2);
-    perp = cosphi.*dir2+sinphi.*dir3;
-    P.dir(ind2,:) = costheta.*dir1 + sintheta.*perp;
-    P.perp(ind2,:) = -sintheta.*dir1 + costheta.*perp;
-    P.coherent(ind2&P.coherent) = false;
+    costheta = cos(theta);
+    sintheta = sin(theta);
+    dir = P.dir(ind2,:);
+    perp = P.perp(ind2,:);
+    P.dir(ind2,:) = costheta.*dir + sintheta.*perp;
+    P.perp(ind2,:) = -sintheta.*dir + costheta.*perp;
+    if P.d==3
+        phi = rand(Nind2,1);
+        P.dir(ind2,:) = rodrigues(P.dir(ind2,:),dir,phi);
+        P.perp(ind2,:) = rodrigues(P.perp(ind2,:),dir,phi);
+    end
+    P.coherent(ind2) = false;
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
     dt(ind) = T - P.t(ind);
     ind = dt>0;
+
+    % plot for debug
+    % figure; quiver(P.x(~ind2,1),P.x(~ind2,2),P.dir(~ind2,1),P.dir(~ind2,2),'b')
+    % hold on; quiver(P.x(ind2,1),P.x(ind2,2),P.dir(ind2,1),P.dir(ind2,2),'r')
 
 end
 
@@ -100,4 +100,12 @@ P.theta(ind) = -(P.theta(ind)-2*pi);
 P.costheta = cos(P.theta);
 %P.costheta = cos(acos(P.costheta)+th);
 
+end
+
+% rotation of vector x around axis omega by angle phi (Rodrigues' rotation
+% formula)
+function y = rodrigues(x,omega,phi)
+cosphi = cos(phi);
+omegax = dot(omega,x,2).*(1-cos(phi));
+y = x.*cosphi + cross(omega,x,2).*sin(phi) + omegax.*omega;
 end

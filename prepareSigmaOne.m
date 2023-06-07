@@ -5,10 +5,10 @@ Nth = 1000;
 % as input ...
 % sigma is defined rather a function of cos(\thet)=\xi instead of the scattering angle theta itself. 
 % Hence, the intergation will be done over (-1,+1).
-Sigma = integral(sigma,0,2*pi);
+Sigma = integral(sigma,0,pi);
 sigmaNorm = @(th) sigma(th)/Sigma;
-xth = linspace(0,2*pi,Nth);
+xth = linspace(0,pi,Nth);
 pdf = sigmaNorm(xth);
-cdf = cumsum(pdf)*(2*pi/Nth);
+cdf = cumsum(pdf)*(pi/Nth);
 invcdf = griddedInterpolant(cdf,xth);
 end
