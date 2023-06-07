@@ -29,7 +29,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 material = prepareSigma(material);      
 
 % loop on packages of particles
-parfor ip = 1:Np
+for ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
