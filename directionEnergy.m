@@ -3,7 +3,11 @@ function [psi2pi,Ec,Ei] = directionEnergy(obs,sensors)
 
 % constant
 Ns = size(sensors,1);
-psi2pi = [2*pi-obs.psi(end:-1:2) obs.psi];
+if obs.d==2
+    psi2pi = [ obs.psi 2*pi-obs.psi(end:-1:2) ];
+elseif obs.d==3
+    psi2pi = [2*pi-obs.psi(end:-1:2) obs.psi];
+end
 
 % initialization
 Ec = zeros(2*obs.Npsi-1,obs.Nt,Ns);
