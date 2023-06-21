@@ -68,3 +68,7 @@ E = E/(v*meanFreeTime)./r.^(d-1)';
 if nargout==2
     E_diff = E_diff/(v*meanFreeTime)./r.^(d-1)';
 end
+
+function h = heaviside(x)
+h = (x>0);
+end
