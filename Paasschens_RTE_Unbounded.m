@@ -49,7 +49,7 @@ if d==2
     end
 elseif d==3
     fun = @(x) exp(x).*sqrt(1+2.026./x);
-    E = b.^2.*(1-(b./a).^2).^(1/8).*exp(-a).*fun(a.*(1-(b./a).^2).^(3/4)).*heaviside(a-b)./(4*pi*a/3).^(3/2);
+    E = b.^2.*real((1-(b./a).^2).^(1/8)).*exp(-a).*fun(a.*(1-(b./a).^2).^(3/4)).*heaviside(a-b)./(4*pi*a/3).^(3/2);
     
     aa = repmat(a,[length(b) 1]); bb = repmat(b,[1 length(a)]);
     ind = (a==b);
