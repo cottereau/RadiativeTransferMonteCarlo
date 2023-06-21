@@ -1,57 +1,90 @@
 % This script contains some analytical validation cas studies for
 % RadiativeTransferMonteCarlo code in fullspace  
-
+%
+% Our code is compared to the results described in the following papers:
+% (1) J. C. J. Paasschens, Solution of the time-dependent Boltzmann equation, 
+% Phys. Rev. E 56(1), pp. 1135-1141 (1997).
+% (2) Hoshida (1991)
+%
 % Notes : 
-% switch cases will be done when other cases are addes
-% 3D acoustic is in debugging mode currently 
-% Anisotropic scattering cases will be added
+% Other validation cases are expected to be added (higher dimensional and 
+% anisotropic scattering in particular)
+% 3D acoustic is currently under debug 
 
-%% Isotropic scattering (differential scatteing cross-section independent of
-% diection)
-
-% Acoustic (scalar) waves in a 2D medium
-% Point source
-source = struct( 'numberParticles', 1e6, ...
-                 'position', [-10 0 0], ... 
-                 'lambda', 0.001 );
-             
-% material properties
-material = struct( 'acoustics', true, ...
-                   'v', 1, ...
-                   'sigma', @(th) 1/4/pi*ones(size(th)) );
-               
-% observations
-observation = struct('dr', 0.05, ...           % size of bins in space
-                     'time', 0:0.1:15, ...     % observation times
-                     'Ndir', 100, ...          % number of bins for directions
-                     'sensors', [2 1.5 -1;
-                                 2.9 1.5 -1]); % positions to plot directional energy            
- 
-geometry = struct( 'type', 'fullspace', ...
-                   'size', [4 3 3], ...
-                   'dimension', 2 );
-
-% Plot the result on some particular points
+%% 2D Isotropic scattering (isotropic differential scattering cross-section)
+% input data
+titlecase = ['2D acoustic waves with isotropic differential scattering' ...
+             ' cross section'];
+disp(['(1) Testing ' titlecase ' ...']);
+source      = struct( 'numberParticles', 1e6, ...
+                      'position', [-10 0 0], ... 
+                      'lambda', 0.001 );           
+material    = struct( 'acoustics', true, ...
+                      'v', 1, ...
+                      'sigma', @(th) 1/4/pi*ones(size(th)));         
+observation = struct( 'dr', 0.05, ...
+                      'time', 0:0.1:15, ...
+                      'Ndir', 100 );            
+geometry    = struct( 'type', 'fullspace', ...
+                      'size', [4 3 3], ...
+                      'dimension', 2 );
 inds = [40 80 120]; % index of the desired observation points
-
-% radiative transfer solution
+% running our code, Monte Carlo-based
 obs = radiativeTransfer( source, material, observation, geometry );
-
-% Analytical check using Paasschens 
-EP = Paasschens_RTE_Unbounded(source, material, observation, geometry);
-
-% Analytical check using Hoshiba's Monte Carlo-based approach (fixed obs point!)
-EH = Hoshiba_RTE_Unbounded_MonteCarlo(obs.t,obs.r(inds),source,material,geometry,10);
-
-figure; hold on;
-h1 = plot(obs.t, obs.energyDensity(inds,:)/(2*pi),'-k'); % Why 2*pi is missing??!!
-h2 = plot(obs.t, EP(inds,:),'-b');
-h3 = plot(obs.t,EH,'-r');
-grid on; box on;
-legend( [h1(1), h2(1), h3(1)], {'Monte Carlo (our code)','Paasschens (analytical)', ...
-        'Monte Carlo (Hoshiba 1991)'},"Location",'best','FontSize',12);
+Eus = obs.energyDensity/(2*pi);
+% computing Paasschens solution
+EP = Paasschens_RTE_Unbounded( source, material, observation, geometry );
+% running Hoshiba's Monte Carlo-based approach
+EH = Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
+                                          source, material, geometry, 10 );
+% visual comparison
+figure; hold on; grid on; box on;
+h1 = plot( obs.t, Eus(inds,:), '-k' );
+h2 = plot( obs.t, EP(inds,:), '-b' );
+h3 = plot( obs.t, EH, '-r' );
+legend( [h1(1), h2(1), h3(1)], {'Monte Carlo (our code)','Analytical (Paasschens, 1997)', ...
+        'Monte Carlo (Hoshiba 1991)'},'FontSize',12);
 xlabel('Lapse Time [s]');
 ylabel('Energy density at different source-station distances')
+title(titlecase);
+
+%% 3D Isotropic scattering (isotropic differential scattering cross-section)
+% input data
+titlecase = ['3D acoustic waves with isotropic differential scattering' ...
+             ' cross section'];
+disp(['(2) Testing ' titlecase ' ...']);
+source      = struct( 'numberParticles', 1e6, ...
+                      'position', [-10 0 0], ... 
+                      'lambda', 0.001 );           
+material    = struct( 'acoustics', true, ...
+                      'v', 1, ...
+                      'sigma', @(th) 1/4/pi*ones(size(th)));         
+observation = struct( 'dr', 0.05, ...
+                      'time', 0:0.1:15, ...
+                      'Ndir', 100 );            
+geometry    = struct( 'type', 'fullspace', ...
+                      'size', [4 3 3], ...
+                      'dimension', 3 );
+inds = [40 80 120]; % index of the desired observation points
+% running our code, Monte Carlo-based
+obs = radiativeTransfer( source, material, observation, geometry );
+Eus = obs.energyDensity;
+% computing Paasschens solution
+EP = Paasschens_RTE_Unbounded( source, material, observation, geometry );
+% % running Hoshiba's Monte Carlo-based approach
+% EH = Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
+%                                           source, material, geometry, 10 );
+% visual comparison
+figure; hold on; grid on; box on;
+h1 = plot( obs.t, Eus(inds,:)/(4*pi), '-k' );
+h2 = plot( obs.t, EP(inds,:), '-b' );
+%h3 = plot( obs.t, EH, '-r' );
+legend( [h1(1), h2(1)], {'Monte Carlo (our code)','Analytical (Paasschens, 1997)'}, ...
+        'FontSize',12);
+xlabel('Lapse Time [s]');
+ylabel('Energy density at different source-station distances')
+title(titlecase);
 
 
-%% Anisotropic scattering (to be done)
+%% 3D Anisotropic scattering (isotropic differential scattering cross-section)
+% to be done
