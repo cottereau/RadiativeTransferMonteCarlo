@@ -33,7 +33,7 @@ inds = [40 80 120]; % index of the desired observation points
 obs = radiativeTransfer( source, material, observation, geometry );
 Eus = obs.energyDensity.*obs.dr';
 % computing Paasschens solution
-EP = Paasschens_RTE_Unbounded( source, material, observation, geometry );
+[EP,Ediff] = Paasschens_RTE_Unbounded( source, material, observation, geometry );
 % running Hoshiba's Monte Carlo-based approach
 EH = Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
                                           source, material, geometry, 10 );
@@ -43,14 +43,18 @@ figure; hold on; grid on; box on;
 h1 = plot( obs.t, Eus(inds,:), '-k' );
 h2 = plot( obs.t, EP(inds,:), '-b' );
 h3 = plot( obs.t, EH, '-r' );
-legend( [h1(1), h2(1), h3(1)], {'Monte Carlo (our code)','Analytical (Paasschens, 1997)', ...
-        'Monte Carlo (Hoshiba 1991)'},'FontSize',12);
+h4 = plot( obs.t, Ediff, '.r' );
+legend( [h1(1), h2(1), h3(1), h4(1)], ...
+ {'Monte Carlo (our code)','Analytical (Paasschens, 1997)', ...
+  'Monte Carlo (Hoshiba 1991)', 'diffusion approximation'}, ...
+'FontSize',12);
 xlabel('Lapse Time [s]');
 ylabel('Integrated energy density at different source-station distances')
 title(titlecase);
 
 %% 3D Isotropic scattering (isotropic differential scattering cross-section)
-% input datatitlecase = ['3D acoustic waves with isotropic differential scattering' ...
+% input data
+titlecase = ['3D acoustic waves with isotropic differential scattering' ...
              ' cross section'];
 disp(['(2) Testing ' titlecase ' ...']);
 source      = struct( 'numberParticles', 1e6, ...
@@ -68,9 +72,9 @@ geometry    = struct( 'type', 'fullspace', ...
 inds = [40 80 120]; % index of the desired observation points
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( source, material, observation, geometry );
-Eus = obs.energyDensity;
+Eus = obs.energyDensity.*obs.dr';
 % computing Paasschens solution
-EP = Paasschens_RTE_Unbounded( source, material, observation, geometry );
+[EP,Ediff] = Paasschens_RTE_Unbounded( source, material, observation, geometry );
 % % running Hoshiba's Monte Carlo-based approach
 % EH = Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
 %                                           source, material, geometry, 10 );
