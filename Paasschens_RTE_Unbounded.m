@@ -42,8 +42,7 @@ if m>n, a=a'; end
 if m<n, b=b'; end
 
 if d==2
-    E = Sigma*dr*(b./a)./real(sqrt(1-(b./a).^2)).*exp(real(sqrt(a.^2-b.^2))-a);
-    E(heaviside(b-a)) = 0;
+    E = (dr*Sigma)*(b./a)./real(sqrt(1-(b./a).^2)).*exp(real(sqrt(a.^2-b.^2))-a);
     [~,ind] = min((a-b).^2,[],1);
     for i1 = 1:Nt
         E(ind(i1),i1) = E(ind(i1),i1) + exp(-a(i1));
@@ -54,18 +53,16 @@ if d==2
     end
 elseif d==3
     G = @(x) exp(x).*sqrt(1+2.026./x);
-    E = (4*pi)*b.^2.*real((1-(b./a).^2).^(1/8)).*exp(-a) ...
-        .*G(a.*(1-(b./a).^2).^(3/4)).*heaviside(a-b)./(4*pi*a/3).^(3/2);
-    aa = repmat(a,[Nr 1]);
-    ind = (a==b);
-    if ~isempty(E(ind))
-        E(ind) = E(ind) + exp(-aa(ind))/Sigma;
+    E = (3/2*dr*sqrt(3/pi)*Sigma)*sqrt(a).*(b./a).^2.*real((1-(b./a).^2).^(1/8)) ...
+        .*exp(-a).*G(a.*(1-(b./a).^2).^(3/4));
+    E(heaviside(b-a)) = 0;
+    [~,ind] = min((a-b).^2,[],1);
+    for i1 = 1:Nt
+        E(ind(i1),i1) = E(ind(i1),i1) + exp(-a(i1));
     end
-    E(:,1) = zeros(Nr,1);
-    E(1,1) = 1/Sigma;
-
+    E(1,1) = 1;
     if nargout==2
-        E_diff = b.^2.*exp(-d*b.^2./(4*a))./(4*pi*a/d).^(3/2);
+        E_diff = (3/2*dr*sqrt(3/pi)*Sigma)*sqrt(a).*(b./a).^2.*exp((-3/4)*b.^2./a);
     end
 else
     disp('Dimension "d" should be either 2 or 3 !')
