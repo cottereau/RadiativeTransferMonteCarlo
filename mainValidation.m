@@ -43,7 +43,7 @@ figure; hold on; grid on; box on;
 h1 = plot( obs.t, Eus(inds,:), '-k' );
 h2 = plot( obs.t, EP(inds,:), '-b' );
 h3 = plot( obs.t, EH, '-r' );
-h4 = plot( obs.t, Ediff, '.r' );
+h4 = plot( obs.t, Ediff(inds,:), ':r' );
 legend( [h1(1), h2(1), h3(1), h4(1)], ...
  {'Monte Carlo (our code)','Analytical (Paasschens, 1997)', ...
   'Monte Carlo (Hoshiba 1991)', 'diffusion approximation'}, ...
@@ -83,10 +83,13 @@ figure; hold on; grid on; box on;
 h1 = plot( obs.t, Eus(inds,:), '-k' );
 h2 = plot( obs.t, EP(inds,:), '-b' );
 %h3 = plot( obs.t, EH, '-r' );
-legend( [h1(1), h2(1)], {'Monte Carlo (our code)','Analytical (Paasschens, 1997)'}, ...
-        'FontSize',12);
+h4 = plot( obs.t, Ediff(inds,:), ':r' );
+legend( [h1(1), h2(1), h4(1)], ...
+ {'Monte Carlo (our code)','Analytical (Paasschens, 1997)', ...
+  'diffusion approximation'}, ...
+'FontSize',12);
 xlabel('Lapse Time [s]');
-ylabel('Energy density at different source-station distances')
+ylabel('Integrated energy density at different source-station distances')
 title(titlecase);
 
 
