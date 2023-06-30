@@ -95,3 +95,62 @@ title(titlecase);
 
 %% 3D Anisotropic scattering (isotropic differential scattering cross-section)
 % to be done
+
+
+
+
+
+%% Generic Random Input Parameters
+% input data
+titlecase = 'Generic Random Inputs ...';
+disp(['(3) Testing ' titlecase ' ...']);
+source      = struct( 'numberParticles', 1e6, ...
+                      'position', [-10 0 0], ... 
+                      'lambda', 0.001 );                 
+randpars    = struct( 'normfreq', 1, ...
+                      'corr_distance', 1, ...
+                      'PSDF_type','exp', ...
+                      'corr_matrix',[0.1 0; 0 0.1]);
+if ~issymmetric(randpars.corr_matrix)
+    disp('corr_matirx field should be a symmetric matrix !')
+end
+% sigma obtained in the following line is normalized by w (angular freq)
+% for sigmaSP and sigmaSS, multiplication by the identity matrix is not done 
+% everywhere in this version
+sigma = PSDF2sigma(acoustics, material, randpars);
+
+material    = struct( 'acoustics', true, ...
+                      'v', 1, ...
+                      'sigma', sigma);  
+
+observation = struct( 'dr', 0.01, ...
+                      'time', 0:0.1:15, ...
+                      'Ndir', 100 );            
+
+geometry    = struct( 'type', 'fullspace', ...
+                      'size', [4 3 3], ...
+                      'dimension', 2 );
+inds = [40 80 120]; % index of the desired observation points
+% running our code, Monte Carlo-based
+obs = radiativeTransfer( source, material, observation, geometry );
+Eus = obs.energyDensity.*obs.dr';
+% computing Paasschens solution
+[EP,Ediff] = Paasschens_RTE_Unbounded( source, material, observation, geometry );
+% running Hoshiba's Monte Carlo-based approach
+EH = Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
+                                          source, material, geometry, 10 );
+EH = EH.*(2*pi*obs.dr(inds));
+% visual comparison
+figure; hold on; grid on; box on;
+h1 = plot( obs.t, Eus(inds,:), '-k' );
+h2 = plot( obs.t, EP(inds,:), '-b' );
+h3 = plot( obs.t, EH, '-r' );
+h4 = plot( obs.t, Ediff(inds,:), ':r' );
+legend( [h1(1), h2(1), h3(1), h4(1)], ...
+ {'Monte Carlo (our code)','Analytical (Paasschens, 1997)', ...
+  'Monte Carlo (Hoshiba 1991)', 'diffusion approximation'}, ...
+'FontSize',12);
+xlabel('Lapse Time [s]');
+ylabel('Integrated energy density at different source-station distances')
+title(titlecase);
+

@@ -34,7 +34,7 @@ while any(ind)
     P.dir(ind2,:) = costheta.*dir + sintheta.*perp;
     P.perp(ind2,:) = -sintheta.*dir + costheta.*perp;
     if P.d==3
-        phi = rand(Nind2,1);
+        phi = 2*pi*rand(Nind2,1);
         P.dir(ind2,:) = rodrigues(P.dir(ind2,:),dir,phi);
         P.perp(ind2,:) = rodrigues(P.perp(ind2,:),dir,phi);
     end
