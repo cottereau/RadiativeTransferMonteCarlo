@@ -1,20 +1,20 @@
-function mat = prepareSigma(mat)
+function mat = prepareSigma(mat,d)
 if isfield(mat,'sigma')
-    [mat.Sigma,mat.invcdf] = prepareSigmaOne(mat.sigma);
+    [mat.Sigma,mat.invcdf] = prepareSigmaOne(mat.sigma,d);
     mat.meanFreeTime = 1/mat.v/mat.Sigma;
 end
 if isfield(mat,'sigmaPP')
-    [mat.SigmaPP,mat.invcdfPP] = prepareSigmaOne(mat.sigmaPP);
+    [mat.SigmaPP,mat.invcdfPP] = prepareSigmaOne(mat.sigmaPP,d);
 end
 if isfield(mat,'sigmaPS')
-    [mat.SigmaPS,mat.invcdfPS] = prepareSigmaOne(mat.sigmaPS);
+    [mat.SigmaPS,mat.invcdfPS] = prepareSigmaOne(mat.sigmaPS,d);
     mat.meanFreeTimeP = 1/mat.vp/(mat.SigmaPP + mat.SigmaPS); % This should be changed (mean free time => to be multiplied by vp)
 end
 if isfield(mat,'sigmaSS')
-    [mat.SigmaSS,mat.invcdfSS] = prepareSigmaOne(mat.sigmaSS);
+    [mat.SigmaSS,mat.invcdfSS] = prepareSigmaOne(mat.sigmaSS,d);
 end
 if isfield(mat,'sigmaSP')
-    [mat.SigmaSP,mat.invcdfSP] = prepareSigmaOne(mat.sigmaSP);
+    [mat.SigmaSP,mat.invcdfSP] = prepareSigmaOne(mat.sigmaSP,d);
     mat.meanFreeTimeS = 1/mat.vs/(mat.SigmaSS + mat.SigmaSP); % This should be changed (mean free time => to be multiplied by vs)
     if 2*(mat.vp/mat.vs)^2*mat.SigmaSP~=mat.SigmaPS    % This should be changed in 3D (2K^3)
         disp('error in the Sigma SP/PS relation:')

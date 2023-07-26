@@ -26,7 +26,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
                 initializeObservation( d, acoustics, observation, Np*Npk );
 
 % prepare scattering cross sections 
-material = prepareSigma(material);      
+material = prepareSigma( material, d );      
 
 % loop on packages of particles
 parfor ip = 1:Np

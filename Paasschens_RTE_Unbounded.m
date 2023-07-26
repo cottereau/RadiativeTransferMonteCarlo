@@ -18,12 +18,12 @@ Nt = length(t);
 Lmax = material.v*max(observation.time);
 [~,~,Rmax] = virtualSources( geometry, source.position, Lmax);
 r = linspace(0,Rmax,ceil(Rmax/observation.dr));
-Nr = length(r);
+%Nr = length(r);
 dr = mean(diff(r));
 
-Sigma = prepareSigmaOne(material.sigma); % homogeneous to 1/[L]
+Sigma = prepareSigmaOne(material.sigma,d); % homogeneous to 1/[L]
 meanFreeTime = 1/v/Sigma;
-D = v/2/Sigma;
+%D = v/2/Sigma;
 
 % a (normalized time)      : Sigma*v*t
 % b (normalized distance)  : r*Sigma, i.e. source-station distance * scattering cross-section
