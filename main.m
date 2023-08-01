@@ -4,7 +4,7 @@
 
 % Point source
 source = struct( 'numberParticles', 1e7, ...
-                 'position', [3 1.5 -2], ... 
+                 'position', [3 1 -2], ... 
                  'lambda', 0.1 );
 
 randpars    = struct( 'normfreq', 1, ...
@@ -22,7 +22,7 @@ material = struct( 'acoustics', true, ...
                
 % observations
 observation = struct('dr', 0.05, ...           % size of bins in space
-                     'time', 0:0.2:10, ...     % observation times
+                     'time', 0:0.2:12, ...     % observation times
                      'Ndir', 100 );            % number of bins for directions           
  
 % - 'type' is either 'fullspace', 'halfspace', 'slab', or 'box'.

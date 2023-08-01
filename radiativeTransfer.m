@@ -44,20 +44,27 @@ amp = amp(:);
 
 % preparing amplifications of coherent energy for slabs and boxes
 theta = zeros(ns);
-xc = zeros(ns);
+phi = zeros(ns);
+xc = zeros(ns,3);
+yc = zeros(ns);
 zc = zeros(ns);
 tc = zeros(ns);
 for i1 = 1:ns
     x = posSources(:,1)-posSources(i1,1);
+    y = posSources(:,2)-posSources(i1,2);
     z = posSources(:,3)-posSources(i1,3);
-    [theta(:,i1),r] = cart2pol(x,z);
+    [theta(:,i1),~] = cart2pol(x,z);
+    eta2 = x.*cos(theta(:,i1))+z.*sin(theta(:,i1));
+    [phi(:,i1),r] = cart2pol(eta2,y);    
     xc(:,i1) = (posSources(:,1)+posSources(i1,1))/2;
+    yc(:,i1) = (posSources(:,2)+posSources(i1,2))/2;
     zc(:,i1) = (posSources(:,3)+posSources(i1,3))/2;
     tc(:,i1) = r/(material.v*2);
 end
 
 % construct superposition of total energy for different sources
 E = zeros(numel(boxx),obs.Nt);
+%maxampC = zeros(ns,obs.Nt);
 for i1 = 1:ns
     x = boxx-posSources(i1,1);
     y = posSources(1,2)-posSources(i1,2);
@@ -67,12 +74,19 @@ for i1 = 1:ns
     Eincoherent = interp1(obs.r',energyIncoherent,r(:),'linear',0);
     ampC = ones(size(Ecoherent));
     for i2 = setdiff(1:ns,i1)
-        xsi = (boxx-xc(i2,i1))*cos(theta(i2,i1))+(boxz-zc(i2,i1))*sin(theta(i2,i1));
-        zeta = -(boxx-xc(i2,i1))*sin(theta(i2,i1))+(boxz-zc(i2,i1))*cos(theta(i2,i1));
+        x = boxx-xc(i2,i1);
+        y = posSources(1,2)-yc(i2,i1);
+        z = boxz-zc(i2,i1);
+        eta2 =  x*cos(theta(i2,i1))+z*sin(theta(i2,i1));
+        zeta = -x*sin(theta(i2,i1))+z*cos(theta(i2,i1));
+        eta =  eta2*cos(phi(i2,i1))+y*sin(phi(i2,i1));
+        xsi = -eta2*sin(phi(i2,i1))+y*cos(phi(i2,i1));
+        d2 = zeta.^2+xsi.^2;
         ind = obs.t >= tc(i2,i1);
-        ampC(:,ind) = ampC(:,ind) .* (1 + exp(-(xsi(:)/lambda).^2) ...
-                .*exp(-((v*sqrt(obs.t(ind).^2-tc(i2,i1)^2)-abs(zeta(:)))/lambda).^2));
+        ampC(:,ind) = ampC(:,ind) .* (1 + exp(-(eta(:).^2 ...
+                +abs(v.^2*(obs.t(ind).^2-tc(i2,i1)^2)-d2(:)))/lambda.^2));
     end
+%    maxampC(i1,:) = sum(ampC,1)-4800;
     E = E + Ecoherent.*ampC + Eincoherent.*amp;
 end
 E = permute(reshape(E,length(obs.boxZ),length(obs.boxX),obs.Nt),[2 1 3]);
