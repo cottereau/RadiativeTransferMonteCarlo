@@ -1,4 +1,4 @@
-function [ obs, energy, Npsi, binPsi, Nr, binR, Nt, t ] = ...
+function [ obs, energy, Ec, Npsi, binPsi, Nr, binR, Nt, t ] = ...
                       initializeObservation( d, acoustics, observation, N )
 
 % times
@@ -26,6 +26,7 @@ binR = [-dr/2 binR binR(end)+dr/2];
 
 % initialize matrix of observations
 energy = zeros(Nr,Npsi,Nt,2);
+Ec = zeros(Nt,1);
 
 % energy in a small volume of the domain
 dr = volumeEnergy(d,r);

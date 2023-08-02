@@ -22,7 +22,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % dr        : weight of small interval of radius
 % energy    : matrix of observations, size [Nr Npsi Nt]
 % dE        : energy of a single particle (depends on r)
-[ obs, energy, Npsi, binPsi, Nr, binR, Nt, t ] = ...
+[ obs, energy, Ec, Npsi, binPsi, Nr, binR, Nt, t ] = ...
                 initializeObservation( d, acoustics, observation, Np*Npk );
 
 % prepare scattering cross sections 
@@ -45,7 +45,8 @@ parfor ip = 1:Np
     % coherent     : false when particle has been scattered at least once
     P = initializeParticle( Npk, d, acoustics, source, material );
     energyi = zeros( Nr, Npsi, Nt, 2 );
-    energyi(:,:,1,:) = observeTime( d, P, binPsi, binR );
+    Eci = zeros( Nt, 1 );
+    [energyi(:,:,1,:),Eci(1)] = observeTime( d, P, binPsi, binR );
 
     % loop on time
     for it = 2:Nt
@@ -54,16 +55,18 @@ parfor ip = 1:Np
         P = propagateParticle( material, P, t(it) );
 
         % observe energies (as a function of [Psi x t])
-        energyi(:,:,it,:) = observeTime( d, P, binPsi, binR );
+        [energyi(:,:,it,:),Eci(it)] = observeTime( d, P, binPsi, binR );
 
     % end of loop on time
     end
     
     energy = energy + energyi;
+    Ec = Ec + Eci;
 
 % end of loop on packages
 end
 obs.energy = (1./(obs.dr'*obs.N)).*energy;
+obs.Ec = Ec;
 
 % energy density as a function of [x t] and [t]
 obs.energyDensity = squeeze(sum(obs.energy,[2 4]));
