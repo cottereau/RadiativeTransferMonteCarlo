@@ -19,6 +19,11 @@ function sigma = PSDF2sigma(acoustics, material, randpars)
 % 2) See how the multiplication by the identity or other matrices should be
 % done in the code (it is not done everywhere).
 
+% test the symmetry of the correlation matrix
+if ~issymmetric(randpars.corr_matrix)
+    disp('corr_matirx field should be a symmetric matrix !')
+end
+
 psdf = randpars.PSDF_type;
 % The following normalized PSDF kernels are taken from Khazaie et al 2016 
 if strcmpi(psdf,'exp')
