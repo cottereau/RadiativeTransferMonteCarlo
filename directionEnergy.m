@@ -3,13 +3,11 @@ function [psi2pi,Ec,Ei] = directionEnergy(obs,sensors)
 
 % constant
 Ns = size(sensors,1);
-psi2pi = [2*pi-obs.psi(end:-1:2) obs.psi];
+psi2pi = [2*pi-obs.psi(end:-1:1) obs.psi];
 
 % initialization
-Ec = zeros(2*obs.Npsi-1,obs.Nt,Ns);
-Ei = zeros(2*obs.Npsi-1,obs.Nt,Ns);
-Ecref = obs.energy(:,:,:,1);
-Eiref = obs.energy(:,:,:,2);
+Ec = zeros(2*obs.Npsi,obs.Nt,Ns);
+Ei = zeros(2*obs.Npsi,obs.Nt,Ns);
 
 % loop on sources
 for i2 = 1:obs.nSources
@@ -26,14 +24,15 @@ for i2 = 1:obs.nSources
         psiRot = mod( psi2pi - theta, 2*pi );
 
         % estimate coherent directional energy at sensor and rotate
-        Es = squeeze( interp1( obs.r', Ecref, r ));
-        Es = [ Es(end:-1:2,:); Es];
-        Ec(:,:,i1) = Ec(:,:,i1) + interp1( psi2pi', Es, psiRot );
+        Es = exp(-(r/obs.lambda-(obs.v/obs.lambda)*obs.t).^2 ) .* obs.energyDomainCoherent';
+        Es2 = [ zeros(obs.Npsi-1,obs.Nt); Es/2; 
+                Es/2; zeros(obs.Npsi-1,obs.Nt)];
+        Ec(:,:,i1) = Ec(:,:,i1) + interp1( psi2pi', Es2, psiRot );
 
         % estimate incoherent directional energy at sensor and rotate
-        Es = squeeze( interp1( obs.r', Eiref, r ));
-        Es = [ Es(end:-1:2,:); Es];
-        Ei(:,:,i1) = Ei(:,:,i1) + interp1( psi2pi', Es, psiRot );
+        Es = squeeze( interp1( obs.r', obs.energyIncoherent, r ));
+        Es2 = [ Es(end:-1:1,:); Es];
+        Ei(:,:,i1) = Ei(:,:,i1) + interp1( psi2pi', Es2, psiRot );
 
     % end of loop on sources
     end

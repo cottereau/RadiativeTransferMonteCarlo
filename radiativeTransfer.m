@@ -15,7 +15,6 @@ observation.r = linspace(0,Rmax,ceil(Rmax/observation.dr));
  
 % compute solution in full space
 obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-energyIncoherent = squeeze(sum(obs.energy(:,:,:,2),2));
 obs.nSources = ns;
 obs.positionSources = posS;
 
@@ -49,12 +48,13 @@ for i1 = 1:ns
     y = posS(1,2)-posS(i1,2);
     z = boxz(:)-posS(i1,3);
     r = sqrt(x.^2+y.^2+z.^2);
-    Eincoherent = interp1(obs.r',energyIncoherent,r(:),'linear',0);
+    Eincoherent = interp1(obs.r',obs.Ei,r(:),'linear',0);
     E = E + Eincoherent.*amp;
 end
 
 % add coherent energy
-Ecoherent = coherentInABox(obs.Ec,boxx(:),posS(1,2),boxz(:),posS,obs.t,d,lambda,v);
+Ecoherent = coherentInABox(obs.energyDomainCoherent, ...
+                          boxx(:),posS(1,2),boxz(:),posS,obs.t,d,lambda,v);
 E = E + Ecoherent;
 
 % reformatting

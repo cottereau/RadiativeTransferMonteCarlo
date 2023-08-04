@@ -1,4 +1,4 @@
-function [E,Ec] = observeTime(d,P,binPsi,binR)
+function [Ei,Ec] = observeTime(d,P,binPsi,binR)
 
 % compute radius and angle between direction of propagation and position
 % check normalization of dir
@@ -18,6 +18,5 @@ end
 ind = P.coherent;
 
 % accumulate energies
-E = cat( 4, histcounts2( r(ind), psi(ind), binR, binPsi ), ...
-            histcounts2( r(~ind), psi(~ind), binR, binPsi ) );
+Ei = histcounts2( r(~ind), psi(~ind), binR, binPsi );
 Ec = sum(ind);

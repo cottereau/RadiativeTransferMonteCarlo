@@ -31,7 +31,7 @@ geometry    = struct( 'type', 'fullspace', ...
 inds = [40 80 120]; % index of the desired observation points
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( source, material, observation, geometry );
-Eus = obs.energyDensity.*obs.dr';
+Eus = (obs.Ei+obs.Ec).*obs.dr';
 % computing Paasschens solution
 [EP,Ediff] = Paasschens_RTE_Unbounded( source, material, observation, geometry );
 % running Hoshiba's Monte Carlo-based approach
@@ -72,7 +72,7 @@ geometry    = struct( 'type', 'fullspace', ...
 inds = [40 80 120]; % index of the desired observation points
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( source, material, observation, geometry );
-Eus = obs.energyDensity.*obs.dr';
+Eus = (obs.Ei+obs.Ec).*obs.dr';
 % computing Paasschens solution
 [EP,Ediff] = Paasschens_RTE_Unbounded( source, material, observation, geometry );
 % % running Hoshiba's Monte Carlo-based approach
