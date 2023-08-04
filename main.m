@@ -2,26 +2,6 @@
 % with standard deviation source.lambda and uniformly-distributed angle(s).
 % The initial direction is uniform.
 
-% Point source
-source = struct( 'numberParticles', 1e7, ...
-                 'position', [3 1 -2], ... 
-                 'lambda', 0.1 );
-
-randpars    = struct( 'normfreq', 1, ...
-                      'corr_distance', 1, ...
-                      'PSDF_type','exp', ...
-                      'corr_matrix',[0.1 0; 0 0.1]);
-
-% material properties
-material = struct( 'acoustics', true, ...
-                   'v', 1, ...
-                   'sigma', @(th) 1/30/pi*ones(size(th)));
-               
-% observations
-observation = struct('dr', 0.05, ...           % size of bins in space
-                     'time', 0:0.2:12, ...     % observation times
-                     'Ndir', 100 );            % number of bins for directions           
- 
 % - 'type' is either 'fullspace', 'halfspace', 'slab', or 'box'.
 % 'halfspace' is defined for z<0. 'slab' is bounded between two planes of
 % constant z. In 2D, 'box' is bounded in x and z.
@@ -41,18 +21,35 @@ observation = struct('dr', 0.05, ...           % size of bins in space
 % now, only homogeneous Neumann boundary conditions are enforced
 geometry = struct( 'type', 'box', ...
                    'size', [4 3 3], ...
-                   'dimension', 3 );
-% geometry = struct( 'type', 'full', ...
-%                    'size', [4 3 3], ...
-%                    'dimension', 3 );
+                   'dimension', 2 );
 
-% radiative transfer solution - 2D - acoustic
+% Point source
+source = struct( 'numberParticles', 1e7, ...
+                 'position', [3 1 -2], ... 
+                 'lambda', 0.1 );
+
+% observations
+observation = struct('dr', 0.05, ...        % size of bins in space
+                     'time', 0:0.2:12, ...  % observation times
+                     'Ndir', 100 );         % number of bins for directions           
+ 
+% material properties
+material = struct( 'acoustics', true, ...
+                   'v', 1, ...
+                   'Frequency', 2*pi/source.lambda, ...
+                   'correlationLength', 0.1, ...
+                   'spectralType', 'exp', ...
+                   'correlationMatrix', ones(2) );
+material.sigma = PSDF2sigma( geometry.dimension, material );
+               
+
+% radiative transfer solution - acoustic with boundaries
 obs = radiativeTransfer( source, material, observation, geometry );
 
 % plotting output
-sensors = [3   1.5 -0.5; 
-           3.9 1.5 -2.5;
-           0.2 1.5 -1.5;
-           1.5 1.5 -2.5;
-           3.5 1.5 -2.8];
-plotEnergies( obs, 5, sensors );
+sensors = [3   1 -0.5; 
+           3.9 1 -2.5;
+           0.2 1 -1.5;
+           1.5 1 -2.5;
+           3.5 1 -2.8];
+plotEnergies( obs, 3, sensors );
