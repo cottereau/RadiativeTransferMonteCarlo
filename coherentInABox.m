@@ -1,11 +1,11 @@
-function Ec = coherentInABox(Ecr,x,y,z,x0,y0,z0,t,d,lambda,c)
+function Ec = coherentInABox(Ecr,x,y,z,X0,t,d,lambda,c)
 % Evaluate the coherent energy at positions (x,z) and time t, for a
 % collection of sources at position (x0,z0) firing all at the same time
 % and losing coherence with distance
 %
 % Ecr        amplitude of the coherent energy with distance from source
 % (x,y,z)    positions at which energy is evaluated (y should be a scalar)
-% (x0,y0,z0) positions of the sources
+% X0         positions of the sources
 % t          times at which energy should be evaluated
 % d          dimension of the problem (if d==2, y and y0 are not used)
 % lambda     thickness 
@@ -14,18 +14,19 @@ function Ec = coherentInABox(Ecr,x,y,z,x0,y0,z0,t,d,lambda,c)
 if numel(y)>1
     error('the points should be in plane (x,z) and y should be a scalar')
 end
-if size(x0,1)>1, x0 = x0'; end
-if size(y0,1)>1, y0 = y0'; end
-if size(z0,1)>1, z0 = z0'; end
 if size(x,2)>1, x = x'; end
 if size(y,2)>1, y = y'; end
 if size(z,2)>1, z = z'; end
+if size(Ecr,1)>1, Ecr = Ecr'; end
 
 % constants
 minR = eps;
 Nt = length(t);
-ns = size(x0,2);
 Nx = length(x);
+x0 = X0(:,1);
+y0 = X0(:,2);
+z0 = X0(:,3);
+ns = size(x0,1);
 
 % prepare amplifications of energy
 xs = x0-x0';
