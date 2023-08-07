@@ -4,7 +4,8 @@ function obs = radiativeTransferUnbounded( d, source, material, observation )
 acoustics = material.acoustics;
 
 % discretization in packets of particles  (for optimal vectorization)
-Npk = 5e4;                             % size of packets (5e4 seems optimal on my computer)
+Npk = 2e4;                             % size of packets (5e4 seems optimal on my computer)
+Npk
 Np = ceil(source.numberParticles/Npk); % number of packets
 
 % OBSERVATION STRUCTURE
@@ -46,9 +47,9 @@ parfor ip = 1:Np
     % t            : current time for the particle
     % coherent     : false when particle has been scattered at least once
     P = initializeParticle( Npk, d, acoustics, source, material );
-    Eii = zeros( Nr, Npsi, Nt );
-    Eci = zeros( Nt, 1 );
-    [Eii(:,:,1),Eci(1)] = observeTime( d, P, binPsi, binR );
+    x = zeros( Npk, 3, Nt );
+    dir = zeros( Npk, 3, Nt );
+    coherent = false( Npk, Nt );
 
     % loop on time
     for it = 2:Nt
@@ -57,13 +58,15 @@ parfor ip = 1:Np
         P = propagateParticle( material, P, t(it) );
 
         % observe energies (as a function of [Psi x t])
-        [Eii(:,:,it),Eci(it)] = observeTime( d, P, binPsi, binR );
+        x(:,:,it) = P.x;
+        dir(:,:,it) = P.dir;
+        coherent(:,it) = P.coherent;
 
     % end of loop on time
     end
     
-    Ei = Ei + Eii;
-    Ec = Ec + Eci;
+    Ei = Ei + observeTimeNew( d, x, dir, coherent, binPsi, binR );
+    Ec = Ec + sum(coherent,1)';
 
 % end of loop on packages
 end
