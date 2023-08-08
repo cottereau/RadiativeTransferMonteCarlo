@@ -1,22 +1,29 @@
-function [Ei,Ec] = observeTime(d,P,binPsi,binR)
+function Ei = observeTime(d,x,dir,coherent,binPsi,binR)
 
-% compute radius and angle between direction of propagation and position
-% check normalization of dir
-r = vecnorm(P.x,2,2);
-cospsi = dot(P.x,P.dir,2)./r;
-cospsi(cospsi>1)=1;
-cospsi(cospsi<-1)=-1;
+% constants
+Nt = size(x,3);
+Npsi = length(binPsi)-1;
+Nr = length(binR)-1;
+Ei = zeros(Nr,Npsi,Nt);
 
-% for d==3, the bins correspond to cos(psi)
-if d==2
-    psi = acos(cospsi);
-elseif d==3
-    psi = cospsi;
+% loop on time steps
+for it = 1:Nt
+
+    % compute radius and angle between direction of propagation and position
+    % check normalization of dir
+    r = vecnorm(x(:,:,it),2,2);
+    cospsi = dot(x(:,:,it),dir(:,:,it),2)./r;
+    cospsi(cospsi>1)=1;
+    cospsi(cospsi<-1)=-1;
+
+    % for d==3, the bins correspond to cos(psi)
+    if d==2
+        psi = acos(cospsi);
+    elseif d==3
+        psi = cospsi;
+    end
+
+    % accumulate energies
+    Ei(:,:,it) = histcounts2( r(~coherent(:,it)), psi(~coherent(:,it)), binR, binPsi );
+
 end
-
-% coherent
-ind = P.coherent;
-
-% accumulate energies
-Ei = histcounts2( r(~ind), psi(~ind), binR, binPsi );
-Ec = sum(ind);
