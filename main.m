@@ -25,12 +25,12 @@ geometry = struct( 'type', 'box', ...
 
 % Point source
 source = struct( 'numberParticles', 1e7, ...
-                 'position', [3 1 -2], ... 
+                 'position', [2.5 1 -2], ... 
                  'lambda', 0.1 );
 
 % observations
 observation = struct('dr', 0.05, ...        % size of bins in space
-                     'time', 0:0.2:12, ...  % observation times
+                     'time', 0:0.2:6, ...  % observation times
                      'Ndir', 100 );         % number of bins for directions           
  
 % material properties
@@ -39,12 +39,12 @@ material = struct( 'acoustics', true, ...
                    'Frequency', 2*pi/source.lambda, ...
                    'correlationLength', 0.1, ...
                    'spectralType', 'exp', ...
-                   'correlationMatrix', ones(2) );
+                   'correlationMatrix', 0.3*ones(2) );
 material.sigma = PSDF2sigma( geometry.dimension, material );
-               
 
 % radiative transfer solution - acoustic with boundaries
 obs = radiativeTransfer( source, material, observation, geometry );
+
 
 % plotting output
 sensors = [3   1 -0.5; 
@@ -52,4 +52,4 @@ sensors = [3   1 -0.5;
            0.2 1 -1.5;
            1.5 1 -2.5;
            3.5 1 -2.8];
-plotEnergies( obs, 3, sensors );
+plotEnergies( obs, 4, sensors );

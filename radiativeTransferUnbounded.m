@@ -4,8 +4,7 @@ function obs = radiativeTransferUnbounded( d, source, material, observation )
 acoustics = material.acoustics;
 
 % discretization in packets of particles  (for optimal vectorization)
-Npk = 2e4;                             % size of packets (5e4 seems optimal on my computer)
-Npk
+Npk = 1e4;                             % size of packets (5e4 seems optimal on my computer)
 Np = ceil(source.numberParticles/Npk); % number of packets
 
 % OBSERVATION STRUCTURE
@@ -23,7 +22,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % dr        : weight of small interval of radius
 % energy    : matrix of observations, size [Nr Npsi Nt]
 % dE        : energy of a single particle (depends on r)
-[ obs, Ei, Ec, Npsi, binPsi, Nr, binR, Nt, t ] = ...
+[ obs, Ei, Ec, binPsi, binR, Nt, t ] = ...
                 initializeObservation( d, acoustics, observation, Np*Npk );
 obs.lambda = source.lambda;
 obs.v = material.v;
@@ -32,7 +31,7 @@ obs.v = material.v;
 material = prepareSigma( material, d );      
 
 % loop on packages of particles
-parfor ip = 1:Np
+for ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
@@ -50,6 +49,7 @@ parfor ip = 1:Np
     x = zeros( Npk, 3, Nt );
     dir = zeros( Npk, 3, Nt );
     coherent = false( Npk, Nt );
+    coherent(:,1) = true( Npk, 1 );
 
     % loop on time
     for it = 2:Nt
@@ -65,7 +65,7 @@ parfor ip = 1:Np
     % end of loop on time
     end
     
-    Ei = Ei + observeTimeNew( d, x, dir, coherent, binPsi, binR );
+    Ei = Ei + observeTime( d, x, dir, coherent, binPsi, binR );
     Ec = Ec + sum(coherent,1)';
 
 % end of loop on packages
