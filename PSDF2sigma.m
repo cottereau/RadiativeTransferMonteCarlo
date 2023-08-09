@@ -12,10 +12,18 @@ function sigma = PSDF2sigma( d, material )
 %                              'power_law', 'gaussian', 'triangular' or 
 %                              'low_pass'
 % material.correlationMatrix   matrix giving the variance and correlation
-%                              between material parameters
-
-% Note 1: sigma has the unit 1/[T], as such, here the diff. scat. cross-sections
-% are normalized by the angular frequency w.
+%                              between material parameters. The order of
+%                              the parameters is:
+%                              * acoustics: (1) compressibility (2) density
+%                              * elastics: (1) lambda (2) mu (3) density
+%
+% The formulas are based on
+% L. Rhyzik, G. Papanicolaou, J. B. Keller. Transport equations for elastic
+% and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
+% doi: 10.1016/S0165-2125(96)00021-2
+% However, the diff. scat. cross-sections are here expressed in units of
+% inverse of time, so there is a normalization by the angular frequency 
+% compared to [Ryzhik et al, 1996].
 
 % Note 2: in Ryzhik, the PSDFs are those of the fractional parts (normalized)
 % of the corresponding random fields. The corr_matrix thus contains the
