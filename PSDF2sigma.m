@@ -70,7 +70,7 @@ if acoustics
     std_rr = C(2,2); % variance of the density
     std_kr = C(1,2); % correlation of compressibility and density
     sigma = @(th) coeff*zeta^d*(cos(th).^2*std_rr^2 + 2*cos(th)*std_kr + std_kk^2) ...
-        .*S(zeta.*sqrt(2*(1-cos(th))));
+        .*S(zeta.*sqrt(2*(1-cos(th)))).*sin(th).^(d-2);
 
 % elastics
 else
