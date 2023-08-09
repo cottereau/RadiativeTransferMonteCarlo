@@ -85,12 +85,12 @@ else
     K = material.vp/material.vs;
     zetaP = zeta;
     zetaS = K*zetaP;
-    std_ll = C(1,1);
-    std_mm = C(2,2);
-    std_rr = C(3,3);
-    std_lm = C(1,2);
-    std_lr = C(1,3);
-    std_mr = C(2,3);
+    std_ll = C(1,1); % variance of the first Lamé coefficient
+    std_mm = C(2,2); % variance of the second Lamé coefficient
+    std_rr = C(3,3); % variance of the density
+    std_lm = C(1,2); % correlation of lambda and mu
+    std_lr = C(1,3); % correlation of lambda and density
+    std_mr = C(2,3); % correlation of mu and density
     
     % [Ryzhik et al, 1996; Eq. (1.3)] and [Turner, 1998; Eq. (3)  
     sigmaPP = coeff*zetaP^d * ...
