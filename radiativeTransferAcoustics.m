@@ -1,4 +1,4 @@
-function obs = radiativeTransfer( source, material, observation, geometry )
+function obs = radiativeTransferAcoustics( source, material, observation, geometry )
 
 % constants
 lambda = source.lambda;
