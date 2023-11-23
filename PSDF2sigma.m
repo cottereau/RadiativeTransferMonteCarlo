@@ -79,6 +79,7 @@ if acoustics
     std_kr = C(1,2); % correlation of compressibility and density
     sigma = @(th) max(0,coeff*zeta^d*(cos(th).^2*std_rr^2 + 2*cos(th)*std_kr + std_kk^2) ...
         .*S(zeta.*sqrt(2*(1-cos(th)))).*sin(th).^(d-2));
+    sigma = {sigma};
 
 % elastics
 else
@@ -93,14 +94,14 @@ else
     std_mr = C(2,3); % correlation of mu and density
     
     % [Ryzhik et al, 1996; Eq. (1.3)] and [Turner, 1998; Eq. (3)  
-    sigmaPP = coeff*zetaP^d * ...
+    sigmaPP = @(th) coeff*zetaP^d * ...
            ( (1-2/K^2)^2*std_ll^2 + 4*(1/K^2-2/K^4)*std_lm*cos(th).^2 + ...
              (4/K^4)*std_mm^2*cos(th).^2 + std_rr^2*cos(th).^2 + ...
              2*(1-2/K^2)*std_lr*cos(th) + (4/K^2)*std_mr*cos(th).^3 ) ...
              .*sin(th).^(d-2).*S(zetaP.*sqrt(2*(1-cos(th))));
 
     %  [Ryzhik, 1996; Eq. (4.56)] and [Khazaie, PhD thesis; Eq. (1.81)]
-    sigmaPS = coeff*K*zetaP^d * ...
+    sigmaPS = @(th) coeff*K*zetaP^d * ...
           ( K^2*std_rr^2 + 4*std_mm^2*cos(th).^2 + 4*K*std_mr*cos(th) )...
           .*sin(th).^(d-2).*S(zetaP.*sqrt(1+K^2-2*K*cos(th)));
 
@@ -108,7 +109,7 @@ else
     % In 3D, for each value of theta (th), sigmaSP should be multiplied by
     % the identity matrix, i.e. eye(2,2)
     % In 2D, it should be multiplied by [1  0 ; 0  0];
-    sigmaSP = coeff/(2*K^4)*zetaS^d * ...
+    sigmaSP = @(th) coeff/(2*K^4)*zetaS^d * ...
           ( std_rr^2 + (4/K^2)*std_mm^2*cos(th).^2 + (4/K)*std_mr*cos(th) ) ...
           .*(1-cos(th).^2).*sin(th).^(d-2).*S(zetaS.*sqrt(1+1/K^2-2/K*cos(th)));
 
@@ -133,7 +134,8 @@ else
 
     sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
 
-    sigma = cell(sigmaPP,sigmaPS,sigmaSP,sigmaSS);
+    sigma = {sigmaPP,sigmaPS; ...
+             sigmaSP,sigmaSS};
 
 end
 end
