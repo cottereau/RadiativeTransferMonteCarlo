@@ -31,7 +31,7 @@ obs.v = material.v;
 material = prepareSigma( material, d );      
 
 % loop on packages of particles
-for ip = 1:Np
+parfor ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
