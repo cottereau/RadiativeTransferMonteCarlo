@@ -45,6 +45,12 @@ acoustics = material.acoustics;
 zeta = material.Frequency/material.v*material.correlationLength;
 C = material.correlationMatrix;
 
+if ~issymmetric(C)
+    error('The given correlation matrix is not symmetric!')
+elseif abs(C(1,2)) > C(1,1)*C(2,2)
+    error('The given correlation matrix is not semi positive-definite!')
+end
+
 % test the symmetry of the correlation matrix
 if ~issymmetric(material.correlationMatrix)
     disp('correlationMatrix should be a symmetric matrix !')
@@ -74,11 +80,11 @@ coeff = pi^(3*d/2-2)/2/gamma(d/2);
 
 % acoustics [Ryzhik et al, 1996 Eq. (1.3)]
 if acoustics 
-    std_kk = C(1,1); % variance of the compressibility
-    std_rr = C(2,2); % variance of the density
+    std_kk = C(1,1); % squared coefficient of variation of compressibility
+    std_rr = C(2,2); % squared coefficient of variation of density
     std_kr = C(1,2); % correlation of compressibility and density
-    sigma = @(th) max(0,coeff*zeta^d*(cos(th).^2*std_rr^2 + 2*cos(th)*std_kr + std_kk^2) ...
-        .*S(zeta.*sqrt(2*(1-cos(th)))).*sin(th).^(d-2));
+    sigma = @(th) coeff*zeta^d*(cos(th).^2*std_rr^2 + 2*cos(th)*std_kr + std_kk^2) ...
+        .*S(zeta.*sqrt(2*(1-cos(th)))).*sin(th).^(d-2);
     sigma = {sigma};
 
 % elastics
