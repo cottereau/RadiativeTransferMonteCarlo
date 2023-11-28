@@ -90,14 +90,20 @@ if acoustics
 % elastics
 else
     K = material.vp/material.vs;
-    zetaP = zeta;
+    zetaP = material.Frequency/material.vp*material.correlationLength;
     zetaS = K*zetaP;
-    std_ll = C(1,1); % variance of the first Lamé coefficient
-    std_mm = C(2,2); % variance of the second Lamé coefficient
-    std_rr = C(3,3); % variance of the density
-    std_lm = C(1,2); % correlation of lambda and mu
-    std_lr = C(1,3); % correlation of lambda and density
-    std_mr = C(2,3); % correlation of mu and density
+    std_ll = C(1,1); % squared coefficient of variation of lambda
+    std_mm = C(2,2); % squared coefficient of variation of mu
+    std_rr = C(3,3); % squared coefficient of variation of density
+    std_lm = C(1,2); % correlation coefficient between lambda and mu
+    std_lr = C(1,3); % correlation coefficient between lambda and density
+    std_mr = C(2,3); % correlation coefficient between mu and density
+
+    if ~issymmetric(C)
+        error('The given correlation matrix is not symmetric!')
+    elseif abs(C(1,2))>C(1,1)*C(2,2) || abs(C(1,3))>C(1,1)*C(3,3) || abs(C(2,3))>C(2,2)*C(3,3) 
+        error('The given correlation matrix is not semi positive-definite!')
+    end
     
     % [Ryzhik et al, 1996; Eq. (1.3)] and [Turner, 1998; Eq. (3)  
     sigmaPP = @(th) coeff*zetaP^d * ...
