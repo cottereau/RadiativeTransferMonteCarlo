@@ -23,13 +23,13 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % energy    : matrix of observations, size [Nr Npsi Nt]
 % dE        : energy of a single particle (depends on r)
 [ obs, Ei, Ec, binPsi, binR, Nt, t ] = ...
-                initializeObservation( d, acoustics, observation, Np*Npk );
+                initializeObservation( d, material, observation, Np*Npk );
 
 % prepare scattering cross sections 
 material = prepareSigma( material, d );      
 
 % loop on packages of particles
-parfor ip = 1:Np
+for ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
