@@ -44,7 +44,7 @@ material.sigma = PSDF2sigma( geometry.dimension, material );
 
 % radiative transfer solution - acoustic with boundaries
 obs = radiativeTransferAcoustics( source, material, observation, geometry );
-
+% obs = radiativeTransferUnbounded( d, source, material, observation );
 
 % plotting output
 sensors = [3   1 -0.5; 
@@ -52,4 +52,4 @@ sensors = [3   1 -0.5;
            0.2 1 -1.5;
            1.5 1 -2.5;
            3.5 1 -2.8];
-plotEnergies( obs, 4, sensors );
+plotEnergies( obs, material.v, source.lambda, 4, sensors );

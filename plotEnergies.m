@@ -1,4 +1,4 @@
-function plotEnergies( obs, cmax, sensors )
+function plotEnergies( obs, v, lambda, cmax, sensors )
 
 % only plot totalEnergy
 if nargin<3
@@ -6,7 +6,7 @@ if nargin<3
 end
 
 % compute directional energy
-[psi2pi,Ec,Ei] = directionEnergy( obs, sensors );
+[psi2pi,Ec,Ei] = directionEnergy( obs, v, lambda, sensors );
 
 % constants
 Ns = size(sensors,1);

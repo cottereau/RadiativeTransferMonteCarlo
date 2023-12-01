@@ -24,8 +24,6 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 % dE        : energy of a single particle (depends on r)
 [ obs, Ei, Ec, binPsi, binR, Nt, t ] = ...
                 initializeObservation( d, acoustics, observation, Np*Npk );
-obs.lambda = source.lambda;
-obs.v = material.v;
 
 % prepare scattering cross sections 
 material = prepareSigma( material, d );      
@@ -45,7 +43,7 @@ parfor ip = 1:Np
     % v            : propagation velocity
     % t            : current time for the particle
     % coherent     : false when particle has been scattered at least once
-    P = initializeParticle( Npk, d, acoustics, source, material );
+    P = initializeParticle( Npk, d, acoustics, source );
     x = zeros( Npk, 3, Nt );
     dir = zeros( Npk, 3, Nt );
     coherent = false( Npk, Nt );

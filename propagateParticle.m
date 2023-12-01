@@ -9,7 +9,10 @@ while any(ind)
 
     % select number of jumps on remaining interval dt
     Nj = zeros(P.N,1);
-    Nj(ind) = poissrnd(dt(ind)./P.meanFreeTime(ind));
+    Nj(ind&P.p) = poissrnd(dt(ind&P.p)./mat.meanFreeTime(1));
+    if length(mat.meanFreeTime)>1
+        Nj(ind&~P.p) = poissrnd(dt(ind&~P.p)./mat.meanFreeTime(2));
+    end
     ind2 = Nj>0;
     Nind2 = sum(ind2);
 
@@ -18,27 +21,35 @@ while any(ind)
         dt(ind2) = timeNextJump(Nj(ind2),dt(ind2));
     end
 
-    % propagate particles
-    P.x(ind,:) = P.x(ind,:) + (P.v(ind).*dt(ind)).*P.dir(ind,:);
+    % propagation and scattering for acoustics
+    if mat.acoustics
 
-    % scatter particles
-    theta = mat.invcdf(rand(Nind2,1));
-    if P.d==2
-        rotheta = randi([0 1],Nind2,1,'logical');
-        theta(rotheta) = -theta(rotheta);
+        % propagate particles
+        P.x(ind,:) = P.x(ind,:) + (mat.v.*dt(ind)).*P.dir(ind,:);
+
+        % scatter particles
+        theta = mat.invcdf(rand(Nind2,1));
+        if P.d==2
+            rotheta = randi([0 1],Nind2,1,'logical');
+            theta(rotheta) = -theta(rotheta);
+        end
+        costheta = cos(theta);
+        sintheta = sin(theta);
+        dir = P.dir(ind2,:);
+        perp = P.perp(ind2,:);
+        P.dir(ind2,:) = costheta.*dir + sintheta.*perp;
+        P.perp(ind2,:) = -sintheta.*dir + costheta.*perp;
+        if P.d==3
+            phi = 2*pi*rand(Nind2,1);
+            P.dir(ind2,:) = rodrigues(P.dir(ind2,:),dir,phi);
+            P.perp(ind2,:) = rodrigues(P.perp(ind2,:),dir,phi);
+        end
+        P.coherent(ind2) = false;
+
+    % propagation and scattering for elastics
+    else
+
     end
-    costheta = cos(theta);
-    sintheta = sin(theta);
-    dir = P.dir(ind2,:);
-    perp = P.perp(ind2,:);
-    P.dir(ind2,:) = costheta.*dir + sintheta.*perp;
-    P.perp(ind2,:) = -sintheta.*dir + costheta.*perp;
-    if P.d==3
-        phi = 2*pi*rand(Nind2,1);
-        P.dir(ind2,:) = rodrigues(P.dir(ind2,:),dir,phi);
-        P.perp(ind2,:) = rodrigues(P.perp(ind2,:),dir,phi);
-    end
-    P.coherent(ind2) = false;
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
