@@ -117,6 +117,6 @@ end
 % formula)
 function y = rodrigues(x,omega,phi)
 cosphi = cos(phi);
-omegax = dot(omega,x,2).*(1-cos(phi));
+omegax = dot(omega,x,2).*(1-cosphi);
 y = x.*cosphi + cross(omega,x,2).*sin(phi) + omegax.*omega;
 end
