@@ -11,9 +11,9 @@ function sigma = PSDF2sigma( d, material )
 %                              identical for all material parameters ('exp',
 %                              'power_law', 'gaussian', 'triangular' or 
 %                              'low_pass'
-% material.correlationMatrix   matrix giving the variance and correlation
-%                              between material parameters. The order of
-%                              the parameters is:
+% material.correlationMatrix   matrix giving the cefficients of variation & 
+%                              correlation coefficients between material parameters. 
+%                              Order of the parameters:
 %                              * acoustics: (1) compressibility (2) density
 %                              * elastics: (1) lambda (2) mu (3) density
 %
@@ -44,16 +44,22 @@ function sigma = PSDF2sigma( d, material )
 acoustics = material.acoustics;
 zeta = material.Frequency/material.v*material.correlationLength;
 C = material.correlationMatrix;
-
 if ~issymmetric(C)
     error('The given correlation matrix is not symmetric!')
-elseif abs(C(1,2)) > C(1,1)*C(2,2)
-    error('The given correlation matrix is not semi positive-definite!')
 end
 
-% test the symmetry of the correlation matrix
-if ~issymmetric(material.correlationMatrix)
-    disp('correlationMatrix should be a symmetric matrix !')
+% C_transformed contains squared coefficients of variation on the main
+% diagonal and correlation coefficients on off-diagonal terms
+C_transformed = C;
+s = size(C);
+ind = 1:s(1)+1:s(1)*s(2); 
+C_transformed(ind) = C(ind).^2;
+
+eigvals = eig(C_transformed);
+
+% Check if the eigenvalues are not all non-negative.
+if ~all(eigvals >= 0)
+    error('The given correlation matrix is not positive semidefinite!');
 end
 
 % The following normalized PSDF kernels are taken from Khazaie et al 2016
@@ -80,9 +86,9 @@ coeff = pi^(3*d/2-2)/2/gamma(d/2);
 
 % acoustics [Ryzhik et al, 1996 Eq. (1.3)]
 if acoustics 
-    std_kk = C(1,1); % squared coefficient of variation of compressibility
-    std_rr = C(2,2); % squared coefficient of variation of density
-    std_kr = C(1,2); % correlation of compressibility and density
+    std_kk = C_transformed(1,1); % squared coefficient of variation of compressibility
+    std_rr = C_transformed(2,2); % squared coefficient of variation of density
+    std_kr = C_transformed(1,2); % correlation of compressibility and density
     sigma = @(th) coeff*zeta^d*(cos(th).^2*std_rr^2 + 2*cos(th)*std_kr + std_kk^2) ...
         .*S(zeta.*sqrt(2*(1-cos(th)))).*sin(th).^(d-2);
     sigma = {sigma};
@@ -92,18 +98,12 @@ else
     K = material.vp/material.vs;
     zetaP = material.Frequency/material.vp*material.correlationLength;
     zetaS = K*zetaP;
-    std_ll = C(1,1); % squared coefficient of variation of lambda
-    std_mm = C(2,2); % squared coefficient of variation of mu
-    std_rr = C(3,3); % squared coefficient of variation of density
-    std_lm = C(1,2); % correlation coefficient between lambda and mu
-    std_lr = C(1,3); % correlation coefficient between lambda and density
-    std_mr = C(2,3); % correlation coefficient between mu and density
-
-    if ~issymmetric(C)
-        error('The given correlation matrix is not symmetric!')
-    elseif abs(C(1,2))>C(1,1)*C(2,2) || abs(C(1,3))>C(1,1)*C(3,3) || abs(C(2,3))>C(2,2)*C(3,3) 
-        error('The given correlation matrix is not semi positive-definite!')
-    end
+    std_ll = C_transformed(1,1); % squared coefficient of variation of lambda
+    std_mm = C_transformed(2,2); % squared coefficient of variation of mu
+    std_rr = C_transformed(3,3); % squared coefficient of variation of density
+    std_lm = C_transformed(1,2); % correlation coefficient between lambda and mu
+    std_lr = C_transformed(1,3); % correlation coefficient between lambda and density
+    std_mr = C_transformed(2,3); % correlation coefficient between mu and density
     
     % [Ryzhik et al, 1996; Eq. (1.3)] and [Turner, 1998; Eq. (3)  
     sigmaPP = @(th) coeff*zetaP^d * ...
