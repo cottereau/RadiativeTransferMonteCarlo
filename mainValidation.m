@@ -30,7 +30,7 @@ geometry    = struct( 'type', 'fullspace', ...
                       'dimension', 2 );
 inds = [40 80 120]; % index of the desired observation points
 % running our code, Monte Carlo-based
-obs = radiativeTransfer( source, material, observation, geometry );
+obs = radiativeTransferAcoustics( source, material, observation, geometry );
 Eus = (obs.Ei+obs.Ec).*obs.dr';
 % computing Paasschens solution
 [EP,Ediff] = Paasschens_RTE_Unbounded( source, material, observation, geometry );
@@ -71,7 +71,7 @@ geometry    = struct( 'type', 'fullspace', ...
                       'dimension', 3 );
 inds = [40 80 120]; % index of the desired observation points
 % running our code, Monte Carlo-based
-obs = radiativeTransfer( source, material, observation, geometry );
+obs = radiativeTransferAcoustics( source, material, observation, geometry );
 Eus = (obs.Ei+obs.Ec).*obs.dr';
 % computing Paasschens solution
 [EP,Ediff] = Paasschens_RTE_Unbounded( source, material, observation, geometry );

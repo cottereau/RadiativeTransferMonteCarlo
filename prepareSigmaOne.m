@@ -12,10 +12,10 @@ if any(sigma(xth)<0)
 end
 if d==2
     Sigma = 2*integral(sigma,0,pi);
-    sigmaNorm = @(th) 2*sigma(th)/Sigma;
+    sigmaNorm = @(th) (2/Sigma)*sigma(th);
 elseif d==3
     Sigma = 2*pi*integral(@(th)sigma(th).*sin(th),0,pi);
-    sigmaNorm = @(th) sigma(th).*sin(th)/Sigma;
+    sigmaNorm = @(th) (2*pi/Sigma)*sin(th).*sigma(th);
 end
 pdf = sigmaNorm(xth);
 cdf = cumsum(pdf)*(pi/Nth);
