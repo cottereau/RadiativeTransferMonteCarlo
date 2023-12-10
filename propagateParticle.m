@@ -59,26 +59,18 @@ while any(ind)
  
     end
 
-    % scattering angle theta (away from direction of propagation)
+    % scattering by theta (away from direction of propagation)
     if P.d==2
         rotheta = randi([0 1],Nind2,1,'logical');
         theta(rotheta) = -theta(rotheta);
     end
-    costheta = cos(theta);
-    sintheta = sin(theta);
-    dir = P.dir(ind2,:);
-    perp = P.perp(ind2,:);
-    P.dir(ind2,:) = costheta.*dir + sintheta.*perp;
-    P.perp(ind2,:) = -sintheta.*dir + costheta.*perp;
+    P.dir(ind2,:) =  cos(theta).*P.dir(ind2,:) + sin(theta).*P.perp(ind2,:);
+    P.perp(ind2,:)= -sin(theta).*P.dir(ind2,:) + cos(theta).*P.perp(ind2,:);
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
     dt(ind) = T - P.t(ind);
     ind = dt>0;
-
-    % plot for debug
-    % figure; quiver(P.x(~ind2,1),P.x(~ind2,2),P.dir(~ind2,1),P.dir(~ind2,2),'b')
-    % hold on; quiver(P.x(ind2,1),P.x(ind2,2),P.dir(ind2,1),P.dir(ind2,2),'r')
 
 end
 
