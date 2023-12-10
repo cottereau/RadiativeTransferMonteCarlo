@@ -2,6 +2,10 @@ function mat = prepareSigma(mat,d)
 if mat.acoustics
     [mat.Sigma,mat.invcdf] = prepareSigmaOne(mat.sigma,d);
     mat.meanFreeTime = 1/mat.v/mat.Sigma;
+    % the two lines below are just for homogenization of the propagation
+    % code between acoustics and elastics
+    mat.vp = mat.v;
+    mat.vs = 0; 
 else
     mat.Sigma = zeros(2);
     mat.invcdf = cell(2);

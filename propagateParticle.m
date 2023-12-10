@@ -4,10 +4,10 @@ function P = propagateParticle(mat,P,T)
 dt = T-P.t;
 ind = dt>0;
 
-% loop on jumps
+% loop on flying time until end of interval
 while any(ind)
 
-    % select number of jumps on remaining interval dt
+    % number of remaining scattering events for each particle
     Nj = zeros(P.N,1);
     Nj(ind&P.p) = poissrnd(dt(ind&P.p)./mat.meanFreeTime(1));
     if length(mat.meanFreeTime)>1
@@ -15,41 +15,61 @@ while any(ind)
     end
     ind2 = Nj>0;
     Nind2 = sum(ind2);
+    P.coherent(ind2) = false;
 
-    % flying time until next jump (or end of interval)
+    % flying time until next scattering event
     if any(ind2)
         dt(ind2) = timeNextJump(Nj(ind2),dt(ind2));
     end
 
-    % propagation and scattering for acoustics
+    % propagate particles
+    p = ind &  P.p;
+    P.x(p,:) = P.x(p,:) + (mat.vp.*dt(p)).*P.dir(p,:);
+    s = ind & ~P.p;
+    P.x(s,:) = P.x(s,:) + (mat.vs.*dt(s)).*P.dir(s,:);
+
+    % scattering angle phi (around direction of propagation)
+    if P.d==3
+        phi = (2*pi)*rand(Nind2,1);
+        P.perp(ind2,:) = cos(phi).*P.perp(ind2,:) ...
+                       + sin(phi).*cross(P.dir(ind2,:),P.perp(ind2,:));
+    end
+
+    % scattering for acoustics
     if mat.acoustics
 
-        % propagate particles
-        P.x(ind,:) = P.x(ind,:) + (mat.v.*dt(ind)).*P.dir(ind,:);
-
-        % scatter particles
+        % draw scattering angle theta  (away from direction of propagation)
         theta = mat.invcdf(rand(Nind2,1));
-        if P.d==2
-            rotheta = randi([0 1],Nind2,1,'logical');
-            theta(rotheta) = -theta(rotheta);
-        end
-        costheta = cos(theta);
-        sintheta = sin(theta);
-        dir = P.dir(ind2,:);
-        perp = P.perp(ind2,:);
-        P.dir(ind2,:) = costheta.*dir + sintheta.*perp;
-        P.perp(ind2,:) = -sintheta.*dir + costheta.*perp;
-        if P.d==3
-            phi = 2*pi*rand(Nind2,1);
-            P.dir(ind2,:) = rodrigues(P.dir(ind2,:),dir,phi);
-            P.perp(ind2,:) = rodrigues(P.perp(ind2,:),dir,phi);
-        end
-        P.coherent(ind2) = false;
 
-    % propagation and scattering for elastics
+    % scattering for elastics
     else
 
+        % change polarization
+        p = ind2 &  P.p;
+        P.p( p & (rand(N,1)>mat.P2P) ) = false;
+        s = ind2 & ~P.p;
+        P.p( s & (rand(N,1)>mat.S2S) ) = true;
+
+        % draw scattering angle theta  (away from direction of propagation)
+        theta = rand(N,1);
+        theta(  P.p & p ) = mat.invcdf{1,1}( theta(  P.p & p ) );
+        theta( ~P.p & p ) = mat.invcdf{1,2}( theta( ~P.p & p ) );
+        theta(  P.p & s ) = mat.invcdf{2,1}( theta(  P.p & s ) );
+        theta( ~P.p & s ) = mat.invcdf{2,2}( theta( ~P.p & s ) );
+ 
     end
+
+    % scattering angle theta (away from direction of propagation)
+    if P.d==2
+        rotheta = randi([0 1],Nind2,1,'logical');
+        theta(rotheta) = -theta(rotheta);
+    end
+    costheta = cos(theta);
+    sintheta = sin(theta);
+    dir = P.dir(ind2,:);
+    perp = P.perp(ind2,:);
+    P.dir(ind2,:) = costheta.*dir + sintheta.*perp;
+    P.perp(ind2,:) = -sintheta.*dir + costheta.*perp;
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
@@ -77,46 +97,4 @@ for i2 = 1:m
 end
 tj = sort(tj,2);
 tj = tj(:,1);
-end
-
-function P = scatterParticle(mat,P)
-%function [dtot,p,v,meanFreePath] = scatterParticle(d,mat,p,v,meanFreePath)
-N = P.N;
-rd = rand(N,1);
-th = mat.invcdf(rd);
-% % elastics
-% else
-%     p0 = p;
-%     % change polarization
-%     probabilityOfChange = mat.P2P*p + mat.S2S*(1-p);
-%     change = rand(N,1)>probabilityOfChange;
-%     p(change)=~p(change);
-%     % velocity for each particle
-%     v(change&p) = mat.vp;
-%     v(change&~p) = mat.vs;
-%     % meanFreePath for each particle
-%     meanFreePath(change&p) = mat.meanFreePathP;
-%     meanFreePath(change&~p) = mat.meanFreePathS;    
-%     % change direction depending on polarizations
-%     th = zeros(N,1);
-%     th(p0&p) = mat.invcdfPP(rand(nnz(p0&p),1));
-%     th(p0&~p) = mat.invcdfPS(rand(nnz(p0&~p),1));
-%     th(~p0&p) = mat.invcdfSP(rand(nnz(~p0&p),1));
-%     th(~p0&~p) = mat.invcdfSS(rand(nnz(~p0&~p),1));
-% end
-%P.d = P.d+th;
-P.theta = mod(P.theta+th,2*pi);
-ind = P.theta>pi;
-P.theta(ind) = -(P.theta(ind)-2*pi);
-P.costheta = cos(P.theta);
-%P.costheta = cos(acos(P.costheta)+th);
-
-end
-
-% rotation of vector x around axis omega by angle phi (Rodrigues' rotation
-% formula)
-function y = rodrigues(x,omega,phi)
-cosphi = cos(phi);
-omegax = dot(omega,x,2).*(1-cosphi);
-y = x.*cosphi + cross(omega,x,2).*sin(phi) + omegax.*omega;
 end
