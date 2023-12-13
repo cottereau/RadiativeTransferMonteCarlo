@@ -7,65 +7,68 @@ ind = dt>0;
 % loop on flying time until end of interval
 while any(ind)
 
+    % polarized particles
+    p = ind &  P.p;
+    s = ind & ~P.p;
+
     % number of remaining scattering events for each particle
     Nj = zeros(P.N,1);
-    Nj(ind&P.p) = poissrnd(dt(ind&P.p)./mat.meanFreeTime(1));
+    Nj(p) = poissrnd(dt(p)./mat.meanFreeTime(1));
     if length(mat.meanFreeTime)>1
-        Nj(ind&~P.p) = poissrnd(dt(ind&~P.p)./mat.meanFreeTime(2));
+        Nj(s) = poissrnd(dt(s)./mat.meanFreeTime(2));
     end
-    ind2 = Nj>0;
-    Nind2 = sum(ind2);
-    P.coherent(ind2) = false;
+    scatter = Nj>0;
+    Nscatter = sum(scatter);
+    P.coherent(scatter) = false;
 
     % flying time until next scattering event
-    if any(ind2)
-        dt(ind2) = timeNextJump(Nj(ind2),dt(ind2));
+    if any(scatter)
+        dt(scatter) = timeNextJump(Nj(scatter),dt(scatter));
     end
 
     % propagate particles
-    p = ind &  P.p;
     P.x(p,:) = P.x(p,:) + (mat.vp.*dt(p)).*P.dir(p,:);
-    s = ind & ~P.p;
     P.x(s,:) = P.x(s,:) + (mat.vs.*dt(s)).*P.dir(s,:);
 
-    % scattering angle phi (around direction of propagation)
-    if P.d==3
-        phi = (2*pi)*rand(Nind2,1);
-        P.perp(ind2,:) = cos(phi).*P.perp(ind2,:) ...
-                       + sin(phi).*cross(P.dir(ind2,:),P.perp(ind2,:));
+    % scattering around direction of propagation
+    if P.d==2
+        phi = randi([0 1],Nscatter,1,'logical');
+        P.perp(scatter,:) = ((-1).^phi).*P.perp(scatter,:);
+    elseif P.d==3
+        phi = (2*pi)*rand(Nscatter,1);
+        P.perp(scatter,:) = cos(phi).*P.perp(scatter,:) ...
+                     + sin(phi).*cross(P.dir(scatter,:),P.perp(scatter,:));
     end
 
     % scattering for acoustics
     if mat.acoustics
 
-        % draw scattering angle theta  (away from direction of propagation)
-        theta = mat.invcdf(rand(Nind2,1));
+        % draw scattering angle away from direction of propagation
+        theta = mat.invcdf(rand(Nscatter,1));
 
     % scattering for elastics
     else
 
         % change polarization
-        p = ind2 &  P.p;
-        P.p( p & (rand(N,1)>mat.P2P) ) = false;
-        s = ind2 & ~P.p;
-        P.p( s & (rand(N,1)>mat.S2S) ) = true;
+        p = scatter & p;
+        P.p( p & (rand(P.N,1)>mat.P2P) ) = false;
+        s = scatter & s;
+        P.p( s & (rand(P.N,1)>mat.S2S) ) = true;
 
-        % draw scattering angle theta  (away from direction of propagation)
-        theta = rand(N,1);
+        % draw scattering angle away from direction of propagation
+        theta = rand(P.N,1);
         theta(  P.p & p ) = mat.invcdf{1,1}( theta(  P.p & p ) );
         theta( ~P.p & p ) = mat.invcdf{1,2}( theta( ~P.p & p ) );
         theta(  P.p & s ) = mat.invcdf{2,1}( theta(  P.p & s ) );
         theta( ~P.p & s ) = mat.invcdf{2,2}( theta( ~P.p & s ) );
+        theta = theta(scatter);
  
     end
 
-    % scattering by theta (away from direction of propagation)
-    if P.d==2
-        rotheta = randi([0 1],Nind2,1,'logical');
-        theta(rotheta) = -theta(rotheta);
-    end
-    P.dir(ind2,:) =  cos(theta).*P.dir(ind2,:) + sin(theta).*P.perp(ind2,:);
-    P.perp(ind2,:)= -sin(theta).*P.dir(ind2,:) + cos(theta).*P.perp(ind2,:);
+    % scattering away from direction of propagation
+    dir = P.dir(scatter,:);
+    P.dir(scatter,:) =  cos(theta).*dir + sin(theta).*P.perp(scatter,:);
+    P.perp(scatter,:)= -sin(theta).*dir + cos(theta).*P.perp(scatter,:);
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);

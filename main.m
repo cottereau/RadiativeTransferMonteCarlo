@@ -52,4 +52,4 @@ sensors = [3   1 -0.5;
            0.2 1 -1.5;
            1.5 1 -2.5;
            3.5 1 -2.8];
-plotEnergies( obs, material.v, source.lambda, 4, sensors );
+plotEnergies( obs, material, source.lambda, 4, sensors );

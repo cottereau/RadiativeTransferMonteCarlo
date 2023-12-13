@@ -1,4 +1,4 @@
-function plotEnergies( obs, v, lambda, cmax, sensors )
+function plotEnergies( obs, material, lambda, cmax, sensors )
 
 % only plot totalEnergy
 if nargin<5
@@ -17,13 +17,13 @@ if ~isfield(obs,'nSources')
     r = sqrt(boxx.^2+boxz.^2);
     Ei = interp1(obs.r',obs.Ei,r(:),'linear',0);
     Ec = coherentInABox(obs.energyDomainCoherent,boxx(:),0,boxz(:), ...
-                                             [0 0 0],obs.t,obs.d,lambda,v);
+                                      [0 0 0],obs.t,obs.d,lambda,material);
     E = permute(reshape(Ec+Ei,Nx,Nx,obs.Nt),[2 1 3]);
     obs.energyDensityBox = E;
 end
 
 % compute directional energy
-[psi2pi,Ec,Ei] = directionEnergy( obs, v, lambda, sensors );
+[psi2pi,Ec,Ei] = directionEnergy( obs, material.v, lambda, sensors );
 
 % constants
 Ns = size(sensors,1);

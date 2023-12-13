@@ -1,5 +1,5 @@
 function [ obs, energy, Ec, binPsi, binR, Nt, t ] = ...
-                      initializeObservation( d, material, observation, N )
+            initializeObservation( d, acoustics, material, observation, N )
 
 % times
 t = [0 setdiff(observation.time,0)];
@@ -34,8 +34,8 @@ binR = (r(1:end-1)+r(2:end))/2;
 binR = [-dr/2 binR binR(end)+dr/2];
 
 % initialize matrix of observations
-energy = zeros(Nr,Npsi,Nt);
-Ec = zeros(Nt,1);
+energy = zeros(Nr,Npsi,Nt,1+acoustics);
+Ec = zeros(Nt,2);
 
 % energy in a small volume of the domain
 dr = volumeEnergy(d,r);

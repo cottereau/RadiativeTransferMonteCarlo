@@ -54,7 +54,7 @@ end
 
 % add coherent energy
 Ecoherent = coherentInABox(obs.energyDomainCoherent, ...
-                          boxx(:),posS(1,2),boxz(:),posS,obs.t,d,lambda,v);
+                   boxx(:),posS(1,2),boxz(:),posS,obs.t,d,lambda,material);
 E = E + Ecoherent;
 
 % reformatting

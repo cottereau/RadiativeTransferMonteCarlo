@@ -1,34 +1,36 @@
-% This code works in 2D/3D and assumes the source is centered on 0. The
-% initial distance from 0 is modeled gaussian with standard deviation 
-% source.lambda and uniformly-distributed angle(s). The initial direction is 
-% uniform.
+% This code works in 2D/3D. The initial condition is modeled as gaussian 
+% with standard deviation source.lambda and uniformly-distributed angle(s).
+% The initial direction is uniform.
 
-% Physics
-physics = struct( 'acoustics', true, ...
-                  'dimension', 2 );
+geometry = struct( 'dimension', 2 );
 
 % Point source
-source = struct( 'numberParticles', 1e6, ...
-                 'lambda', 0.1, ...
-                 'polarization', 'P');  % 'P' or 'S'
-             
+source = struct( 'numberParticles', 1e5, ...
+                 'polarization', 'P', ...
+                 'lambda', 0.1 );
+
+% observations
+observation = struct('dr', 0.05, ...        % size of bins in space
+                     'time', 0:0.05:2, ...  % observation times
+                     'Ndir', 5 );         % number of bins for directions           
+ 
 % material properties
 material = struct( 'acoustics', false, ...
-                   'dimension', 2, ...
-                   'vp', 1.5, ...
+                   'vp', sqrt(2), ...
                    'vs', 1, ...
-                   'sigmaPP', @(th) 1/8/pi*ones(size(th)), ...
-                   'sigmaPS', @(th) 2*1.5^2/20/pi*ones(size(th)), ...
-                   'sigmaSP', @(th) 1/20/pi*ones(size(th)), ...
-                   'sigmaSS', @(th) 1/8/pi*ones(size(th)) );
-               
-% observations
-observation = struct('sensors', 0:0.05:10, ... % bins for histograms
-                     'time', 0:0.1:10, ...     % observation times
-                     'Ndir', 100 );            % direction discretization
+                   'Frequency', 2*pi/source.lambda, ...
+                   'correlationLength', 10, ...
+                   'spectralType', 'exp', ...
+                   'correlationMatrix', 0.1*ones(3) );
+material.sigma = PSDF2sigma( geometry.dimension, material );
 
-% radiative transfer solution - 2D - elastic
-%obs = radiativeTransferElastic( source, material, observation );
-obs = radiativeTransfer( physics, source, material, observation );
-M = plotGrid('full',obs,1);
-scatterDirections(obs,30);
+% radiative transfer solution - acoustic with boundaries
+obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+
+% plotting output
+sensors = [3   1 -0.5; 
+           3.9 1 -2.5;
+           0.2 1 -1.5;
+           1.5 1 -2.5;
+           3.5 1 -2.8];
+plotEnergies( obs, material, source.lambda, 4, sensors );

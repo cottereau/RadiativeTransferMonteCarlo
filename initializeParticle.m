@@ -36,7 +36,6 @@ coherent = true(N,1);
  
 % initialize structure
 P = struct( 'd', d, ...                 % dimension of the problem
-            'acoustics', acoustics, ... % true=acoustics, false=elastics
             'N', N, ...                 % number of particles
             'x', x, ...                 % cartesian coordinates
             'dir', dir, ...             % direction of propagation
