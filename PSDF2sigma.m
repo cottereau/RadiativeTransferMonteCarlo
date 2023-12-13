@@ -42,7 +42,6 @@ function sigma = PSDF2sigma( d, material )
 
 % constants
 acoustics = material.acoustics;
-zeta = material.Frequency/material.v*material.correlationLength;
 C = material.correlationMatrix;
 if ~issymmetric(C)
     error('The given correlation matrix is not symmetric!')
@@ -86,12 +85,12 @@ coeff = pi^(3*d/2-2)/2/gamma(d/2);
 
 % acoustics [Ryzhik et al, 1996 Eq. (1.3)]
 if acoustics 
+    zeta = material.Frequency/material.v*material.correlationLength;
     std_kk = C_transformed(1,1); % squared coefficient of variation of compressibility
     std_rr = C_transformed(2,2); % squared coefficient of variation of density
     std_kr = C_transformed(1,2); % correlation of compressibility and density
     sigma = @(th) coeff*zeta^d*(cos(th).^2*std_rr^2 + 2*cos(th)*std_kr + std_kk^2) ...
         .*S(zeta.*sqrt(2*(1-cos(th)))).*sin(th).^(d-2);
-    sigma = {sigma};
 
 % elastics
 else
@@ -128,20 +127,35 @@ else
     % Ryzhik Eq. (4.54) & Khazaie 2015 (PhD thesis) Eqs. (1.84) to (1.86) 
     % In 3D, for each value of theta (th), sigmaSS should be multiplied by
     % the identity matrix, i.e. eye(2,2)
+    % if d==3
+    %     sigmaSS_TT = @(th) pi^(d-1)/2 * zetaS^d * std_rr^2*(1+cos(th).^2)...
+    %         .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th)))); 
+    %     sigmaSS_GG = @(th) pi^(d-1)/2 * zetaS^d * std_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
+    %         .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th))));
+    %     sigmaSS_GT = @(th) pi^(d-1)/2 * zetaS^d * std_mr*(2*cos(th).^3)...
+    %         .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th))));
+    % elseif d==2
+    %     sigmaSS_TT = @(th) pi^(d-1)/2 * zetaS^d * std_rr^2 ...
+    %         *[ cos(th).^2 zeros(size(th)); zeros(size(th)) ones(size(th))].*S(zetaS.*sqrt(2*(1-cos(th))));
+    %     sigmaSS_GG = @(th) pi^(d-1)/2 * zetaS^d * std_mm^2 ...
+    %         *[ cos(th).^2.*(2*cos(th).^2-1).^2 zeros(size(th)); zeros(size(th)) cos(th).^2].*S(zetaS.*sqrt(2*(1-cos(th))));
+    %     sigmaSS_GT = @(th) pi^(d-1)/2 * zetaS^d * std_mr ...
+    %         *[ cos(th).*(2*cos(th).^2-1).^2 zeros(size(th)); zeros(size(th)) cos(th)].*S(zetaS.*sqrt(2*(1-cos(th))));
+    % end
     if d==3
-        sigmaSS_TT = @(th) pi^(d-1)/2 * zetaS^d * std_rr^2*(1+cos(th).^2)...
+        sigmaSS_TT = @(th) (pi^(d-1)/2*zetaS^d*std_rr^2)*(1+cos(th).^2)...
             .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th)))); 
         sigmaSS_GG = @(th) pi^(d-1)/2 * zetaS^d * std_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
             .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th))));
         sigmaSS_GT = @(th) pi^(d-1)/2 * zetaS^d * std_mr*(2*cos(th).^3)...
             .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th))));
     elseif d==2
-        sigmaSS_TT = @(th) pi^(d-1)/2 * zetaS^d * std_rr^2 ...
-            *[ cos(th).^2 zeros(size(th)); zeros(size(th)) ones(size(th))].*S(zetaS.*sqrt(2*(1-cos(th))));
+        sigmaSS_TT = @(th) pi^(d-1)/2*zetaS^d*std_rr^2 ...
+                                *cos(th).^2.*S(zetaS.*sqrt(2*(1-cos(th))));
         sigmaSS_GG = @(th) pi^(d-1)/2 * zetaS^d * std_mm^2 ...
-            *[ cos(th).^2.*(2*cos(th).^2-1).^2 zeros(size(th)); zeros(size(th)) cos(th).^2].*S(zetaS.*sqrt(2*(1-cos(th))));
+           *(2*cos(th).^2-1).^2.*cos(th).^2.*S(zetaS.*sqrt(2*(1-cos(th))));
         sigmaSS_GT = @(th) pi^(d-1)/2 * zetaS^d * std_mr ...
-            *[ cos(th).*(2*cos(th).^2-1).^2 zeros(size(th)); zeros(size(th)) cos(th)].*S(zetaS.*sqrt(2*(1-cos(th))));
+              *(2*cos(th).^2-1).^2.*cos(th).*S(zetaS.*sqrt(2*(1-cos(th))));
     end
 
     sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);

@@ -1,4 +1,4 @@
-function [psi2pi,Ec,Ei] = directionEnergy(obs,v,lambda,sensors)
+function [psi2pi,Ec,Ei] = directionEnergy(obs,material,lambda,sensors)
 % construct directional energy at sensors
 
 % constant
@@ -24,7 +24,7 @@ for i2 = 1:obs.nSources
         psiRot = mod( psi2pi - theta, 2*pi );
 
         % estimate coherent directional energy at sensor and rotate
-        Es = exp(-(r/lambda-(v/lambda)*obs.t).^2 ) .* obs.energyDomainCoherent';
+        Es = exp(-(r/lambda-(material.v/lambda)*obs.t).^2 ) .* obs.energyDomainCoherent';
         Es2 = [ zeros(obs.Npsi-1,obs.Nt); Es/2; 
                 Es/2; zeros(obs.Npsi-1,obs.Nt)];
         Ec(:,:,i1) = Ec(:,:,i1) + interp1( psi2pi', Es2, psiRot );

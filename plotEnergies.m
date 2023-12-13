@@ -4,6 +4,7 @@ function plotEnergies( obs, material, lambda, cmax, sensors )
 if nargin<5
     sensors = [];
 end
+Nac = size(obs.energyDomainCoherent,2);
 
 % unbounded case
 if ~isfield(obs,'nSources')
@@ -18,12 +19,13 @@ if ~isfield(obs,'nSources')
     Ei = interp1(obs.r',obs.Ei,r(:),'linear',0);
     Ec = coherentInABox(obs.energyDomainCoherent,boxx(:),0,boxz(:), ...
                                       [0 0 0],obs.t,obs.d,lambda,material);
-    E = permute(reshape(Ec+Ei,Nx,Nx,obs.Nt),[2 1 3]);
+    E = reshape(Ec+Ei,Nx,Nx,obs.Nt*Nac);
+    E = reshape(permute(E,[2 1 3]),Nx,Nx,obs.Nt,Nac);
     obs.energyDensityBox = E;
 end
 
 % compute directional energy
-[psi2pi,Ec,Ei] = directionEnergy( obs, material.v, lambda, sensors );
+[psi2pi,Ec,Ei] = directionEnergy( obs, material, lambda, sensors );
 
 % constants
 Ns = size(sensors,1);

@@ -29,7 +29,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 material = prepareSigma( material, d );      
 
 % loop on packages of particles
-for ip = 1:Np
+parfor ip = 1:Np
 
     % PARTICLES
     % N            : number of particles
@@ -64,8 +64,7 @@ for ip = 1:Np
     end
     
     Ei = Ei + observeTime( d, acoustics, x, p, dir, coherent, binPsi, binR );
-    Ec(:,1) = Ec(:,1) + sum( coherent &  p , 1 )';
-    Ec(:,2) = Ec(:,2) + sum( coherent & ~p , 1 )';
+    Ec = Ec + [sum( coherent & p ,1)' sum( coherent & ~p ,1)'];
 
 % end of loop on packages
 end
