@@ -44,7 +44,6 @@ parfor ip = 1:Np
     x = zeros( Npk, 3, Nt ); x(:,:,1) = P.x;
     p = true( Npk, Nt ); p(:,1) = P.p;
     dir = zeros( Npk, 3, Nt ); dir(:,:,1) = P.dir;
-    perp = zeros( Npk, 3, Nt ); perp(:,:,1) = P.perp;
     coherent = false( Npk, Nt ); coherent(:,1) = P.coherent;
 
     % loop on time
@@ -57,7 +56,6 @@ parfor ip = 1:Np
         x(:,:,it) = P.x;
         p(:,it) = P.p;
         dir(:,:,it) = P.dir;
-        perp(:,:,it) = P.perp;
         coherent(:,it) = P.coherent;
 
     % end of loop on time
