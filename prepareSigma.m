@@ -1,30 +1,23 @@
 function mat = prepareSigma(mat,d)
-if isfield(mat,'sigma')
+if mat.acoustics
     [mat.Sigma,mat.invcdf] = prepareSigmaOne(mat.sigma,d);
     mat.meanFreeTime = 1/mat.v/mat.Sigma;
-end
-if isfield(mat,'sigmaPP')
-    [mat.SigmaPP,mat.invcdfPP] = prepareSigmaOne(mat.sigmaPP,d);
-end
-if isfield(mat,'sigmaPS')
-    [mat.SigmaPS,mat.invcdfPS] = prepareSigmaOne(mat.sigmaPS,d);
-    mat.meanFreeTimeP = 1/mat.vp/(mat.SigmaPP + mat.SigmaPS); % This should be changed (mean free time => to be multiplied by vp)
-end
-if isfield(mat,'sigmaSS')
-    [mat.SigmaSS,mat.invcdfSS] = prepareSigmaOne(mat.sigmaSS,d);
-end
-if isfield(mat,'sigmaSP')
-    [mat.SigmaSP,mat.invcdfSP] = prepareSigmaOne(mat.sigmaSP,d);
-    mat.meanFreeTimeS = 1/mat.vs/(mat.SigmaSS + mat.SigmaSP); % This should be changed (mean free time => to be multiplied by vs)
-    if 2*(mat.vp/mat.vs)^2*mat.SigmaSP~=mat.SigmaPS    % This should be changed in 3D (2K^3)
-        disp('error in the Sigma SP/PS relation:')
-        disp(['SigmaPS = ' num2str(mat.SigmaSP) ])
-        disp(['2(vP/vS)^2 SigmaSP = ' num2str(2*(mat.vp/mat.vs)^2*mat.SigmaSP) ])
-    end
+    % the two lines below are just for homogenization of the propagation
+    % code between acoustics and elastics
+    mat.vp = mat.v;
+    mat.vs = 0; 
+else
+    mat.Sigma = zeros(2);
+    mat.invcdf = cell(2);
+    [mat.Sigma(1,1),mat.invcdf{1,1}] = prepareSigmaOne(mat.sigma{1,1},d);
+    [mat.Sigma(1,2),mat.invcdf{1,2}] = prepareSigmaOne(mat.sigma{1,2},d);
+    [mat.Sigma(2,1),mat.invcdf{2,1}] = prepareSigmaOne(mat.sigma{2,1},d);
+    [mat.Sigma(2,2),mat.invcdf{2,2}] = prepareSigmaOne(mat.sigma{2,2},d);
+    mat.meanFreeTime = 1./[mat.vp;mat.vs]./sum(mat.Sigma,2);
     % Question: why do you need to calculate these probabilities? We rather
     % need mat.P2S and mat.S2P no?
-    mat.P2P = mat.SigmaPP/(mat.SigmaPP+mat.SigmaPS); % mat.SigmaPS should it be rather mat.SigmaSP? In Ryzhik/Baydoun Sigma_ij is j to i as oposed to in Margerin/Turner/Weaver
-    mat.S2S = mat.SigmaSS/(mat.SigmaSS+mat.SigmaSP); % mat.SigmaSP should it be rather mat.SigmaPS? The same comment ...
+    mat.P2P = mat.Sigma(1,1)/sum(mat.Sigma(1,:),2); % mat.SigmaPS should it be rather mat.SigmaSP? In Ryzhik/Baydoun Sigma_ij is j to i as oposed to in Margerin/Turner/Weaver
+    mat.S2S = mat.Sigma(2,2)/sum(mat.Sigma(2,:),2); % mat.SigmaSP should it be rather mat.SigmaPS? The same comment ...
 end
 end
 

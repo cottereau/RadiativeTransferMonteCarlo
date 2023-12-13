@@ -1,4 +1,4 @@
-function Ec = coherentInABox(Ecr,x,y,z,X0,t,d,lambda,c)
+function Ec = coherentInABox(Ecr,x,y,z,X0,t,d,lambda,material)
 % Evaluate the coherent energy at positions (x,z) and time t, for a
 % collection of sources at position (x0,z0) firing all at the same time
 % and losing coherence with distance
@@ -27,6 +27,11 @@ x0 = X0(:,1);
 y0 = X0(:,2);
 z0 = X0(:,3);
 ns = size(x0,1);
+acoustics = false;
+if size(Ecr,1)==1
+    acoustics = true;
+    material.vp = material.v; 
+end
 
 % prepare amplifications of energy
 xs = x0-x0';
@@ -52,7 +57,7 @@ for i1 = 1:ns
 end
 
 % initialization
-Ec = zeros(numel(x),Nt);
+Ec = zeros(numel(x),Nt,1+~acoustics);
 if d==2
     y=0; 
     y0 = zeros(size(x0));
@@ -62,7 +67,10 @@ end
 for i1 = 1:length(x0)
     r = sqrt((x(:)-x0(i1)).^2+(y-y0(i1)).^2+(z(:)-z0(i1)).^2);
     r(r<minR)=minR;
-    Ec = Ec + exp(-((r-c*t)/lambda).^2).*Ecr.*(ampC(:,i1)./r.^d);
+    Ec(:,:,1) = Ec(:,:,1) + exp(-((r-material.vp*t)/lambda).^2).*Ecr(1,:).*(ampC(:,i1)./r.^d);
+    if ~acoustics
+        Ec(:,:,2) = Ec(:,:,2) + exp(-((r-material.vs*t)/lambda).^2).*Ecr(2,:).*(ampC(:,i1)./r.^d);
+    end
 end
 
 end

@@ -1,12 +1,29 @@
-function plotEnergies( obs, cmax, sensors )
+function plotEnergies( obs, material, lambda, cmax, sensors )
 
 % only plot totalEnergy
-if nargin<3
+if nargin<5
     sensors = [];
 end
 
+% unbounded case
+if ~isfield(obs,'nSources')
+    obs.nSources = 1;
+    obs.positionSources = [0 0 0];
+    xx = obs.r(obs.r<=max(obs.r)/sqrt(2));
+    obs.boxX = [-xx(end:-1:2) xx];
+    obs.boxZ = obs.boxX;
+    Nx = length(obs.boxX);
+    [boxx,boxz] = meshgrid(obs.boxX,obs.boxZ);
+    r = sqrt(boxx.^2+boxz.^2);
+    Ei = interp1(obs.r',obs.Ei,r(:),'linear',0);
+    Ec = coherentInABox(obs.energyDomainCoherent,boxx(:),0,boxz(:), ...
+                                      [0 0 0],obs.t,obs.d,lambda,material);
+    E = permute(reshape(Ec+Ei,Nx,Nx,obs.Nt),[2 1 3]);
+    obs.energyDensityBox = E;
+end
+
 % compute directional energy
-[psi2pi,Ec,Ei] = directionEnergy( obs, sensors );
+[psi2pi,Ec,Ei] = directionEnergy( obs, material.v, lambda, sensors );
 
 % constants
 Ns = size(sensors,1);
@@ -16,7 +33,7 @@ z = obs.boxZ;
 lappend = false;
 rmax = 1e-2;
 numTile = [4 7+(1:(Ns-1))];
-Y = max(obs.energyDensityBox(:))+1;
+Y = max(Ec(:)+Ei(:))+1;
 
 % initialize figure
 til = tiledlayout(2+ceil(max(0,Ns-2)./4),3+(Ns>0));

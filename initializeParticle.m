@@ -1,4 +1,4 @@
-function P = initializeParticle( N, d, acoustics, source, material )
+function P = initializeParticle( N, d, acoustics, source )
 
 % initial position of each particle: radius follows a Gaussian law with
 % standard deviation lambda, and angle follows a uniform law.
@@ -20,35 +20,15 @@ perp = [-sin(theta) cos(theta) zeros(N,1)];
 % initial positions in cartesian coordinates
 x = r.*[cos(theta0).*sin(phi0) sin(theta0).*sin(phi0) cos(phi0)];
 
+% current time for the particle
+t = zeros(N,1);
+
 % initial polarisation of each particle
 % in acoustics, this variable is unused (and set always to true)
 % in elastics, true corresponds to P waves (default), and false to S waves
 p = true(N,1);
-if isfield(source,'polarization') && source.polarization=='S'
+if ~acoustics && isfield(source,'polarization') && source.polarization=='S'
     p = false(N,1);
-end
-
-% current time for the particle
-t = zeros(N,1);
-
-% material velocity of the background for each particle
-if acoustics && isfield(material,'v')
-    v = material.v*ones(N,1);
-elseif ~physics.acoustics && isfield(material,'vp') && isfield(material,'vs')
-    v = material.vs*ones(N,1);
-    v(p) = material.vp;
-else
-    error('unknown velocity of the background')
-end
-
-% meanFreeTime for each particle
-if isfield(material,'meanFreeTime')
-    mft = material.meanFreeTime*ones(N,1);
-elseif isfield(material,'meanFreeTimeP') && isfield(material,'meanFreeTimeS')
-    mft = material.meanFreeTimeS*ones(N,1);
-    mft(p) = material.meanFreeTimeP;
-else
-    error('unknown meanFreeTime')
 end
 
 % coherent flag (false when particle has been scattered at least once)
@@ -56,14 +36,11 @@ coherent = true(N,1);
  
 % initialize structure
 P = struct( 'd', d, ...                 % dimension of the problem
-            'acoustics', acoustics, ... % true=acoustics, false=elastics
             'N', N, ...                 % number of particles
             'x', x, ...                 % cartesian coordinates
             'dir', dir, ...             % direction of propagation
             'perp', perp, ...           % orthogonal to direction of propagation
             'p', p, ...                 % polarization (used only in elasticity)
-            'meanFreeTime', mft, ...    % mean free time
-            'v', v, ...                 % propagation velocity
             't', t, ...                 % current time for the particle
             'coherent', coherent );     % false when particle has been scattered
 

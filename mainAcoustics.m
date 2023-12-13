@@ -30,7 +30,7 @@ source = struct( 'numberParticles', 1e6, ...
 
 % observations
 observation = struct('dr', 0.05, ...        % size of bins in space
-                     'time', 0:0.05:20, ...  % observation times
+                     'time', 0:0.05:2, ...  % observation times
                      'Ndir', 5 );         % number of bins for directions           
  
 % material properties
@@ -43,8 +43,8 @@ material = struct( 'acoustics', true, ...
 material.sigma = PSDF2sigma( geometry.dimension, material );
 
 % radiative transfer solution - acoustic with boundaries
-obs = radiativeTransferAcoustics( source, material, observation, geometry );
-
+% obs = radiativeTransferAcoustics( source, material, observation, geometry );
+obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
 % plotting output
 sensors = [3   1 -0.5; 
@@ -52,4 +52,4 @@ sensors = [3   1 -0.5;
            0.2 1 -1.5;
            1.5 1 -2.5;
            3.5 1 -2.8];
-plotEnergies( obs, 4, sensors );
+plotEnergies( obs, material, source.lambda, 4, sensors );

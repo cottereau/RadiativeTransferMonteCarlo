@@ -1,10 +1,10 @@
-function Ei = observeTime(d,x,dir,coherent,binPsi,binR)
+function Ei = observeTime(d,acoustics,x,p,dir,coherent,binPsi,binR)
 
 % constants
 Nt = size(x,3);
 Npsi = length(binPsi)-1;
 Nr = length(binR)-1;
-Ei = zeros(Nr,Npsi,Nt);
+Ei = zeros(Nr,Npsi,Nt,1+~acoustics);
 
 % loop on time steps
 for it = 1:Nt
@@ -24,6 +24,11 @@ for it = 1:Nt
     end
 
     % accumulate energies
-    Ei(:,:,it) = histcounts2( r(~coherent(:,it)), psi(~coherent(:,it)), binR, binPsi );
+    Ei(:,:,it,1) = histcounts2( r(~coherent(:,it)&p(:,it)), ...
+                              psi(~coherent(:,it)&p(:,it)), binR, binPsi );
+    if ~acoustics
+        Ei(:,:,it,2) = histcounts2( r(~coherent(:,it)&~p(:,it)), ...
+                              psi(~coherent(:,it)&~p(:,it)), binR, binPsi );
+    end
 
 end

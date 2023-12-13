@@ -1,5 +1,5 @@
 function [ obs, energy, Ec, binPsi, binR, Nt, t ] = ...
-                      initializeObservation( d, acoustics, observation, N )
+            initializeObservation( d, acoustics, material, observation, N )
 
 % times
 t = [0 setdiff(observation.time,0)];
@@ -18,15 +18,24 @@ end
 Npsi = length(psi);
 
 % sensor positions
-r = observation.r;
+if isfield(observation,'r')
+    r = observation.r;
+else
+    if material.acoustics
+        Rmax = material.v*max(t);
+    else
+        Rmax = material.vp*max(t);
+    end        
+    r = linspace(0,Rmax,ceil(Rmax/observation.dr));
+end
 Nr = length(r);
 dr = mean(diff(r));
 binR = (r(1:end-1)+r(2:end))/2;
 binR = [-dr/2 binR binR(end)+dr/2];
 
 % initialize matrix of observations
-energy = zeros(Nr,Npsi,Nt);
-Ec = zeros(Nt,1);
+energy = zeros(Nr,Npsi,Nt,1+acoustics);
+Ec = zeros(Nt,2);
 
 % energy in a small volume of the domain
 dr = volumeEnergy(d,r);
@@ -42,8 +51,7 @@ obs = struct('N', N, ...               % total number of particles
              'r', r, ...               % sensor positions
              'Nr', Nr, ...             % number of positions
              'dr', dr, ...             % weight of small interval of radius
-             'd', d, ...               % dimension of the problem
-             'acoustics', acoustics ); % true=acoustics, false=elastics
+             'd', d);                  % dimension of the problem
 %             'energy', energy, ...     % matrix of observations
 
 end
