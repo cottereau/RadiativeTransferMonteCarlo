@@ -11,9 +11,9 @@ function sigma = PSDF2sigma( d, material )
 %                              identical for all material parameters ('exp',
 %                              'power_law', 'gaussian', 'triangular' or 
 %                              'low_pass'
-% material.correlationMatrix   matrix giving the cefficients of variation & 
-%                              correlation coefficients between material parameters. 
-%                              Order of the parameters:
+% material.correlationMatrix   matrix giving the variance and correlation
+%                              between material parameters. The order of
+%                              the parameters is:
 %                              * acoustics: (1) compressibility (2) density
 %                              * elastics: (1) lambda (2) mu (3) density
 %
@@ -42,24 +42,11 @@ function sigma = PSDF2sigma( d, material )
 
 % constants
 acoustics = material.acoustics;
-zeta = material.Frequency/material.v*material.correlationLength;
 C = material.correlationMatrix;
-if ~issymmetric(C)
-    error('The given correlation matrix is not symmetric!')
-end
 
-% C_transformed contains squared coefficients of variation on the main
-% diagonal and correlation coefficients on off-diagonal terms
-C_transformed = C;
-s = size(C);
-ind = 1:s(1)+1:s(1)*s(2); 
-C_transformed(ind) = C(ind).^2;
-
-eigvals = eig(C_transformed);
-
-% Check if the eigenvalues are not all non-negative.
-if ~all(eigvals >= 0)
-    error('The given correlation matrix is not positive semidefinite!');
+% test the symmetry of the correlation matrix
+if ~issymmetric(material.correlationMatrix)
+    disp('correlationMatrix should be a symmetric matrix !')
 end
 
 % The following normalized PSDF kernels are taken from Khazaie et al 2016
@@ -86,24 +73,24 @@ coeff = pi^(3*d/2-2)/2/gamma(d/2);
 
 % acoustics [Ryzhik et al, 1996 Eq. (1.3)]
 if acoustics 
-    std_kk = C_transformed(1,1); % squared coefficient of variation of compressibility
-    std_rr = C_transformed(2,2); % squared coefficient of variation of density
-    std_kr = C_transformed(1,2); % correlation of compressibility and density
-    sigma = @(th) coeff*zeta^d*(cos(th).^2*std_rr^2 + 2*cos(th)*std_kr + std_kk^2) ...
-        .*S(zeta.*sqrt(2*(1-cos(th)))).*sin(th).^(d-2);
-    sigma = {sigma};
+    zeta = material.Frequency/material.v*material.correlationLength;
+    std_kk = C(1,1); % variance of the compressibility
+    std_rr = C(2,2); % variance of the density
+    std_kr = C(1,2); % correlation of compressibility and density
+    sigma = @(th) max(0,coeff*zeta^d*(cos(th).^2*std_rr^2 + 2*cos(th)*std_kr + std_kk^2) ...
+        .*S(zeta.*sqrt(2*(1-cos(th)))).*sin(th).^(d-2));
 
 % elastics
 else
-    K = material.vp/material.vs;
+    K = material.vp/material.vs; 
     zetaP = material.Frequency/material.vp*material.correlationLength;
     zetaS = K*zetaP;
-    std_ll = C_transformed(1,1); % squared coefficient of variation of lambda
-    std_mm = C_transformed(2,2); % squared coefficient of variation of mu
-    std_rr = C_transformed(3,3); % squared coefficient of variation of density
-    std_lm = C_transformed(1,2); % correlation coefficient between lambda and mu
-    std_lr = C_transformed(1,3); % correlation coefficient between lambda and density
-    std_mr = C_transformed(2,3); % correlation coefficient between mu and density
+    std_ll = C(1,1); % variance of the first Lamé coefficient
+    std_mm = C(2,2); % variance of the second Lamé coefficient
+    std_rr = C(3,3); % variance of the density
+    std_lm = C(1,2); % correlation of lambda and mu
+    std_lr = C(1,3); % correlation of lambda and density
+    std_mr = C(2,3); % correlation of mu and density
     
     % [Ryzhik et al, 1996; Eq. (1.3)] and [Turner, 1998; Eq. (3)  
     sigmaPP = @(th) coeff*zetaP^d * ...
@@ -129,19 +116,19 @@ else
     % In 3D, for each value of theta (th), sigmaSS should be multiplied by
     % the identity matrix, i.e. eye(2,2)
     if d==3
-        sigmaSS_TT = @(th) pi^(d-1)/2 * zetaS^d * std_rr^2*(1+cos(th).^2)...
+        sigmaSS_TT = @(th) (pi^(d-1)/2*zetaS^d*std_rr^2)*(1+cos(th).^2)...
             .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th)))); 
         sigmaSS_GG = @(th) pi^(d-1)/2 * zetaS^d * std_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
             .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th))));
         sigmaSS_GT = @(th) pi^(d-1)/2 * zetaS^d * std_mr*(2*cos(th).^3)...
             .*sin(th).^(d-2).*S(zetaS.*sqrt(2*(1-cos(th))));
     elseif d==2
-        sigmaSS_TT = @(th) pi^(d-1)/2 * zetaS^d * std_rr^2 ...
-            *[ cos(th).^2 zeros(size(th)); zeros(size(th)) ones(size(th))].*S(zetaS.*sqrt(2*(1-cos(th))));
+        sigmaSS_TT = @(th) pi^(d-1)/2*zetaS^d*std_rr^2 ...
+                                *cos(th).^2.*S(zetaS.*sqrt(2*(1-cos(th))));
         sigmaSS_GG = @(th) pi^(d-1)/2 * zetaS^d * std_mm^2 ...
-            *[ cos(th).^2.*(2*cos(th).^2-1).^2 zeros(size(th)); zeros(size(th)) cos(th).^2].*S(zetaS.*sqrt(2*(1-cos(th))));
+           *(2*cos(th).^2-1).^2.*cos(th).^2.*S(zetaS.*sqrt(2*(1-cos(th))));
         sigmaSS_GT = @(th) pi^(d-1)/2 * zetaS^d * std_mr ...
-            *[ cos(th).*(2*cos(th).^2-1).^2 zeros(size(th)); zeros(size(th)) cos(th)].*S(zetaS.*sqrt(2*(1-cos(th))));
+              *(2*cos(th).^2-1).^2.*cos(th).*S(zetaS.*sqrt(2*(1-cos(th))));
     end
 
     sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
