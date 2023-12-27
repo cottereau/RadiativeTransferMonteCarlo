@@ -41,18 +41,19 @@ Ec = zeros(Nt,2);
 dr = volumeEnergy(d,r);
 
 % initialize structure
-obs = struct('N', N, ...               % total number of particles
-             't', t, ...               % time instants
-             'Nt', Nt, ...             % number of time instants
-             'binPsi', binPsi, ...     % bins for histograms in direction
-             'psi', psi, ...           % propagation directions
-             'Npsi', Npsi, ...         % number of directions
-             'binR', binR, ...         % bins for histograms in positions
-             'r', r, ...               % sensor positions
-             'Nr', Nr, ...             % number of positions
-             'dr', dr, ...             % weight of small interval of radius
-             'd', d);                  % dimension of the problem
-%             'energy', energy, ...     % matrix of observations
+obs = struct('acoustics', acoustics, ... % true if acoustics problem
+             'N', N, ...                 % total number of particles
+             't', t, ...                 % time instants
+             'Nt', Nt, ...               % number of time instants
+             'binPsi', binPsi, ...       % bins for histograms in direction
+             'psi', psi, ...             % propagation directions
+             'Npsi', Npsi, ...           % number of directions
+             'binR', binR, ...           % bins for histograms in positions
+             'r', r, ...                 % sensor positions
+             'Nr', Nr, ...               % number of positions
+             'dr', dr, ...               % weight of small interval of radius
+             'd', d);                    % dimension of the problem
+%             'energy', energy, ...       % matrix of observations
 
 end
 
