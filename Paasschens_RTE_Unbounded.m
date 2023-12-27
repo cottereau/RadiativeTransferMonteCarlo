@@ -18,17 +18,18 @@ Nt = length(t);
 Lmax = material.v*max(observation.time);
 [~,~,Rmax] = virtualSources( geometry, source.position, Lmax);
 r = linspace(0,Rmax,ceil(Rmax/observation.dr));
-%Nr = length(r);
 dr = mean(diff(r));
 
-Sigma = prepareSigmaOne(material.sigma,d); % homogeneous to 1/[L]
-meanFreeTime = 1/v/Sigma;
-%D = v/2/Sigma;
+if ~isfield(material,'sigma')
+    material.sigma = PSDF2sigma(material,d);
+end
+Sigma = prepareSigmaOne(material.sigma,d); % homogeneous to 1/[T]
+meanFreeTime = 1/Sigma;
 
-% a (normalized time)      : Sigma*v*t
-% b (normalized distance)  : r*Sigma, i.e. source-station distance * scattering cross-section
+% a (normalized time)      : Sigma*t
+% b (normalized distance)  : r*Sigma/v
 a = t/meanFreeTime;
-b = r*Sigma;
+b = r*Sigma/v;
 % E : energy density integrated over all angles 
     % in 2D : E : 2*pi*r*E*dr
     % in 3D : E : 4*pi*r^2*E*dr
@@ -42,18 +43,18 @@ if m>n, a=a'; end
 if m<n, b=b'; end
 
 if d==2
-    E = (dr*Sigma)*(b./a)./real(sqrt(1-(b./a).^2)).*exp(real(sqrt(a.^2-b.^2))-a);
+    E = (dr*Sigma/v)*(b./a)./real(sqrt(1-(b./a).^2)).*exp(real(sqrt(a.^2-b.^2))-a);
     [~,ind] = min((a-b).^2,[],1);
     for i1 = 1:Nt
         E(ind(i1),i1) = E(ind(i1),i1) + exp(-a(i1));
     end
     E(1,1) = 1;
     if nargout==2
-        E_diff = (dr*Sigma)*(b./a).*exp(-b.^2./(2*a));
+        E_diff = (dr*Sigma/v)*(b./a).*exp(-b.^2./(2*a));
     end
 elseif d==3
     G = @(x) exp(x).*sqrt(1+2.026./x);
-    E = (3/2*dr*sqrt(3/pi)*Sigma)*sqrt(a).*(b./a).^2.*real((1-(b./a).^2).^(1/8)) ...
+    E = (3/2*dr*sqrt(3/pi)*Sigma/v)*sqrt(a).*(b./a).^2.*real((1-(b./a).^2).^(1/8)) ...
         .*exp(-a).*G(a.*(1-(b./a).^2).^(3/4));
     E(heaviside(b-a)) = 0;
     [~,ind] = min((a-b).^2,[],1);
@@ -62,7 +63,7 @@ elseif d==3
     end
     E(1,1) = 1;
     if nargout==2
-        E_diff = (3/2*dr*sqrt(3/pi)*Sigma)*sqrt(a).*(b./a).^2.*exp((-3/4)*b.^2./a);
+        E_diff = (3/2*dr*sqrt(3/pi)*Sigma/v)*sqrt(a).*(b./a).^2.*exp((-3/4)*b.^2./a);
     end
 else
     disp('Dimension "d" should be either 2 or 3 !')

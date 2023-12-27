@@ -21,35 +21,39 @@
 % now, only homogeneous Neumann boundary conditions are enforced
 geometry = struct( 'type', 'box', ...
                    'size', [4 3 3], ...
-                   'dimension', 2 );
+                   'dimension', 3 );
 
 % Point source
 source = struct( 'numberParticles', 1e6, ...
                  'position', [2.5 1 -2], ... 
-                 'lambda', 0.1 );
+                 'lambda', 0.001 );
 
 % observations
 observation = struct('dr', 0.05, ...        % size of bins in space
-                     'time', 0:0.05:2, ...  % observation times
-                     'Ndir', 5 );         % number of bins for directions           
+                     'time', 0:0.05:20, ...  % observation times
+                     'Ndir', 10 );         % number of bins for directions           
  
 % material properties
+% material.coefficients_of_variation defines the coefficients of variaiton
+% of kappa (bulk modulus) and rho (density), respectively.
+% material.correlation_coefficients defines the correlation coefficient
+% between kappa (bulk modulus) and rho (density).
 material = struct( 'acoustics', true, ...
                    'v', 1, ...
-                   'Frequency', 2*pi/source.lambda, ...
+                   'Frequency', 10, ...
                    'correlationLength', 10, ...
                    'spectralType', 'exp', ...
-                   'correlationMatrix', 0.1*eye(2) );
-material.sigma = PSDF2sigma( geometry.dimension, material );
+                   'coefficients_of_variation', [0.1 0.2], ...
+                   'correlation_coefficients', -0.5 );
 
 % radiative transfer solution - acoustic with boundaries
 % obs = radiativeTransferAcoustics( source, material, observation, geometry );
 obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
-% plotting output
-sensors = [3   1 -0.5; 
-           3.9 1 -2.5;
-           0.2 1 -1.5;
-           1.5 1 -2.5;
-           3.5 1 -2.8];
-plotEnergies( obs, material, source.lambda, 4, sensors );
+% % plotting output
+% sensors = [3   1 -0.5; 
+%            3.9 1 -2.5;
+%            0.2 1 -1.5;
+%            1.5 1 -2.5;
+%            3.5 1 -2.8];
+% plotEnergies( obs, material, source.lambda, 4, sensors );
