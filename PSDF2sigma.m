@@ -43,7 +43,7 @@ function sigma = PSDF2sigma(mat,d)
 acoustics = mat.acoustics;
 coeffs_variation = mat.coefficients_of_variation;
 corrcoefs = mat.correlation_coefficients;
-if norm(corrcoefs)>1
+if any(abs(corrcoefs)>1)
     error('Absolute values of correlation coefficients should be less than 1!')
 end
 
