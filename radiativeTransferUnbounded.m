@@ -66,7 +66,7 @@ parfor ip = 1:Np
 
 % end of loop on packages
 end
-obs.energyIncoherent = (1./(obs.dr'*obs.N)).*Ei(:,:,:,1:1+~acoustics);
+obs.energyIncoherent = (1./(obs.dr'*obs.N)).*Ei;
 obs.energyDomainCoherent = Ec(:,1:1+~acoustics)/obs.N;
 
 % energy density as a function of [x t] and [t]
