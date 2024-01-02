@@ -2,17 +2,17 @@
 % with standard deviation source.lambda and uniformly-distributed angle(s).
 % The initial direction is uniform.
 
-geometry = struct( 'dimension', 2 );
+geometry = struct( 'dimension', 3 );
 
 % Point source
-source = struct( 'numberParticles', 1e7, ...
+source = struct( 'numberParticles', 1e6, ...
                  'polarization', 'P', ...
                  'lambda', 0.1 );
 
 % observations
-observation = struct('dr', 0.05, ...        % size of bins in space
-                     'time', 0:5:100, ...  % observation times
-                     'Ndir', 30 );         % number of bins for directions           
+observation = struct('dr', 0.1, ...        % size of bins in space
+                     'time', 0:1:20, ...  % observation times
+                     'Ndir', 25 );         % number of bins for directions           
  
 % material properties
 % material.coefficients_of_variation defines the coefficients of variaiton
@@ -27,11 +27,11 @@ material = struct( 'acoustics', false, ...
                    'spectralType', 'exp', ...
                    'coefficients_of_variation', [0.1 0.2 0.3], ...
                    'correlation_coefficients', [-0.1 0.15 -0.5]);
-material.sigma = PSDF2sigma( geometry.dimension, material );
+material.sigma = PSDF2sigma( material, geometry.dimension );
 
 % radiative transfer solution - acoustic with boundaries
 obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
 % plotting output
-sensors = [1 0 0];
+sensors = [1 0 0; 9 0 0];
 plotEnergies( obs, material, source.lambda, sensors );

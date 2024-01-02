@@ -22,12 +22,12 @@ end
 
 % plot total energy
 if nargin<5; cmax = []; end
-%plotTotalEnergy( obs, cmax );
+plotTotalEnergy( obs, cmax );
 
 % plot directional energy
 if nargin>3 && ~isempty(sensors)
     if nargin<6; rmax = []; end 
-%    plotDirectionalEnergy( obs, material, lambda, sensors, rmax );
+    plotDirectionalEnergy( obs, material, lambda, sensors, rmax );
 end
 
 % plot total energy and equipartition
@@ -35,7 +35,6 @@ E = obs.energyDomainCoherent+obs.energyDomainIncoherent;
 figure; plot(obs.t,E/max(sum(E,2)));
 if ~obs.acoustics
     eq = (material.vs/material.vp)^(obs.d)/2;
-    eq=1;
     hold on; plot(obs.t,sum(E,2)/max(sum(E,2)),'k--')
     hold on; plot(obs.t,eq*(E(:,2)./E(:,1)))
     legend('P energy','S energy','total energy','equipartition')
