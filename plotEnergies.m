@@ -1,9 +1,6 @@
-function plotEnergies( obs, material, lambda, cmax, sensors )
+function plotEnergies( obs, material, lambda, sensors, cmax, rmax )
 
-% only plot totalEnergy
-if nargin<5
-    sensors = [];
-end
+% constants
 Nac = size(obs.energyDomainCoherent,2);
 
 % unbounded case
@@ -16,64 +13,194 @@ if ~isfield(obs,'nSources')
     Nx = length(obs.boxX);
     [boxx,boxz] = meshgrid(obs.boxX,obs.boxZ);
     r = sqrt(boxx.^2+boxz.^2);
-    Ei = interp1(obs.r',obs.Ei,r(:),'linear',0);
-    Ec = coherentInABox(obs.energyDomainCoherent,boxx(:),0,boxz(:), ...
-                                      [0 0 0],obs.t,obs.d,lambda,material);
-    E = reshape(Ec+Ei,Nx,Nx,obs.Nt*Nac);
-    E = reshape(permute(E,[2 1 3]),Nx,Nx,obs.Nt,Nac);
+    E = interp1( obs.r', obs.Ei, r(:), 'linear', 0 );
+    E = E + interp1( obs.r', obs.Ec, r(:), 'linear', 0 );
+    E = permute( reshape(E,Nx,Nx,obs.Nt,Nac), [2 1 3 4] );
     obs.energyDensityBox = E;
 end
 
-% compute directional energy
-[psi2pi,Ec,Ei] = directionEnergy( obs, material, lambda, sensors );
+
+% plot total energy
+if nargin<5; cmax = []; end
+%plotTotalEnergy( obs, cmax );
+
+% plot directional energy
+if nargin>3 && ~isempty(sensors)
+    if nargin<6; rmax = []; end 
+%    plotDirectionalEnergy( obs, material, lambda, sensors, rmax );
+end
+
+% plot total energy and equipartition
+E = obs.energyDomainCoherent+obs.energyDomainIncoherent;
+figure; plot(obs.t,E/max(sum(E,2)));
+if ~obs.acoustics
+    eq = (material.vs/material.vp)^(obs.d)/2;
+    eq=1;
+    hold on; plot(obs.t,sum(E,2)/max(sum(E,2)),'k--')
+    hold on; plot(obs.t,eq*(E(:,2)./E(:,1)))
+    legend('P energy','S energy','total energy','equipartition')
+end
+title('total energy')
+xlabel('time')
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function plotTotalEnergy( obs, cmax )
+
+% constants
+Nt = length(obs.t);
+x = obs.boxX;
+z = obs.boxZ;
+
+% estimate cmax and make sure low values are not plotted
+if isempty(cmax)
+    cmax = squeeze(max(max(obs.energyDensityBox,[],1),[],2));
+    cmax = cmax(ceil(obs.Nt/2),:);
+end
+level1  = logspace(-4,log10(cmax(1)),10);
+level2  = logspace(-4,log10(cmax(2)),10);
+
+% plot total energy - loop on time
+for i1=1:Nt
+    if i1==1; figure; lappend = false; else; clf; lappend = true; end
+    ax1 = axes;
+    hold off; contour(ax1,x,z,obs.energyDensityBox(:,:,i1,1)',level1);
+%    hold off; surf(ax1,x,z,obs.energyDensityBox(:,:,i1,1)');
+%    view(2); shading flat;% alpha 0.5;
+    colormap(ax1,'sky'); clim(ax1,[0 cmax(1)])
+    set(ax1,'Position',[.15 .11 .685 .815],'colorscale','log');
+    ax1.XLim = [min(x) max(x)]; ax1.YLim = [min(z) max(z)];
+    ax1.PlotBoxAspectRatio = [range(x) range(z) 1];
+    grid(ax1,'off')
+    cb1 = colorbar(ax1,'Position',[.84 .11 .03 .815]);
+    title(ax1,['Total Energy Density, time t = ' num2str(obs.t(i1)) 's'])
+    if ~obs.acoustics
+        title(cb1,'P energy')
+        ax2 = axes;
+%         surf(ax2, x,z,obs.energyDensityBox(:,:,i1,2)');
+        contour(ax2,x,z,obs.energyDensityBox(:,:,i1,2)',level2);
+%        view(2); shading flat; alpha 0.5
+        cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:)); 
+        clim(ax2,[0 cmax(2)]);
+        set(ax2,'colorscale','log');
+        ax2.XLim = [min(x) max(x)]; ax2.YLim = [min(z) max(z)];
+        ax2.PlotBoxAspectRatio = [range(x) range(z) 1];
+        linkaxes([ax1,ax2])
+        set([ax1,ax2],'Position',[.1 .11 .685 .815]);
+        ax2.Visible = 'off';
+        ax2.XTick = [];
+        ax2.YTick = [];
+        cb1.Position = [.8 .11 .03 .815];
+        cb2 = colorbar(ax2,'Position',[.9 .11 .03 .815]);
+        title(cb2,'S energy')
+    end
+
+    % export graphics
+    exportgraphics(gcf,'movieTotalEnergy.gif','Append',lappend);
+end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function plotDirectionalEnergy( obs, material, lambda, sensors, rmax )
 
 % constants
 Ns = size(sensors,1);
 Nt = length(obs.t);
-x = obs.boxX;
-z = obs.boxZ;
-lappend = false;
-rmax = 1e-2;
-numTile = [4 7+(1:(Ns-1))];
-Y = max(Ec(:)+Ei(:))+1;
 
-% initialize figure
-til = tiledlayout(2+ceil(max(0,Ns-2)./4),3+(Ns>0));
-titleS = cell(Ns,1);
-for i1 = 1:Ns
-    titleS{i1} = ['sensor at [' num2str(sensors(i1,1)) ',' ...
-                                               num2str(sensors(i1,3)) ']'];
+% compute directional energy
+[psi2pi,Ec,Ei] = directionEnergy( obs, material, lambda, sensors);
+
+% estimate rmax and make sure low values are readable
+if nargin<6 | isempty(rmax)
+    rmax = squeeze(max(max(max(Ei,[],1),[],2),[],4));
 end
 
-% loop on time
-for i1=1:Nt
-
-    % plot total energy
-    if i1==1; nexttile([2 3]); else; nexttile(1); end
-    hold off; surf(x,z,obs.energyDensityBox(:,:,i1)');
-    view(2); colorbar; shading flat
-    set(gca,'xlim',[min(x) max(x)],'ylim',[min(z) max(z)])
-    set(gca,'PlotBoxAspectRatio',[range(x) range(z) 1])
-    clim([0 cmax])
-    title('total energy density')
-    if Ns>0
-        hold on; scatter3(sensors(:,1),sensors(:,3),Y,50,'r','filled');
+% plot directional energy
+for i2 = 1:Ns
+    % loop on time
+    for i1=1:Nt
+        if i1==1; figure; lappend = false; else; clf; lappend = true; end
+        polarplot(psi2pi,Ei(:,i1,i2,1),'b');
+        hold on; polarplot(psi2pi,Ec(:,i1,i2,1),'b--');
+        if ~obs.acoustics
+            polarplot(psi2pi,Ei(:,i1,i2,2),'r');
+            polarplot(psi2pi,Ec(:,i1,i2,2),'r--');
+            legend('P - incoherent', 'P - coherent','S - incoherent', 'S - coherent')
+        else
+            legend('incoherent', 'coherent')
+        end
+        hold off;
+        rlim([0 rmax(i2)])
+        title(['sensor at [' num2str(sensors(i2,1)) ',' ...
+                  num2str(sensors(i2,3)) '], time t = ' num2str(obs.t(i1))])
+        legend
+        % export graphics
+        nameFig = ['movieDirectionalEnergy' num2str(i2) '.gif'];
+        exportgraphics(gcf,nameFig,'Append',lappend);
     end
-    hold on; scatter3(obs.positionSources(1,1),obs.positionSources(1,3),Y,50,'k','filled');
+end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [psi2pi,Ec,Ei] = directionEnergy(obs,material,lambda,sensors)
+% construct directional energy at sensors
+
+% constant
+Ns = size(sensors,1);
+[psi,ind] = sort(obs.psi);
+psi2pi = [psi 2*pi-psi(end:-1:1)];
+if obs.acoustics
+    material.vp = material.v;
+end
+psibounds = [0 (psi2pi(1:end-1)+psi2pi(2:end))/2 2*pi];
+
+% initialization
+Ec = zeros(2*obs.Npsi,obs.Nt,Ns,1+~obs.acoustics);
+Ei = zeros(2*obs.Npsi,obs.Nt,Ns,1+~obs.acoustics);
+obsEc1 = obs.energyDomainCoherent(:,1);
+obsEi1 = obs.energyIncoherent(:,ind,:,1);
+if ~obs.acoustics
+    obsEc2 = obs.energyDomainCoherent(:,2);
+    obsEi2 = obs.energyIncoherent(:,ind,:,2);
+end
+
+% loop on sources
+for i2 = 1:obs.nSources
 
     % loop on sensors
-    for i2 = 1:Ns
-        nexttile(numTile(i2))
-        polarplot(psi2pi,Ei(:,i1,i2),'b');
-        hold on; polarplot(psi2pi,Ec(:,i1,i2),'r'); hold off;
-        rlim([0 rmax])
-        title(titleS{i2})
+    for i1 = 1:Ns
+
+        % distance and angle from source to sensor
+        X = sensors(i1,:) - obs.positionSources(i2,:);
+        r = sqrt(sum(X.^2));
+        rxz = sqrt(sum(X([1 3]).^2));
+        theta = acos(X(1)/rxz);
+        if X(3)<0; theta = 2*pi-theta; end
+        psiRot = mod( psi2pi - theta, 2*pi );
+        indtheta = theta>=psibounds(1:end-1) & theta<=psibounds(2:end);
+
+        % estimate coherent directional energy at sensor and rotate
+        Es = exp(-(r/lambda-(material.vp/lambda)*obs.t).^2 ) .* obsEc1';
+
+        Ec(indtheta,:,i1,1) = Ec(indtheta,:,i1,1) + Es;
+        if ~obs.acoustics
+            Es = exp(-(r/lambda-(material.vs/lambda)*obs.t).^2 ) .* obsEc2';
+            Ec(indtheta,:,i1,2) = Ec(indtheta,:,i1,2) + Es;
+        end
+
+        % estimate incoherent directional energy at sensor and rotate
+        Es = squeeze( interp1( obs.r', obsEi1, r ));
+        Es2 = [ Es(end:-1:1,:,:); Es];
+        Ei(:,:,i1,1) = Ei(:,:,i1,1) + interp1( psi2pi', Es2, psiRot );
+        if ~obs.acoustics
+            Es = squeeze( interp1( obs.r', obsEi2, r ));
+            Es2 = [ Es(end:-1:1,:,:); Es];
+            Ei(:,:,i1,2) = Ei(:,:,i1,2) + interp1( psi2pi', Es2, psiRot );
+        end        
+
+    % end of loop on sources
     end
 
-    % export graphics
-    title(til,['time t = ' num2str(obs.t(i1)) 's'])
-    exportgraphics(gcf,'movieEnergy.gif','Append',lappend);
-    lappend = true;
+% end of loop on sensors
 end
-
 end
