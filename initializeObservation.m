@@ -12,9 +12,8 @@ if d==2
     psi = (binPsi(1:end-1)+binPsi(2:end))/2;
 elseif d==3
     binPsi = linspace(-1,1,observation.Ndir);
-    cosPsi = linspace(-1,1,observation.Ndir-1);
-    psi = acos(cosPsi);
-end
+    psi = acos((binPsi(1:end-1)+binPsi(2:end))/2);
+end  
 Npsi = length(psi);
 
 % sensor positions
