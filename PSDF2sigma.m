@@ -39,6 +39,9 @@ function sigma = PSDF2sigma(mat,d)
 % Following Khazaie et al 2017, PSDFs are supposed as factorizable. 
 % Extending to the non-factorizable case is straightforward.
 
+
+% ADD A SECOND ARGUMENT D for acoustic and elastic case
+
 % constants
 acoustics = mat.acoustics;
 coeffs_variation = mat.coefficients_of_variation;
@@ -114,17 +117,17 @@ else
               .*(1-cos(th).^2).*S(zetaP.*sqrt(1+K^2-2*K*cos(th)))*mat.Frequency;
 
         %  Ryzhik et al; Eqs. (4.56), (1.20), (1.21)
-        sigmaSP = @(th) (pi/2/K^3)*zetaS^3* ...
+        sigmaSP = @(th) (pi/4/K^3)*zetaS^3* ...
             ( delta_rr^2 + (4/K^2)*delta_mm^2*cos(th).^2 + (4/K)*rho_mr*delta_mm*delta_rr*cos(th) ) ...
               .*(1-cos(th).^2).*S(zetaS.*sqrt(1+1/K^2-2/K*cos(th)))*mat.Frequency;
 
         % Ryzhik et al; Eq. (4.54)
-        sigmaSS_TT = @(th) (pi/2)*zetaS^3*delta_rr^2*(1+cos(th).^2)...
-                            .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
-        sigmaSS_GG = @(th) (pi/2)*zetaS^3*delta_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
-                            .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
-        sigmaSS_GT = @(th) (pi/2)*zetaS^3*rho_mr*delta_mm*delta_rr*(2*cos(th).^3)...
-                            .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
+        sigmaSS_TT = @(th) (pi/4)*zetaS^3*delta_rr^2*(1+cos(th).^2)...
+                           .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
+        sigmaSS_GG = @(th) (pi/4)*zetaS^3*delta_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
+                           .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
+        sigmaSS_GT = @(th) (pi/4)*zetaS^3*rho_mr*delta_mm*delta_rr*(4*cos(th).^3)...
+                           .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
     end
 
     sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
