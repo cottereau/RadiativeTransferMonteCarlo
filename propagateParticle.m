@@ -62,13 +62,15 @@ while any(ind)
         theta(  P.p & s ) = mat.invcdf{2,1}( theta(  P.p & s ) );
         theta( ~P.p & s ) = mat.invcdf{2,2}( theta( ~P.p & s ) );
         theta = theta(scatter);
- 
+
     end
 
     % scattering away from direction of propagation
     dir = P.dir(scatter,:);
     P.dir(scatter,:) =  cos(theta).*dir + sin(theta).*P.perp(scatter,:);
+    P.dir = P.dir./sqrt(sum(P.dir.^2,2));
     P.perp(scatter,:)= -sin(theta).*dir + cos(theta).*P.perp(scatter,:);
+    P.perp = P.perp./sqrt(sum(P.perp.^2,2));
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
