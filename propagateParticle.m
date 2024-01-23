@@ -68,9 +68,9 @@ while any(ind)
     % scattering away from direction of propagation
     dir = P.dir(scatter,:);
     P.dir(scatter,:) =  cos(theta).*dir + sin(theta).*P.perp(scatter,:);
-    P.dir = P.dir./sqrt(sum(P.dir.^2,2));
+    P.dir(scatter,:) = P.dir(scatter,:)./sqrt(sum(P.dir(scatter,:).^2,2));
     P.perp(scatter,:)= -sin(theta).*dir + cos(theta).*P.perp(scatter,:);
-    P.perp = P.perp./sqrt(sum(P.perp.^2,2));
+    P.perp(scatter,:) = P.perp(scatter,:)./sqrt(sum(P.perp(scatter,:).^2,2));
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
