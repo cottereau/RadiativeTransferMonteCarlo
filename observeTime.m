@@ -4,7 +4,7 @@ function Ei = observeTime(d,acoustics,x,p,dir,coherent,binPsi,binR)
 Nt = size(x,3);
 Npsi = length(binPsi)-1;
 Nr = length(binR)-1;
-Ei = zeros(Nr,Npsi,Nt,1+~acoustics,'uint32');
+Ei = zeros(Nr,Npsi,Nt,1+~acoustics,'uint16');
 
 % loop on time steps
 for it = 1:Nt

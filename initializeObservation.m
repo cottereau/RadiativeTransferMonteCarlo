@@ -33,8 +33,8 @@ binR = (r(1:end-1)+r(2:end))/2;
 binR = [-dr/2 binR binR(end)+dr/2];
 
 % initialize matrix of observations
-energy = zeros(Nr,Npsi,Nt,1+acoustics,'uint32');
-Ec = zeros(Nt,2);
+energy = zeros(Nr,Npsi,Nt,1+acoustics,'uint16');
+Ec = zeros(Nt,2,'uint16');
 
 % energy in a small volume of the domain
 dr = volumeEnergy(d,r);
