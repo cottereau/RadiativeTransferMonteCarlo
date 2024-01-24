@@ -33,5 +33,8 @@ material.sigma = PSDF2sigma( material, geometry.dimension );
 obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
 % plotting output
-sensors = [1 0 0; 9 0 0];
-plotEnergies( obs, material, source.lambda, sensors );
+plotting = struct( 'equipartition', false, ...
+                   'movieTotalEnergy', false, ...
+                   'movieDirectionalEnergy', true, ...
+                   'sensors', [1 0 0; 9 0 0]);
+plotEnergies( plotting, obs, material, source.lambda );

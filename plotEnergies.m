@@ -1,4 +1,4 @@
-function plotEnergies( obs, material, lambda, sensors, cmax, rmax )
+function plotEnergies( type, obs, material, lambda, cmax, rmax )
 
 % constants
 Nac = size(obs.energyDomainCoherent,2);
@@ -21,26 +21,34 @@ end
 
 
 % plot total energy
-if nargin<5; cmax = []; end
-plotTotalEnergy( obs, cmax );
+if isfield(type,'movieTotalEnergy') && type.movieTotalEnergy
+    if nargin<5; cmax = []; end
+    plotTotalEnergy( obs, cmax );
+end
 
 % plot directional energy
-if nargin>3 && ~isempty(sensors)
-    if nargin<6; rmax = []; end 
-    plotDirectionalEnergy( obs, material, lambda, sensors, rmax );
+if isfield(type,'movieDirectionalEnergy') && type.movieDirectionalEnergy
+    if nargin>3 && ~isempty(type.sensors)
+        if nargin<6; rmax = []; end
+        plotDirectionalEnergy( obs, material, lambda, type.sensors, rmax );
+    end
 end
 
 % plot total energy and equipartition
-E = obs.energyDomainCoherent+obs.energyDomainIncoherent;
-figure; plot(obs.t,E/max(sum(E,2)));
-if ~obs.acoustics
-    eq = (material.vs/material.vp)^(obs.d)/2;
-    hold on; plot(obs.t,sum(E,2)/max(sum(E,2)),'k--')
-    hold on; plot(obs.t,eq*(E(:,2)./E(:,1)))
-    legend('P energy','S energy','total energy','equipartition')
+if isfield(type,'equipartition') && type.equipartition
+    E = obs.energyDomainCoherent+obs.energyDomainIncoherent;
+    figure; plot(obs.t,E/max(sum(E,2)));
+    if ~obs.acoustics
+        eq = (material.vs/material.vp)^(obs.d)/2;
+        hold on; plot(obs.t,sum(E,2)/max(sum(E,2)),'k--')
+        hold on; plot(obs.t,eq*(E(:,2)./E(:,1)))
+        legend('P energy','S energy','total energy','equipartition')
+    end
+    title('total energy')
+    xlabel('time')
+    set(gca,'YLim',[0 1.2]);
 end
-title('total energy')
-xlabel('time')
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
