@@ -58,6 +58,52 @@ function plotTotalEnergy( obs, cmax )
 Nt = length(obs.t);
 x = obs.boxX;
 z = obs.boxZ;
+n = 1+~obs.acoustics;
+indp = z>=0;
+indn = z<0;
+
+% estimate cmax and make sure low values are not plotted
+if isempty(cmax)
+    cmax = squeeze(max(max(obs.energyDensityBox,[],1),[],2));
+    cmax = cmax(ceil(obs.Nt/2),:);
+end
+
+% plot total energy - loop on time
+figure; lappend = false;
+for i1=1:Nt
+    ax1 = subplot(n,1,1,'replace'); 
+    surf(ax1, x,z(indp),obs.energyDensityBox(:,indp,i1,1)');
+    view(2); shading flat; box on;
+    cb1 = colorbar; colormap(ax1,'sky'); clim(ax1,[0 cmax(1)])
+    set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z(indp)) max(z(indp))], ...
+            'XTick',[],'Position',[.13 .5838 .6964 .3412]);
+    title(cb1,'P energy')
+    set(cb1,'position',[.8411 .5833 .05 .31]);
+    title(ax1,['Total Energy Density, time t = ' num2str(obs.t(i1)) 's'])
+    if ~obs.acoustics
+        ax2 = subplot(n,1,2,'replace');
+        surf(ax2,x,z(indn),obs.energyDensityBox(:,indn,i1,2)');
+        view(2); shading flat; box on;
+        cb2 = colorbar; clim(ax2,[0 cmax(2)]); 
+        cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:)); 
+        set(ax2,'XLim',[min(x) max(x)],'YLim',[min(z(indn)) max(z(indn))], ...
+            'Position',[.13 .23 .6964 .3412]);
+        title(cb2,'S energy')
+        set(cb2,'position',[.8411 .2298 .05 .31]);
+    end
+    % export graphics
+    exportgraphics(gcf,'movieTotalEnergy.gif','Append',lappend);
+    lappend = true;
+end
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function plotTotalEnergy_old( obs, cmax )
+
+% constants
+Nt = length(obs.t);
+x = obs.boxX;
+z = obs.boxZ;
 
 % estimate cmax and make sure low values are not plotted
 if isempty(cmax)
@@ -68,12 +114,13 @@ level1  = logspace(-4,log10(cmax(1)),10);
 level2  = logspace(-4,log10(cmax(2)),10);
 
 % plot total energy - loop on time
+
 for i1=1:Nt
     if i1==1; figure; lappend = false; else; clf; lappend = true; end
     ax1 = axes;
-    hold off; contour(ax1,x,z,obs.energyDensityBox(:,:,i1,1)',level1);
-%    hold off; surf(ax1,x,z,obs.energyDensityBox(:,:,i1,1)');
-%    view(2); shading flat;% alpha 0.5;
+%    hold off; contour(ax1,x,z,obs.energyDensityBox(:,:,i1,1)',level1);
+    hold off; surf(ax1,x,z,obs.energyDensityBox(:,:,i1,1)');
+    view(2); shading flat;% alpha 0.5;
     colormap(ax1,'sky'); clim(ax1,[0 cmax(1)])
     set(ax1,'Position',[.15 .11 .685 .815],'colorscale','log');
     ax1.XLim = [min(x) max(x)]; ax1.YLim = [min(z) max(z)];
@@ -84,9 +131,9 @@ for i1=1:Nt
     if ~obs.acoustics
         title(cb1,'P energy')
         ax2 = axes;
-%         surf(ax2, x,z,obs.energyDensityBox(:,:,i1,2)');
-        contour(ax2,x,z,obs.energyDensityBox(:,:,i1,2)',level2);
-%        view(2); shading flat; alpha 0.5
+        surf(ax2, x,z,obs.energyDensityBox(:,:,i1,2)');
+%         contour(ax2,x,z,obs.energyDensityBox(:,:,i1,2)',level2);
+       view(2); shading flat; alpha 0.5
         cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:)); 
         clim(ax2,[0 cmax(2)]);
         set(ax2,'colorscale','log');

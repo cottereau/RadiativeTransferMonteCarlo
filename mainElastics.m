@@ -11,8 +11,9 @@ source = struct( 'numberParticles', 1e6, ...
 
 % observations
 observation = struct('dr', 0.05, ...        % size of bins in space
-                     'time', 0:0.05:20, ...  % observation times
-                     'Ndir', 5 );         % number of bins for directions           
+                     'r', 0:0.05:10, ...
+                     'time', 0:0.05:10, ...  % observation times
+                     'Ndir', 50 );         % number of bins for directions           
  
 % material properties
 % material.coefficients_of_variation defines the coefficients of variaiton

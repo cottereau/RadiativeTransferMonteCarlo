@@ -66,7 +66,6 @@ parfor ip = 1:Np
 
 % end of loop on packages
 end
-whos
 obs.energyIncoherent = (1./(obs.dr'*obs.N)).*double(Ei);
 obs.energyDomainCoherent = double(Ec)/obs.N;
 
