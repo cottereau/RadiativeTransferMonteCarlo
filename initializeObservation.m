@@ -19,6 +19,9 @@ Npsi = length(psi);
 % sensor positions
 if isfield(observation,'r')
     r = observation.r;
+    if r(1)~=0 || any(diff(r)~=mean(diff(r)))
+        error('invalid sensor vector')
+    end
 else
     if material.acoustics
         Rmax = material.v*max(t);
