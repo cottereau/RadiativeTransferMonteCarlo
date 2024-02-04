@@ -17,7 +17,6 @@ end
 if size(x,2)>1, x = x'; end
 if size(y,2)>1, y = y'; end
 if size(z,2)>1, z = z'; end
-if size(Ecr,1)>1, Ecr = Ecr'; end
 
 % constants
 minR = eps;
@@ -28,7 +27,7 @@ y0 = X0(:,2);
 z0 = X0(:,3);
 ns = size(x0,1);
 acoustics = false;
-if size(Ecr,1)==1
+if size(Ecr,2)==1
     acoustics = true;
     material.vp = material.v; 
 end
@@ -67,9 +66,9 @@ end
 for i1 = 1:length(x0)
     r = sqrt((x(:)-x0(i1)).^2+(y-y0(i1)).^2+(z(:)-z0(i1)).^2);
     r(r<minR)=minR;
-    Ec(:,:,1) = Ec(:,:,1) + exp(-((r-material.vp*t)/lambda).^2).*Ecr(1,:).*(ampC(:,i1)./r.^d);
+    Ec(:,:,1) = Ec(:,:,1) + exp(-((r-material.vp*t)/lambda).^2).*Ecr(:,1)'.*(ampC(:,i1)./r.^d);
     if ~acoustics
-        Ec(:,:,2) = Ec(:,:,2) + exp(-((r-material.vs*t)/lambda).^2).*Ecr(2,:).*(ampC(:,i1)./r.^d);
+        Ec(:,:,2) = Ec(:,:,2) + exp(-((r-material.vs*t)/lambda).^2).*Ecr(:,2)'.*(ampC(:,i1)./r.^d);
     end
 end
 

@@ -19,7 +19,7 @@ Npsi = length(psi);
 % sensor positions
 if isfield(observation,'r')
     r = observation.r;
-    if r(1)~=0 || any(diff(r)~=mean(diff(r)))
+    if r(1)~=0 || any(abs(diff(r)/mean(diff(r))-1)>1e-12)
         error('invalid sensor vector')
     end
 else
