@@ -63,8 +63,8 @@ else
 
             % running Hoshiba's Monte Carlo-based approach
             EH = Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
-                source, material, geometry, 10 );
-            EH = EH.*(2*pi*obs.dr(inds));
+                source, material, geometry, 20 );
+            EH = EH.*(pi*obs.dr(inds));
 
             % visual comparison
             figure; hold on; grid on; box on;
@@ -132,7 +132,6 @@ else
 
             % Load the results of the paper
             load('Nakahara_Yoshimoto_2011_Fig4_left.mat')
-
 
             % input data
             geometry = struct( 'dimension', 2 );
