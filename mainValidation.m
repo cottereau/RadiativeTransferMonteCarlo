@@ -154,7 +154,7 @@ else
 
             % Run our code
             obsS = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-            source.polarizaton = 'P';
+            source.polarization = 'P';
             obsP = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
             % Epc = obs.Ec(:,:,1); Epi = obs.Ei(:,:,1); Ep = Epc+Epi; Esc = obs.Ec(:,:,2); Esi = obs.Ei(:,:,2); Es = Esc+Esi;
