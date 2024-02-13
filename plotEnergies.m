@@ -39,7 +39,7 @@ if isfield(type,'equipartition') && type.equipartition
     E = obs.energyDomainCoherent+obs.energyDomainIncoherent;
     figure; plot(obs.t,E/max(sum(E,2)));
     if ~obs.acoustics
-        eq = (material.vs/material.vp)^(obs.d)/2;
+        eq = (material.vs/material.vp)^(obs.d)/(obs.d-1);
         hold on; plot(obs.t,sum(E,2)/max(sum(E,2)),'k--')
         hold on; plot(obs.t,eq*(E(:,2)./E(:,1)))
         legend('P energy','S energy','total energy','equipartition')
