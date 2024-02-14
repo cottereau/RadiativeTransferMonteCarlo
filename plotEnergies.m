@@ -44,7 +44,15 @@ if isfield(type,'equipartition') && type.equipartition
         hold on; plot(obs.t,eq*(E(:,2)./E(:,1)))
         legend('P energy','S energy','total energy','equipartition')
     end
-    title('total energy')
+    % Determine the polarization type of the source
+    if obs.energyDomainCoherent(1,1)==1 && obs.energyDomainCoherent(1,2)==0
+        pol_type = 'P';
+    elseif obs.energyDomainCoherent(1,1)==0 && obs.energyDomainCoherent(1,2)==1
+        pol_type = 'S';
+    else
+        error('The source polarization should be either P or S')
+    end
+    title(['Energy partitioning for a source with polarization type "' pol_type '"'])
     xlabel('time')
     set(gca,'YLim',[0 1.2]);
 end

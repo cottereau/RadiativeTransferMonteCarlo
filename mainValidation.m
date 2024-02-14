@@ -135,25 +135,27 @@ else
 
             % input data
             geometry = struct( 'dimension', 2 );
-            source = struct( 'numberParticles', 1e5, ...
-                'polarization', 'S', ...
-                'lambda', 0.001 );
-            observation = struct('dr', 0.4, ...        % size of bins in space
-                'time', 0:0.43:34.13, ...  % observation times
-                'Ndir', 10 );         % number of bins for directions
+            source = struct( 'numberParticles', 1e6, ...
+                             'polarization', 'S', ...
+                             'lambda', 0.001 );
             material = struct( 'acoustics', false, ...
-                'vp', 6, ...
-                'vs', 3.46);
+                               'vp', 6, ...
+                               'vs', 3.46);
 
             % Values taken from (Nakahara & Yoshimoto, 2011, Section 3.1)
             K = material.vp/material.vs;
             gpp = 0.05; gps = 0.05; gp = gpp + gps;
             gsp = gps/K; gss = (material.vp*gp - material.vs*gsp)/material.vs;
             material.sigma = {@(th) 1/2/pi*ones(size(th))*gpp*material.vp, @(th) 1/2/pi*ones(size(th))*gps*material.vp; ...
-                @(th) 1/2/pi*ones(size(th))*gsp*material.vs, @(th) 1/2/pi*ones(size(th))*gss*material.vs};
+                              @(th) 1/2/pi*ones(size(th))*gsp*material.vs, @(th) 1/2/pi*ones(size(th))*gss*material.vs};
+
+            observation = struct('r', 0:0.1:10, ... % size of bins in space
+                                 'time', 0:0.1:10, ...       % observation times
+                                 'Ndir', 10 );               % number of bins for directions
 
             % Run our code
             obsS = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+            
             source.polarization = 'P';
             obsP = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
@@ -162,17 +164,18 @@ else
             EpcS = obsS.Ec(:,:,1); EpiS = obsS.Ei(:,:,1); EpS = EpcS+EpiS; EscS = obsS.Ec(:,:,2); EsiS = obsS.Ei(:,:,2); EsS = EscS+EsiS;
             Ep = (1*EpP+1.5*K^5*EpS)/(1+1.5*K^5); Es = (1*EsP+1.5*K^5*EsS)/(1+1.5*K^5);
             % Normalized P-wave energy in terms of normalized time
-            figure; semilogy(obsP.t*gp*material.vp,2*pi*Ep(2,:)/(1/(1+1.5*K^5)*(gp*material.vp)^2),'-b','linewidth',2);
+            ind = find(abs(obsP.r*gp-1)<0.01);
+            figure; semilogy(obsP.t*gp*material.vp,2*pi*Ep(ind(1),:)/(1/(1+1.5*K^5)*(gp*material.vp)^2),'-b','linewidth',2);
             xlabel('Normalized Time [-]'); ylabel('Normalized P-wave energy [-]');
             xlim([0 6]); ylim([0.001 100]); hold on; plot(energy_P(:,1),energy_P(:,2),'-r','linewidth',2);
             yticks([0.001 0.01 0.1 1 10 100]); yticklabels({'0.001','0.01','0.1','1','10','100'});
 
             % Normalized P-wave energy in terms of normalized time
-            figure; semilogy(obsP.t*gp*material.vp,2*pi*Es(2,:)/(1/(1+1.5*K^5)*(gp*material.vp)^2),'-b','linewidth',2);
+            figure; semilogy(obsP.t*gp*material.vp,2*pi*Es(ind(1),:)/(1/(1+1.5*K^5)*(gp*material.vp)^2),'-b','linewidth',2);
             xlabel('Normalized Time [-]'); ylabel('Normalized S-wave energy [-]');
             xlim([0 6]); ylim([0.001 100]); hold on; plot(energy_S(:,1),energy_S(:,2),'-r','linewidth',2);
             yticks([0.001 0.01 0.1 1 10 100]); yticklabels({'0.001','0.01','0.1','1','10','100'});
-
+           
             %% 3D Anisotropic scattering (isotropic differential scattering cross-section)
             % to be done
         case '3dIsotropicElastic'
