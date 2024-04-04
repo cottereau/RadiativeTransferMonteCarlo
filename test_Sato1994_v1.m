@@ -1,14 +1,10 @@
 % Computation of normalized energy densities for 3D elastic isotropic 
 % scattering media, based on Sato 1994
 
-material = struct( 'acoustics', false, ...
-                   'vp', 6, ...
-                   'vs', 3.46);
-vp = material.vp; vs = material.vs;
-gama = vp/vs;
+gama = sqrt(3);
 
 % Numerical case study in Sato 1994 (Fig. 4, left)
-eta = 0.1;
+eta = 1;
 Sigmapp = eta/2; Sigmaps = eta/2;
 Sigmasp = eta/2; Sigmass = eta/2;
 
@@ -17,53 +13,53 @@ Kc_func = @(x,K) atanh(x/K)./x.*(H(x-1)-H(x-K)) + (atanh(1./x)+atanh(K./x))./x.*
 K_func = @(x) 2*atanh(1./x)./x.*H(x-1);
 
 % normalized time (a = eta*t)
-Nt = 256;
-a = linspace(0,4,Nt);
+Nt = 2^10;
+a = linspace(0.01,8,Nt);
 [m,n] = size(a); if m>n, a=a'; end
 
 % normalized distance (b = sigma*r/vp)
-Nr = 256;
-b = linspace(0,2,Nr);
+Nr = 2^10;
+b = linspace(0.01,8,Nr);
 [m,n] = size(b); if m<n, b=b'; end
 
-% Direct waves (no scattering)
-E0 = zeros(Nr,Nt);
-[~,ind1] = min((a-b).^2,[],1);
-for i = 1:Nt
-    E0(ind1(i),i) = E0(ind1(i),i) + exp(-a(i)).*1./(4*pi*b(i).^2*(1+1.5*gama^2));
-end
+[B,A] = meshgrid(b,a);
 
-[~,ind2] = min((a-gama*b).^2,[],1);
-for i = 1:Nt
-    E0(ind2(i),i) = E0(ind2(i),i) + exp(-a(i)).*1.5*gama^5./(4*pi*b(i).^2*(1+1.5*gama^2));
-end
+% Direct waves (no scattering)
+% Gaussian pulse used to define a Dirac delta function
+width = 0.01; % Width of the Gaussian pulse
+deltaFunction_1 = exp(-(a-b).^2/(2*width^2))/(sqrt(2*pi)*width);
+deltaFunction_2 = exp(-(a-gama*b).^2/(2*width^2))/(sqrt(2*pi)*width);
+E0 = (deltaFunction_1 + 1.5*gama^5*deltaFunction_2).*exp(-a).*1./(4*pi*b.^2*(1+1.5*gama^5));
+
+% E0 = zeros(Nr,Nt);
+% [~,ind1] = min((a-b).^2,[],1);
+% for i = 1:Nt
+%     E0(ind1(i),i) = E0(ind1(i),i) + exp(-a(i)).*1./(4*pi*b(i).^2*(1+1.5*gama^5));
+% end
+
+% [~,ind2] = min((a-gama*b).^2,[],1);
+% for i = 1:Nt
+%     E0(ind2(i),i) = E0(ind2(i),i) + exp(-a(i)).*1.5*gama^5./(4*pi*b(i).^2*(1+1.5*gama^5));
+% end
 
 % Single scattering terms
-E1_ps = 1*gama*Sigmaps*Kc_func(a./b,gama);
-E1_ps(H(a-b)) = 0;
-
 E1_pp = 1*Sigmapp*K_func(a./b);
-E1_pp(H(a-b)) = 0;
+E1_pp(~H(a-b)) = 0;
+
+E1_ps = 1*gama*Sigmaps*Kc_func(a./b,gama);
+E1_ps(a./b==1) = 1*gama*Sigmaps*atanh(1/gama);
+E1_ps(~H(a-b)) = 0;
 
 E1_sp = 1.5*gama^5*gama*Sigmasp*Kc_func(a./b,gama);
-E1_sp(H(a-b)) = 0;
+E1_sp(a./b==1) = 1.5*gama^5*gama*Sigmasp*atanh(1/gama);
+E1_sp(~H(a-b)) = 0;
 
 E1_ss = 1.5*gama^5*gama*Sigmass*K_func(a/gama./b);
-E1_ss(H(a-gama*b)) = 0;
+E1_ss(~H(a-gama*b)) = 0;
 
-E1 = (E1_ps+E1_pp+E1_sp+E1_ss).*exp(-a)./(4*pi*b.^2*eta*(1+1.5*gama^5));
+E1 = (E1_pp+E1_ps+E1_sp+E1_ss).*exp(-a)./(4*pi*b.^2*eta*(1+1.5*gama^5));
 
 % Multiple scattering term
-Nk = 2^9;
-kk = linspace(-5,5,Nk); 
-dkk = mean(diff(kk)); fsk = 1/dkk;
-rr = (-Nk/2:Nk/2-1)*fsk/Nk;
-
-Nw = 2^8;
-ww = linspace(-5,5,Nw); 
-dww = mean(diff(ww)); fsw = 1/dww; 
-tt = (-Nw/2:Nw/2-1)*fsw/Nw;
-
 Gp = @(k,s) (1/eta./k).*atan(k./(s+1));
 Gs = @(k,s,K) (K/eta./k).*atan(k./(K*(s+1)));
 
@@ -77,21 +73,29 @@ Em0 = @(s,K) (1*(1/eta./(s+1)).*(Sigmaps*(1/eta./(s+1)).*(Sigmass*(1/eta./(s+1))
                +1.5*K^5*(1/eta./(s+1)).*(Sigmasp*(1/eta./(s+1)).*(Sigmapp*(1/eta./(s+1)).*(1-Sigmass*(1/eta./(s+1)))+Sigmaps*(1/eta./(s+1)).*(1+Sigmasp*(1/eta./(s+1)))) + ...
                                    Sigmass*(1/eta./(s+1)).*(Sigmass*(1/eta./(s+1)).*(1-Sigmapp*(1/eta./(s+1)))+Sigmasp*(1/eta./(s+1)).*(1+Sigmaps*(1/eta./(s+1))))))./ ...
                                    ( (1-Sigmapp*(1/eta./(s+1))).*(1-Sigmass*(1/eta./(s+1)))-Sigmaps*Sigmasp*(1/eta./(s+1)).*(1/eta./(s+1)) );
-y = Em(-kk.',-1i*ww,gama);
-if any(kk==0)
-    y(kk==0,:) = Em0(-1i*ww,gama);
+
+% Definition of normalized variables k and w
+Lk = 500; Lw = 500;
+Nk = 2^12; Nw = 2^12;
+dkk = Lk/Nk; dww = Lw/Nw;
+kk = linspace(-Lk/2,Lk/2,Nk);
+ww = linspace(-Lw/2,Lw/2,Nw);
+
+y = Em(-kk',-1i*ww,gama);
+if any(kk'==0)
+    y(kk'==0,:) = Em0(-1i*ww,gama);
 end
 
-Y = dkk*dww*fft2(1i*kk.'.*y/2/pi);
+dr = 2*pi/Lk; dt = 2*pi/Lw;
+rr = (-Nk/2:Nk/2-1)*dr;
+tt = (-Nw/2:Nw/2-1)*dt;
+[R,T] = meshgrid(rr,tt);
 
-E_multiple = (eta/(1+1.5*gama^5)/(2*pi)^2./rr.').*abs(Y);
+E_fourier = abs( dkk*dww*fftshift( fft2( 1i*kk'/(2*pi).*y ) ) );
+E_interp = interp2(R,T,E_fourier,B,A);
+E_multiple = eta./((1+1.5*gama^5)*(2*pi)^2*b).*E_interp;
+E = E0 + E1 + E_multiple;
 
-[X,Y] = meshgrid(tt,rr);
-Em_final = interp2(X,Y,E_multiple,a,b);
-
-% superposition of contributions from different scattering orders
-E = E0 + E1 + Em_final;
-
-r_target = 1;
-inds = find(abs(b-r_target)<0.01);
-figure; plot(a,abs(E(inds(1),:)))
+r_target = 0.5;
+inds = find(abs(b-r_target)<0.005);
+figure; plot(a,E(inds(1),:)); xlim([0 4]);
