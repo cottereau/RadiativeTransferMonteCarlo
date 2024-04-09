@@ -32,9 +32,9 @@ source = struct( 'numberParticles', 1e6, ...
 observation = struct('dr', 0.05, ...        % size of bins in space
                      'time', 0:0.05:20, ...  % observation times
                      'Ndir', 10 );         % number of bins for directions           
- 
+
 % material properties
-% material.coefficients_of_variation defines the coefficients of variaiton
+% material.coefficients_of_variation defines the coefficients of variation
 % of kappa (bulk modulus) and rho (density), respectively.
 % material.correlation_coefficients defines the correlation coefficient
 % between kappa (bulk modulus) and rho (density).
@@ -47,13 +47,23 @@ material = struct( 'acoustics', true, ...
                    'correlation_coefficients', -0.5 );
 
 % radiative transfer solution - acoustic with boundaries
-% obs = radiativeTransferAcoustics( source, material, observation, geometry );
-obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+switch geometry.type
+    case 'fullspace'
+        obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+    otherwise
+        obs = radiativeTransferAcoustics( source, material, observation, geometry );
+end
 
-% % plotting output
-% sensors = [3   1 -0.5; 
-%            3.9 1 -2.5;
-%            0.2 1 -1.5;
-%            1.5 1 -2.5;
-%            3.5 1 -2.8];
-% plotEnergies( obs, material, source.lambda, 4, sensors );
+% plotting output
+sensors = [3   1 -0.5; 
+           3.9 1 -2.5;
+           0.2 1 -1.5;
+           1.5 1 -2.5;
+           3.5 1 -2.8];
+
+plotting = struct( 'equipartition', true, ...
+                   'movieTotalEnergy', true, ...
+                   'movieDirectionalEnergy', true, ...
+                   'sensors', sensors);
+
+plotEnergies( plotting, obs, material, source.lambda )

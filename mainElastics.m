@@ -13,9 +13,9 @@ source = struct( 'numberParticles', 1e6, ...
 observation = struct('dr', 0.04, ...        % size of bins in space
                      'time', 0:0.1:15, ...  % observation times
                      'Ndir', 10 );         % number of bins for directions           
- 
+
 % material properties
-% material.coefficients_of_variation defines the coefficients of variaiton
+% material.coefficients_of_variation defines the coefficients of variation
 % of lambda, mu (Lamé coefficients) and rho (density), respectively.
 % material.correlation_coefficients defines the correlation coefficient
 % between (lambda,mu), (lambda,rho), and (mu,rho), respectively.
@@ -40,7 +40,7 @@ obs = radiativeTransferUnbounded( geometry.dimension, source, material, observat
 
 % plotting output
 plotting = struct( 'equipartition', true, ...
-                   'movieTotalEnergy', false, ...
-                   'movieDirectionalEnergy', false, ...
+                   'movieTotalEnergy', true, ...
+                   'movieDirectionalEnergy', true, ...
                    'sensors', [1 0 0; 9 0 0]);
 plotEnergies( plotting, obs, material, source.lambda );

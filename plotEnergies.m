@@ -44,17 +44,21 @@ if isfield(type,'equipartition') && type.equipartition
         hold on; plot(obs.t,eq*(E(:,2)./E(:,1)))
         legend('P energy','S energy','total energy','equipartition')
     end
-    % Determine the polarization type of the source
-    if obs.energyDomainCoherent(1,1)==1 && obs.energyDomainCoherent(1,2)==0
-        pol_type = 'P';
-    elseif obs.energyDomainCoherent(1,1)==0 && obs.energyDomainCoherent(1,2)==1
-        pol_type = 'S';
+    if ~obs.acoustics
+        % Determine the polarization type of the source
+        if obs.energyDomainCoherent(1,1)==1 && obs.energyDomainCoherent(1,2)==0
+            pol_type = 'P';
+        elseif obs.energyDomainCoherent(1,1)==0 && obs.energyDomainCoherent(1,2)==1
+            pol_type = 'S';
+        else
+            error('The source polarization should be either P or S')
+        end
+        title(['Energy partitioning for a source with polarization type "' pol_type '"'])
+        set(gca,'YLim',[0 1.2]);
     else
-        error('The source polarization should be either P or S')
+        title('Total energy')
     end
-    title(['Energy partitioning for a source with polarization type "' pol_type '"'])
     xlabel('time')
-    set(gca,'YLim',[0 1.2]);
 end
 
 end
@@ -70,6 +74,10 @@ n = 1+~obs.acoustics;
 indp = z>=0;
 indn = z<0;
 
+if obs.acoustics
+    indp = z==z;
+end
+
 % estimate cmax and make sure low values are not plotted
 if isempty(cmax)
     cmax = squeeze(max(max(obs.energyDensityBox,[],1),[],2));
@@ -79,10 +87,10 @@ end
 % plot total energy - loop on time
 figure; lappend = false;
 for i1=1:Nt
-    ax1 = subplot(n,1,1,'replace'); 
+    ax1 = subplot(n,1,1,'replace');
     surf(ax1, x,z(indp),obs.energyDensityBox(:,indp,i1,1)');
     view(2); shading flat; box on;
-    cb1 = colorbar; colormap(ax1,'sky'); clim(ax1,[0 cmax(1)])
+    cb1 = colorbar; colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
     set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z(indp)) max(z(indp))], ...
             'XTick',[],'Position',[.13 .5838 .6964 .3412]);
     title(cb1,'P energy')
@@ -129,7 +137,7 @@ for i1=1:Nt
 %    hold off; contour(ax1,x,z,obs.energyDensityBox(:,:,i1,1)',level1);
     hold off; surf(ax1,x,z,obs.energyDensityBox(:,:,i1,1)');
     view(2); shading flat;% alpha 0.5;
-    colormap(ax1,'sky'); clim(ax1,[0 cmax(1)])
+    colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
     set(ax1,'Position',[.15 .11 .685 .815],'colorscale','log');
     ax1.XLim = [min(x) max(x)]; ax1.YLim = [min(z) max(z)];
     ax1.PlotBoxAspectRatio = [range(x) range(z) 1];
@@ -253,7 +261,12 @@ for i2 = 1:obs.nSources
         % estimate incoherent directional energy at sensor and rotate
         Es = squeeze( interp1( obs.r', obsEi1, r ));
         Es2 = [ Es(end:-1:1,:,:); Es];
-        Ei(:,:,i1,1) = Ei(:,:,i1,1) + interp1( psi2pi', Es2, psiRot );
+        aux = interp1( psi2pi', Es2, psiRot );
+        if any(isnan(aux(:)))
+            warning('The directional energy plot was extrapolated, please verify ')
+            aux = interp1( psi2pi', Es2, psiRot,'linear','extrap');
+        end
+        Ei(:,:,i1,1) = Ei(:,:,i1,1) + aux;
         if ~obs.acoustics
             Es = squeeze( interp1( obs.r', obsEi2, r ));
             Es2 = [ Es(end:-1:1,:,:); Es];
