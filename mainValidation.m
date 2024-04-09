@@ -131,9 +131,9 @@ else
             disp(['Testing ' titlecase ' ...']);
 
             % Load the results of the paper
-            load('Nakahara_Yoshimoto_2011_Fig4_left.mat')
+            % load('Nakahara_Yoshimoto_2011_Fig4_left.mat')
 
-            % input data
+            % input data : values taken from (H. Nakahara and K. Yoshimoto 2011)
             geometry = struct( 'dimension', 2 );
             source = struct( 'numberParticles', 1e6, ...
                              'polarization', 'S', ...
@@ -141,13 +141,20 @@ else
             material = struct( 'acoustics', false, ...
                                'vp', 6, ...
                                'vs', 3.46);
-
-            % Values taken from (Nakahara & Yoshimoto, 2011, Section 3.1)
-            K = material.vp/material.vs;
-            gpp = 0.05; gps = 0.05; gp = gpp + gps;
-            gsp = gps/K; gss = (material.vp*gp - material.vs*gsp)/material.vs;
-            material.sigma = {@(th) 1/2/pi*ones(size(th))*gpp*material.vp, @(th) 1/2/pi*ones(size(th))*gps*material.vp; ...
-                              @(th) 1/2/pi*ones(size(th))*gsp*material.vs, @(th) 1/2/pi*ones(size(th))*gss*material.vs};
+            vp = material.vp; vs = material.vs;
+            K = vp/vs;
+            Sigmapp = 0.05*vp; Sigmaps = 0.05*vp; Sigmap = Sigmapp + Sigmaps;
+            Sigmasp = Sigmaps/K^2; Sigmass = Sigmap -Sigmasp;
+            Sigmas = Sigmass + Sigmasp;
+            Sigma = {Sigmapp, Sigmaps; Sigmasp, Sigmass};
+            if (Sigmap ~= Sigmas) 
+                error('This case cannot be dealt with in the framework of H. Sato 1994!')
+            else
+                eta = Sigmap;
+            end
+            
+            material.sigma = {@(th) 1/2/pi*ones(size(th))*Sigmapp, @(th) 1/2/pi*ones(size(th))*Sigmaps; ...
+                              @(th) 1/2/pi*ones(size(th))*Sigmasp, @(th) 1/2/pi*ones(size(th))*Sigmass};
 
             observation = struct('r', 0:0.1:10, ... % size of bins in space
                                  'time', 0:0.1:10, ...       % observation times
@@ -159,26 +166,87 @@ else
             source.polarization = 'P';
             obsP = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
-            % Epc = obs.Ec(:,:,1); Epi = obs.Ei(:,:,1); Ep = Epc+Epi; Esc = obs.Ec(:,:,2); Esi = obs.Ei(:,:,2); Es = Esc+Esi;
-            EpcP = obsP.Ec(:,:,1); EpiP = obsP.Ei(:,:,1); EpP = EpcP+EpiP; EscP = obsP.Ec(:,:,2); EsiP = obsP.Ei(:,:,2); EsP = EscP+EsiP;
-            EpcS = obsS.Ec(:,:,1); EpiS = obsS.Ei(:,:,1); EpS = EpcS+EpiS; EscS = obsS.Ec(:,:,2); EsiS = obsS.Ei(:,:,2); EsS = EscS+EsiS;
-            Ep = (1*EpP+1.5*K^5*EpS)/(1+1.5*K^5); Es = (1*EsP+1.5*K^5*EsS)/(1+1.5*K^5);
-            % Normalized P-wave energy in terms of normalized time
-            ind = find(abs(obsP.r*gp-1)<0.01);
-            figure; semilogy(obsP.t*gp*material.vp,2*pi*Ep(ind(1),:)/(1/(1+1.5*K^5)*(gp*material.vp)^2),'-b','linewidth',2);
-            xlabel('Normalized Time [-]'); ylabel('Normalized P-wave energy [-]');
-            xlim([0 6]); ylim([0.001 100]); hold on; plot(energy_P(:,1),energy_P(:,2),'-r','linewidth',2);
-            yticks([0.001 0.01 0.1 1 10 100]); yticklabels({'0.001','0.01','0.1','1','10','100'});
+            EpcP = obsP.Ec(:,:,1); EpiP = obsP.Ei(:,:,1); EpP = EpcP+EpiP; 
+            EscP = obsP.Ec(:,:,2); EsiP = obsP.Ei(:,:,2); EsP = EscP+EsiP;
+            
+            EpcS = obsS.Ec(:,:,1); EpiS = obsS.Ei(:,:,1); EpS = EpcS+EpiS; 
+            EscS = obsS.Ec(:,:,2); EsiS = obsS.Ei(:,:,2); EsS = EscS+EsiS;
+            
+            Ep = (1*EpP+1.5*K^5*EpS)/(1+1.5*K^5); 
+            Es = (1*EsP+1.5*K^5*EsS)/(1+1.5*K^5);
 
-            % Normalized P-wave energy in terms of normalized time
-            figure; semilogy(obsP.t*gp*material.vp,2*pi*Es(ind(1),:)/(1/(1+1.5*K^5)*(gp*material.vp)^2),'-b','linewidth',2);
-            xlabel('Normalized Time [-]'); ylabel('Normalized S-wave energy [-]');
-            xlim([0 6]); ylim([0.001 100]); hold on; plot(energy_S(:,1),energy_S(:,2),'-r','linewidth',2);
-            yticks([0.001 0.01 0.1 1 10 100]); yticklabels({'0.001','0.01','0.1','1','10','100'});
+            % P-wave energy in terms of time
+            b = 1; % Normalized distance
+            ind = find(abs(obsP.r*eta/vp-b)<0.005);
+            E_analytical = analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
+            figure; plot(obsP.t,2*pi*Ep(ind(1),:),'-b','linewidth',2);
+            hold on; plot(obsP.t,E_analytical(:,1)*(eta/vp)^2,'-r','linewidth',2);
+            xlabel('Time [s]'); ylabel('P-wave energy density');
+            xlim([0 6]); grid on; box on;
+
+            % S-wave energy in terms of time
+            figure; plot(obsP.t,2*pi*Es(ind(1),:),'-b','linewidth',2);
+            hold on; plot(obsP.t,E_analytical(:,2)*(eta/vp)^2,'-r','linewidth',2);
+            xlabel('Time [s]'); ylabel('S-wave energy density');
+            xlim([0 6]); grid on; box on;
            
             %% 3D Anisotropic scattering (isotropic differential scattering cross-section)
             % to be done
         case '3dIsotropicElastic'
+            titlecase = '3D elastic case with isotropic scattering';
+            disp(['Testing ' titlecase ' ...']);
+
+            % input data : values taken from (H. Nakahara and K. Yoshimoto 2011)
+            geometry = struct( 'dimension', 3 );
+            source = struct( 'numberParticles', 1e6, ...
+                             'polarization', 'S', ...
+                             'lambda', 0.001 );
+            material = struct( 'acoustics', false, ...
+                               'vp', 6, ...
+                               'vs', 3.46);
+            vp = material.vp; vs = material.vs;
+            K = vp/vs;
+            Sigmapp = 0.05*vp; Sigmaps = 0.05*vp; Sigmap = Sigmapp + Sigmaps;
+            Sigmasp = Sigmaps/K^2; Sigmass = Sigmap -Sigmasp;
+            Sigmas = Sigmass + Sigmasp;
+            Sigma = {Sigmapp, Sigmaps; Sigmasp, Sigmass};
+            if (Sigmap ~= Sigmas) 
+                error('This case cannot be dealt with in the framework of H. Sato 1994!')
+            else
+                eta = Sigmap;
+            end
+            
+            material.sigma = {@(th) 1/4/pi*ones(size(th))*Sigmapp, @(th) 1/4/pi*ones(size(th))*Sigmaps; ...
+                              @(th) 1/4/pi*ones(size(th))*Sigmasp, @(th) 1/4/pi*ones(size(th))*Sigmass};
+
+            observation = struct('r', 0:0.05:15, ... % size of bins in space
+                                 'time', 0:0.01:6, ...       % observation times
+                                 'Ndir', 10 );               % number of bins for directions
+
+            % Run our code
+            obsS = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+            
+            source.polarization = 'P';
+            obsP = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+
+            EpcP = obsP.Ec(:,:,1); EpiP = obsP.Ei(:,:,1); EpP = EpcP+EpiP; 
+            EscP = obsP.Ec(:,:,2); EsiP = obsP.Ei(:,:,2); EsP = EscP+EsiP;
+            
+            EpcS = obsS.Ec(:,:,1); EpiS = obsS.Ei(:,:,1); EpS = EpcS+EpiS; 
+            EscS = obsS.Ec(:,:,2); EsiS = obsS.Ei(:,:,2); EsS = EscS+EsiS;
+            
+            Ep = (1*EpP+1.5*K^5*EpS)/(1+1.5*K^5); 
+            Es = (1*EsP+1.5*K^5*EsS)/(1+1.5*K^5);
+            E = Ep + Es;
+            
+            % Total energy density in terms of time
+            b = 1; % Normalized distance
+            ind = find(abs(obsP.r*eta/vp-b)<0.005);
+            E_analytical = analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
+            figure; plot(obsP.t,E(ind(1),:),'-b','linewidth',2);
+            hold on; plot(obsP.t,E_analytical*(eta/vp)^2,'-r','linewidth',2);
+            xlabel('Time [s]'); ylabel('Total energy density');
+            xlim([0 6]); grid on; box on;
 
         otherwise
             error('unknown validation case')
