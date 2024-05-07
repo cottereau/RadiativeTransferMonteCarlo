@@ -11,7 +11,7 @@ function sigma = PSDF2sigma(mat,d)
 %                              identical for all material parameters ('exp',
 %                              'power_law', 'gaussian', 'triangular' or
 %                              'low_pass'
-% material.coefficients_of_variation 
+% material.coefficients_of_variation
 %                              vector defining the coefficients of
 %                              variation of random medium's characteristic
 %                              parameters
@@ -36,7 +36,7 @@ function sigma = PSDF2sigma(mat,d)
 % coefficients of variation in diagonal and correlation coefficients in off-diagonal
 % instead of the standard deviation and covariance, respectively.
 
-% Following Khazaie et al 2017, PSDFs are supposed as factorizable. 
+% Following Khazaie et al 2017, PSDFs are supposed as factorizable.
 % Extending to the non-factorizable case is straightforward.
 
 
@@ -52,27 +52,34 @@ end
 
 % The following normalized PSDF kernels are taken from Khazaie et al 2016
 % warning: these are for 3D: formulas should depend on dimensionality
-switch mat.spectralType
-    case 'exp'
-        S = @(z) 1./(8*pi^2*(1+z.^2/4).^2);
-    case 'power_law'
-        S = @(z) 1./(pi^4)*exp(-2*z/pi);
-    case 'gaussian'
-        S = @(z) 1./(8*pi^3)*exp(-z.^2/4/pi);
-    case 'triangular'
-        S = @(z) (3/8/pi^4)*(1-z/2/pi).*heaviside(2*pi-z);
-    case 'low_pass'
-        S = @(z) (2/9/pi^4)*heaviside(3*pi/2-z);
-    otherwise
-        disp(['Power spectrum density (mat.spectralType) should be' ...
-            ' ''exp'',''power_law'',''gaussian'',''triangular'' or ''low_pass'''])
-end
+switch d
+    case 2
+        error(['Normalized PSDF kernels for 2D case are to be ' ...
+            'implemented in future releases of the code'])
+    case 3
+        switch mat.spectralType
+            case 'exp'
+                S = @(z) 1./(8*pi^2*(1+z.^2/4).^2);
+            case 'power_law'
+                S = @(z) 1./(pi^4)*exp(-2*z/pi);
+            case 'gaussian'
+                S = @(z) 1./(8*pi^3)*exp(-z.^2/4/pi);
+            case 'triangular'
+                S = @(z) (3/8/pi^4)*(1-z/2/pi).*heaviside(2*pi-z);
+            case 'low_pass'
+                S = @(z) (2/9/pi^4)*heaviside(3*pi/2-z);
+            case 'image'
 
-% acoustics 
+            otherwise
+                disp(['Power spectrum density (mat.spectralType) should be' ...
+                    ' ''exp'',''power_law'',''gaussian'',''triangular'' or ''low_pass'''])
+        end
+end
+% acoustics
 if acoustics
     if d==2
         error(['Total scattering cross-sections for 2D case are to be ' ...
-               'implemented in future releases of the code'])
+            'implemented in future releases of the code'])
     elseif d==3
         zeta = mat.Frequency/mat.v*mat.correlationLength;
         delta_kk = coeffs_variation(1); % coefficient of variation of compressibility
@@ -81,8 +88,8 @@ if acoustics
 
         % [Ryzhik et al, 1996; Eq. (1.3)]
         sigma = @(th) (pi/2)*zeta^3*(cos(th).^2*delta_rr^2 + ...
-                       2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
-                       .*S(zeta.*sqrt(2*(1-cos(th))))*mat.Frequency;
+            2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
+            .*S(zeta.*sqrt(2*(1-cos(th))))*mat.Frequency;
     else
         error('Dimension of the problem should be 2 or 3')
     end
@@ -91,7 +98,7 @@ if acoustics
 else
     if d==2
         error(['Total scattering cross-sections for 2D case are to be ' ...
-               'implemented in future releases of the code'])
+            'implemented in future releases of the code'])
     elseif d==3
         K = mat.vp/mat.vs;
         zetaP = mat.Frequency/mat.vp*mat.correlationLength;
@@ -114,26 +121,26 @@ else
         %  Ryzhik et al; Eqs. (4.56), (1.20), (1.22)
         sigmaPS = @(th) (pi/2)*K*zetaP^3* ...
             ( K^2*delta_rr^2 + 4*delta_mm^2*cos(th).^2 + 4*K*rho_mr*delta_mm*delta_rr*cos(th) )...
-              .*(1-cos(th).^2).*S(zetaP.*sqrt(1+K^2-2*K*cos(th)))*mat.Frequency;
+            .*(1-cos(th).^2).*S(zetaP.*sqrt(1+K^2-2*K*cos(th)))*mat.Frequency;
 
         %  Ryzhik et al; Eqs. (4.56), (1.20), (1.21)
         sigmaSP = @(th) (pi/4/K^3)*zetaS^3* ...
             ( delta_rr^2 + (4/K^2)*delta_mm^2*cos(th).^2 + (4/K)*rho_mr*delta_mm*delta_rr*cos(th) ) ...
-              .*(1-cos(th).^2).*S(zetaS.*sqrt(1+1/K^2-2/K*cos(th)))*mat.Frequency;
+            .*(1-cos(th).^2).*S(zetaS.*sqrt(1+1/K^2-2/K*cos(th)))*mat.Frequency;
 
         % Ryzhik et al; Eq. (4.54)
         sigmaSS_TT = @(th) (pi/4)*zetaS^3*delta_rr^2*(1+cos(th).^2)...
-                           .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
+            .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
         sigmaSS_GG = @(th) (pi/4)*zetaS^3*delta_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
-                           .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
+            .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
         sigmaSS_GT = @(th) (pi/4)*zetaS^3*rho_mr*delta_mm*delta_rr*(4*cos(th).^3)...
-                           .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
+            .*S(zetaS.*sqrt(2*(1-cos(th))))*mat.Frequency;
     end
 
     sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
 
     sigma = {sigmaPP,sigmaPS; ...
-             sigmaSP,sigmaSS};
+        sigmaSP,sigmaSS};
 end
 end
 

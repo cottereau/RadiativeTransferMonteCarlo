@@ -1,11 +1,11 @@
-function mainValidation(type)
-% This function launches validation cases for RadiativeTransferMonteCarlo
+function mainComparisonLiterature(type)
+% This function launches comparision cases for RadiativeTransferMonteCarlo
 %
-% syntax mainValidation or mainValidation(validationCase)
+% syntax mainComparisonLiterature or mainComparisonLiterature(validationCase)
 %
-% when validationCase='all' or empty, all validation cases are launched
+% when type='all' or empty, all validation cases are launched
 %
-% list of possible validationCases with reference to literature
+% list of possible comparision cases with reference to literature
 %  - '2dIsotropicAcoustic' (1,2)
 %  - '3dIsotropicAcoustic' (1,2)
 %  - '2dIsotropicElastic'  (3)
@@ -26,14 +26,14 @@ function mainValidation(type)
 
 % with no argument, launch all validation cases
 if nargin==0
-    mainValidation('all')
+    mainComparisonLiterature('all')
 else
     type = lower(type);
     switch type
         case 'all'
-            mainValidation('2dIsotropicAcoustic')
-            mainValidation('3dIsotropicAcoustic')
-            mainValidation('2dIsotropicElastic')
+            mainComparisonLiterature('2dIsotropicAcoustic')
+            mainComparisonLiterature('3dIsotropicAcoustic')
+            mainComparisonLiterature('2dIsotropicElastic')
 
             %% 2D Isotropic scattering acoustic (isotropic differential scattering cross-section)
         case '2disotropicacoustic'
@@ -59,10 +59,10 @@ else
             Eus = (obs.Ei+obs.Ec).*obs.dr';
 
             % computing Paasschens solution
-            [EP,Ediff] = Paasschens_RTE_Unbounded( source, material, observation, geometry );
+            [EP,Ediff] = Comparison.Paasschens_RTE_Unbounded( source, material, observation, geometry );
 
             % running Hoshiba's Monte Carlo-based approach
-            EH = Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
+            EH = Comparison.Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
                 source, material, geometry, 20 );
             EH = EH.*(pi*obs.dr(inds));
 
@@ -105,10 +105,10 @@ else
             Eus = (obs.Ei+obs.Ec).*obs.dr';
 
             % computing Paasschens solution
-            [EP,Ediff] = Paasschens_RTE_Unbounded( source, material, ...
+            [EP,Ediff] = Comparison.Paasschens_RTE_Unbounded( source, material, ...
                                                    observation, geometry );
             % % running Hoshiba's Monte Carlo-based approach
-            % EH = Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
+            % EH = Comparison.Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
             %                                           source, material, geometry, 10 );
 
             % visual comparison
@@ -178,7 +178,7 @@ else
             % P-wave energy in terms of time
             b = 1; % Normalized distance
             ind = find(abs(obsP.r*eta/vp-b)<0.005);
-            E_analytical = analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
+            E_analytical = Comparison.analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
             figure; plot(obsP.t,2*pi*Ep(ind(1),:),'-b','linewidth',2);
             hold on; plot(obsP.t,E_analytical(:,1)*(eta/vp)^2,'-r','linewidth',2);
             xlabel('Time [s]'); ylabel('P-wave energy density');
@@ -242,7 +242,7 @@ else
             % Total energy density in terms of time
             b = 1; % Normalized distance
             ind = find(abs(obsP.r*eta/vp-b)<0.005);
-            E_analytical = analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
+            E_analytical = Comparison.analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
             figure; plot(obsP.t,E(ind(1),:),'-b','linewidth',2);
             hold on; plot(obsP.t,E_analytical*(eta/vp)^2,'-r','linewidth',2);
             xlabel('Time [s]'); ylabel('Total energy density');
@@ -252,4 +252,3 @@ else
             error('unknown validation case')
     end
 end
-
