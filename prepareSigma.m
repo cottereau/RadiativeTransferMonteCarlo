@@ -1,7 +1,11 @@
 function mat = prepareSigma(mat,d)
 
-if ~isfield(mat,'sigma')
-    mat.sigma = PSDF2sigma(mat,d);
+obj = DSCSClass(mat,d);
+if isempty(obj.sigma)
+    obj.CalcSigma;
+    mat.sigma = obj.sigma;
+else
+    mat.sigma = obj.sigma;
 end
 
 if mat.acoustics
