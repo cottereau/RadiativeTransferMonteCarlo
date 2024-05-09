@@ -1,17 +1,18 @@
 % This code works in 2D/3D. The initial condition is modeled as gaussian 
 % with standard deviation source.lambda and uniformly-distributed angle(s).
 % The initial direction is uniform.
+clc
 
 geometry = struct( 'dimension', 3 );
 
 % Point source
-source = struct( 'numberParticles', 1e6, ...
-                 'polarization', 'P', ...
+source = struct( 'numberParticles', 1e4, ...
+                 'polarization', 'S', ...
                  'lambda', 0.1 );
 
 % observations
 observation = struct('dr', 0.04, ...        % size of bins in space
-                     'time', 0:0.1:15, ...  % observation times
+                     'time', 0:0.5:1, ...  % observation times
                      'Ndir', 10 );         % number of bins for directions           
 
 % material properties
@@ -27,7 +28,12 @@ material = struct( 'acoustics', false, ...
                    'spectralType', 'exp', ...
                    'coefficients_of_variation', [0.8 0.8 0.], ...
                    'correlation_coefficients', [0.1 0. 0.]);
-material.sigma = PSDF2sigma( material, geometry.dimension );
+
+% evaluate the Differential Scattering Cross-Sections
+dcs = DSCSClass(material,geometry.dimension);
+dcs.CalcSigma;
+material.sigma = dcs.sigma;
+
 % % 2D
 % material.sigma = {@(th) 1/2/pi*ones(size(th))*0.05*6, @(th) 1/2/pi*ones(size(th))*0.05*6; ...
 %                   @(th) 1/2/pi*ones(size(th))*0.029*3.46, @(th) 1/2/pi*ones(size(th))*0.144*3.46};
@@ -40,7 +46,7 @@ obs = radiativeTransferUnbounded( geometry.dimension, source, material, observat
 
 % plotting output
 plotting = struct( 'equipartition', true, ...
-                   'movieTotalEnergy', true, ...
-                   'movieDirectionalEnergy', true, ...
-                   'sensors', [1 0 0; 9 0 0]);
+                   'movieTotalEnergy', false, ...
+                   'movieDirectionalEnergy', false, ...
+                   'sensors', [1 0 0; 9 0 0; 9 0 1; 9 1 0]);
 plotEnergies( plotting, obs, material, source.lambda );

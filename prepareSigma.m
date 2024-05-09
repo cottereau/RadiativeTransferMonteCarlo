@@ -1,11 +1,8 @@
 function mat = prepareSigma(mat,d)
 
-obj = DSCSClass(mat,d);
-if isempty(obj.sigma)
-    obj.CalcSigma;
-    mat.sigma = obj.sigma;
-else
-    mat.sigma = obj.sigma;
+if ~isfield(mat,'sigma')
+    error(['The Differential Scattering Cross-Sections '...
+        'has been not defined, please defined it usign DSCS Class'])
 end
 
 if mat.acoustics

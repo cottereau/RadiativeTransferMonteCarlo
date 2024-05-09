@@ -19,18 +19,21 @@
 %      the box in y are [0 depth]
 % The plotting box is always drawn in the plane of the source (in y). For
 % now, only homogeneous Neumann boundary conditions are enforced
+
+clc
+
 geometry = struct( 'type', 'box', ...
                    'size', [4 3 3], ...
                    'dimension', 3 );
 
 % Point source
-source = struct( 'numberParticles', 1e6, ...
+source = struct( 'numberParticles', 1e4, ...
                  'position', [2.5 1 -2], ... 
                  'lambda', 0.001 );
 
 % observations
 observation = struct('dr', 0.05, ...        % size of bins in space
-                     'time', 0:0.05:20, ...  % observation times
+                     'time', 0:0.05:1, ...  % observation times
                      'Ndir', 10 );         % number of bins for directions           
 
 % material properties
@@ -45,6 +48,12 @@ material = struct( 'acoustics', true, ...
                    'spectralType', 'exp', ...
                    'coefficients_of_variation', [0.1 0.2], ...
                    'correlation_coefficients', -0.5 );
+
+% evaluate the Differential Scattering Cross-Sections
+dcs = DSCSClass(material,geometry.dimension);
+dcs.CalcSigma;
+material.sigma = dcs.sigma;
+
 
 % radiative transfer solution - acoustic with boundaries
 switch geometry.type
@@ -62,8 +71,8 @@ sensors = [3   1 -0.5;
            3.5 1 -2.8];
 
 plotting = struct( 'equipartition', true, ...
-                   'movieTotalEnergy', true, ...
-                   'movieDirectionalEnergy', true, ...
+                   'movieTotalEnergy', false, ...
+                   'movieDirectionalEnergy', false, ...
                    'sensors', sensors);
 
 plotEnergies( plotting, obs, material, source.lambda )
