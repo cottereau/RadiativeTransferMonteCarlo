@@ -10,15 +10,22 @@
 classdef DSCSClass < handle
     properties
         % Required Properties
-        d           int8
-        mat         struct
+        d               int8
+        mat             struct  = struct.empty % PSDF parameter
+        type            char    = 'isotropic'
 
-        sigma = cell.empty;
+        SpectralLaw     char    = '';% PSDF name
+        SpectralParam   struct  = struct.empty % PSDF parameter
+
+        sigma           cell    = cell.empty; %Differential Scattering Cross-Sections
         
-        S
+        S                       = []; %power spectral density / function_handle
+        C                       = []; %Correlation / function_handle
 
-        C
-
+    end
+    properties (SetAccess = private, Hidden = true)
+        Type_def = {'isotropic'}; %the anisotropic should be implemented
+        SpectralLaw_def = {'exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersedisk','monodisperseelipse','polydispersedisk','polydisperseelipse','image'};
     end
     methods
         function obj = DSCSClass(mat,d)
@@ -34,12 +41,55 @@ classdef DSCSClass < handle
 
             if d~=3
                 warning(['Total scattering cross-sections for 2D case are to be ' ...
-                        'implemented in future releases of the code'])
+                    'implemented in future releases of the code'])
             end
 
             obj.mat = mat;
             obj.d = d;
-
+            obj.SpectralLaw = mat.spectralType;
+        end
+        function newobj = copyobj(obj)
+            %% copyobj
+            % Return a new class instance containing the same properties
+            % values from the input
+            %
+            % Syntax
+            %   newobj = copyobj(obj)
+            %
+            % Inputs:
+            %   obj : Object to be copied
+            %
+            % Outputs:
+            %   newobj : A new object from the same class with a copy of
+            %   all its properties
+            %
+            if numel(obj) == 1
+                newobj = eval(mfilename);
+                props = properties(obj);
+                for i_props = 1:numel(props)
+                    if isobject(obj.(props{i_props}))
+                        if ~isempty(obj.(props{i_props}))
+                            newobj.(props{i_props}) = obj.(props{i_props}).copyobj;
+                        else
+                            %empty
+                        end
+                    else
+                        newobj.(props{i_props}) = obj.(props{i_props});
+                    end
+                end
+            else
+                for i=1:numel(obj)
+                    newobj(i) = obj(i).copyobj; %#ok<AGROW>
+                end
+                newobj = reshape(newobj,size(obj));
+            end
+        end
+        %% GET AND SET METHODS
+        function set.type(obj,newvalue)
+            obj.type = validatestring(newvalue,obj.Type_def); %#ok<MCSUP>
+        end
+        function set.SpectralLaw(obj,newvalue)
+            obj.SpectralLaw = validatestring(newvalue,obj.SpectralLaw_def); %#ok<MCSUP>
         end
         function CalcSigma(obj)
             %% CalcSigma
@@ -51,8 +101,8 @@ classdef DSCSClass < handle
             %
             % Inputs:
             %
-            % Output: sigma
-            
+            % Output:
+
             % The formulas are based on
             % L. Rhyzik, G. Papanicolaou, J. B. Keller. Transport equations for elastic
             % and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
@@ -60,8 +110,37 @@ classdef DSCSClass < handle
 
 
             % get the power spectral density function
-            obj.getSPDF
-                        
+            if isempty(obj.S)
+                obj.getSPDF;
+            end
+
+            switch obj.type
+                case 'isotropic'
+                    obj.calcSigmaIsotropic;
+                case 'anisotropic'
+                    obj.calcSigmaAnisotropic;
+                otherwise
+                    error('DSCS type not supported')
+            end
+
+        end
+        function calcSigmaIsotropic(obj)
+            %% calcSigmaIsotropic
+            % Compute the normalized differential scattering cross-sections
+            % based on statistics of the fluctuating material parameters 
+            % of the wave equation for isotropic PSDF
+            %
+            % Syntax:
+            %   newobj = calcSigmaIsotropic (  );
+            %
+            % Inputs:
+            %
+            % Output: 
+
+            % The formulas are based on
+            % L. Rhyzik, G. Papanicolaou, J. B. Keller. Transport equations for elastic
+            % and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
+            % doi: 10.1016/S0165-2125(96)00021-2
             %it works only for 3D cases
             switch obj.mat.acoustics
                 case 1
@@ -72,10 +151,11 @@ classdef DSCSClass < handle
                     rho_kr = obj.mat.correlation_coefficients; % correlation of compressibility and density
 
                     % [Ryzhik et al, 1996; Eq. (1.3)]
-                    obj.sigma = @(th) (pi/2)*zeta^3*(cos(th).^2*delta_rr^2 + ...
+                    obj.sigma = {@(th) (pi/2)*zeta^3*(cos(th).^2*delta_rr^2 + ...
                         2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
-                        .*obj.S(zeta.*sqrt(2*(1-cos(th))))*obj.mat.Frequency;
+                        .*obj.S(zeta.*sqrt(2*(1-cos(th))))*obj.mat.Frequency};
                 case 0
+                    %elastic
                     K = obj.mat.vp/obj.mat.vs;
                     zetaP = obj.mat.Frequency/obj.mat.vp*obj.mat.correlationLength;
                     zetaS = K*zetaP;
@@ -111,15 +191,34 @@ classdef DSCSClass < handle
                         .*obj.S(zetaS.*sqrt(2*(1-cos(th))))*obj.mat.Frequency;
                     sigmaSS_GT = @(th) (pi/4)*zetaS^3*rho_mr*delta_mm*delta_rr*(4*cos(th).^3)...
                         .*obj.S(zetaS.*sqrt(2*(1-cos(th))))*obj.mat.Frequency;
-                
 
-                sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
 
-                obj.sigma = {sigmaPP,sigmaPS; ...
-                    sigmaSP,sigmaSS};
+                    sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
+
+                    obj.sigma = {sigmaPP,sigmaPS; ...
+                        sigmaSP,sigmaSS};
             end
+        end
+        function calcSigmaAnisotropic(obj)
+            %% calcSigmaAnisotropic
+            % Compute the normalized differential scattering cross-sections
+            % based on statistics of the fluctuating material parameters 
+            % of the wave equation for anisotropic PSDF
+            %
+            % Syntax:
+            %   newobj = calcSigmaAnisotropic (  );
+            %
+            % Inputs:
+            %
+            % Output: 
 
+            % The formulas are based on
+            % L. Rhyzik, G. Papanicolaou, J. B. Keller. Transport equations for elastic
+            % and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
+            % doi: 10.1016/S0165-2125(96)00021-2
             
+
+            error('Not implemented')
         end
         function getSPDF(obj)
             %% getSPDF
@@ -153,41 +252,71 @@ classdef DSCSClass < handle
                     error(['Normalized PSDF kernels for 2D case are to be ' ...
                         'implemented in future releases of the code'])
                 case 3
-                    switch obj.mat.spectralType
+                    switch obj.SpectralLaw
                         case 'exp'
+                            if ~isfield(obj.mat,'correlationLength')
+                                error('Please add the exponential parameters in material strucutre - correlationLength')
+                            end
+                            obj.SpectralParam = struct('Lc',obj.mat.correlationLength);
                             obj.Exponential;
                         case 'power_law'
+                            if ~isfield(obj.mat,'correlationLength')
+                                error('Please add the power law parameters in material strucutre - correlationLength')
+                            end
+                            obj.SpectralParam = struct('Lc',obj.mat.correlationLength);
                             obj.PowerLaw;
                         case 'gaussian'
+                            if ~isfield(obj.mat,'correlationLength')
+                                error('Please add the gaussian parameters in material strucutre - correlationLength')
+                            end
+                            obj.SpectralParam = struct('Lc',obj.mat.correlationLength);
                             obj.Gaussian;
                         case 'triangular'
+                            if ~isfield(obj.mat,'correlationLength')
+                                error('Please add the triangular parameters in material strucutre - correlationLength')
+                            end
+                            obj.SpectralParam = struct('Lc',obj.mat.correlationLength);
                             obj.Triangular;
                         case 'low_pass'
+                            if ~isfield(obj.mat,'correlationLength')
+                                error('Please add the low pass parameters in material strucutre - correlationLength')
+                            end
+                            obj.SpectralParam = struct('Lc',obj.mat.correlationLength);
                             obj.LowPass;
                         case 'VonKarman'
-                            obj.VonKarman;
+                            if ~isfield(obj.SpectralParam,'H') && ~isfield(obj.SpectralParam,'nu')
+                                error('Please add the VonKarman parameters for the PSDF')
+                            end
+                            obj.VonKarman(obj.SpectralParam);
                         case 'monodispersedisk'
-                            obj.MonoDisperseDisk;
+                            if ~isfield(obj.SpectralParam,'rho') && ~isfield(obj.SpectralParam,'d')
+                                error('Please add the mono disperse disk parameters for the PSDF')
+                            end
+                            obj.MonoDisperseDisk(obj.SpectralParam);
                         case 'monodisperseelipse'
-                            obj.MonoDisperseElipse;
+                             if ~isfield(obj.SpectralParam,'rho') && ~isfield(obj.SpectralParam,'a') && ~isfield(obj.SpectralParam,'b')
+                                error('Please add the mono disperse disk parameters for the PSDF')
+                            end
+                            obj.MonoDisperseElipse(obj.SpectralParam);
                         case 'polydispersedisk'
-                            obj.PolyDisperseDisk;
+                            if ~isfield(obj.SpectralParam,'rho') 
+                                error('not defined yet')
+                            end
+                            obj.PolyDisperseDisk(obj.SpectralParam);
                         case 'polydisperseelipse'
-                            obj.PolyDisperseElipse;
+                            if ~isfield(obj.SpectralParam,'rho') 
+                                error('not defined yet')
+                            end
+                            obj.PolyDisperseElipse(obj.SpectralParam);
                         case 'image'
-                            obj.GetPSDFromImage;
-                        otherwise
-                            disp(['Power spectrum density (obj.mat.spectralType) should be' ...
-                                ' ''exp'',''power_law'',''gaussian'',''triangular'' or ''low_pass'''])
+                            if ~isfield(obj.SpectralParam,'ImagePath') && ~isfield(obj.SpectralParam,'dx') &&~isfield(obj.SpectralParam,'dy')
+                                error('not defined yet')
+                            end
+                            obj.GetPSDFromImage(obj.SpectralParam);                           
                     end
             end
         end
-        function h = heaviside(h)
-            h(h>0) = 1;
-            h(h==0) = 1/2;
-            h(h<0) = 0;
-        end
-        %% function to evaluate PSDF: 
+        %% function to evaluate PSDF:
         function out = Exponential(obj)
             %% Exponential
             % Compute the normalized power spectral density function for
@@ -199,9 +328,9 @@ classdef DSCSClass < handle
             % Inputs:
             %
             % Output:
-            % The following normalized PSDF kernels are taken from 
-            % Khazaie et al 2016 - Influence of the spatial correlation 
-            % structure of an elastic random medium on its 
+            % The following normalized PSDF kernels are taken from
+            % Khazaie et al 2016 - Influence of the spatial correlation
+            % structure of an elastic random medium on its
             % scattering properties
             out = @(z) 1./(8*pi^2*(1+z.^2/4).^2);
             obj.S = out;
@@ -218,9 +347,9 @@ classdef DSCSClass < handle
             % Inputs:
             %
             % Output:
-            % The following normalized PSDF kernels are taken from 
-            % Khazaie et al 2016 - Influence of the spatial correlation 
-            % structure of an elastic random medium on its 
+            % The following normalized PSDF kernels are taken from
+            % Khazaie et al 2016 - Influence of the spatial correlation
+            % structure of an elastic random medium on its
             % scattering properties
             out = @(z) 1./(pi^4)*exp(-2*z/pi);
             obj.S = out;
@@ -237,12 +366,12 @@ classdef DSCSClass < handle
             % Inputs:
             %
             % Output:
-            % The following normalized PSDF kernels are taken from 
-            % Khazaie et al 2016 - Influence of the spatial correlation 
-            % structure of an elastic random medium on its 
+            % The following normalized PSDF kernels are taken from
+            % Khazaie et al 2016 - Influence of the spatial correlation
+            % structure of an elastic random medium on its
             % scattering properties
             out = @(z) 1./(8*pi^3)*exp(-z.^2/4/pi);
-            obj.S = out;            
+            obj.S = out;
             obj.C = out;
         end
         function out = Triangular(obj)
@@ -256,9 +385,9 @@ classdef DSCSClass < handle
             % Inputs:
             %
             % Output:
-            % The following normalized PSDF kernels are taken from 
-            % Khazaie et al 2016 - Influence of the spatial correlation 
-            % structure of an elastic random medium on its 
+            % The following normalized PSDF kernels are taken from
+            % Khazaie et al 2016 - Influence of the spatial correlation
+            % structure of an elastic random medium on its
             % scattering properties
             out = @(z) (3/8/pi^4)*(1-z/2/pi).*obj.heaviside(2*pi-z);
             obj.S = out;
@@ -275,9 +404,9 @@ classdef DSCSClass < handle
             % Inputs:
             %
             % Output:
-            % The following normalized PSDF kernels are taken from 
-            % Khazaie et al 2016 - Influence of the spatial correlation 
-            % structure of an elastic random medium on its 
+            % The following normalized PSDF kernels are taken from
+            % Khazaie et al 2016 - Influence of the spatial correlation
+            % structure of an elastic random medium on its
             % scattering properties
 
             out = @(z) (2/9/pi^4)*obj.heaviside(3*pi/2-z);
@@ -297,27 +426,28 @@ classdef DSCSClass < handle
             % Output:
 
             % https://reproducibility.org/RSF/book/sep/fractal/paper_html/node4.html
-            % Goff, J. A., and T. H. Jordan, 1988, Stochastic modeling of 
-            % seafloor morphology: Inversion of sea beam data for 
-            % second-order statistics: Journal of Geophysical Research, 
+            % Goff, J. A., and T. H. Jordan, 1988, Stochastic modeling of
+            % seafloor morphology: Inversion of sea beam data for
+            % second-order statistics: Journal of Geophysical Research,
             % 93, 13,589-13,608.
 
 
-            %are the characteristic scales of the medium along the 
-            % 3-dimensions and $k_x$, $k_y$ and $k_z$ 
-            % are the wavenumber components 
+            %are the characteristic scales of the medium along the
+            % 3-dimensions and $k_x$, $k_y$ and $k_z$
+            % are the wavenumber components
 
-            % $K_\nu$ is the modified Bessel function of order $\nu $, 
-            % where $0.0<\nu<1.0$ is the Hurst number (Mandelbrot, 1985,1983). 
-            % The fractal dimension of a stochastic field characterized 
+            % $K_\nu$ is the modified Bessel function of order $\nu $,
+            % where $0.0<\nu<1.0$ is the Hurst number (Mandelbrot, 1985,1983).
+            % The fractal dimension of a stochastic field characterized
             % by a von Karman autocorrelation is given by:
             % \begin{displaymath}
             % D=E+1-\nu \
             % \end{displaymath}	(6)
             %
-            % where $E$ is the Euclidean dimension i.e., $E=3$ 
+            % where $E$ is the Euclidean dimension i.e., $E=3$
             % for the three-dimensional problem.
             %
+            
             r = sqrt(x^2/ax^2+y^2/ay^2+z^2/az^2);
             k=sqrt(kx^2*ax^2+ky^2*ay^2+kz^2*az^2);
             bessel = besseli(nu,r);
@@ -330,7 +460,7 @@ classdef DSCSClass < handle
         function out = MonoDisperseDisk(obj)
             %% MonoDisperseDisk
             % Compute the normalized power spectral density function for
-            % mono disperse disk 
+            % mono disperse disk
             %
             % Syntax:
             %   MonoDisperseDisk (  );
@@ -342,8 +472,8 @@ classdef DSCSClass < handle
             % Torquato S. and Stell G. (1985). Microstructure of two-phase
             % random media. V. The n-point matrix probability functions for
             % impenetrable spheres, J. Chem. Phys., 82(2), pp. 980-987.
-            
-            
+
+
             % constants
             rho = 3*phi/(4*pi);
             % k = 0:0.01:100;
@@ -393,7 +523,7 @@ classdef DSCSClass < handle
         function out = MonoDisperseElipse(obj)
             %% MonoDisperseElipse
             % Compute the normalized power spectral density function for
-            % mono disperse elipsoid 
+            % mono disperse elipsoid
             %
             % Syntax:
             %   MonoDisperseElipse (  );
@@ -448,7 +578,7 @@ classdef DSCSClass < handle
             %
             %
             S = 1 - rho*V2 + rho^2*M ;
-            
+
             out = @(z) 1;
             obj.S = out;
             obj.C = out;
@@ -456,7 +586,7 @@ classdef DSCSClass < handle
         function out = PolyDisperseDisk(obj)
             %% PolyDisperseDisk
             % Compute the normalized power spectral density function for
-            % poly disperse disk 
+            % poly disperse disk
             %
             % Syntax:
             %   PolyDisperseDisk (  );
@@ -472,7 +602,7 @@ classdef DSCSClass < handle
         function out = PolyDisperseElipse(obj)
             %% PolyDisperseElipse
             % Compute the normalized power spectral density function for
-            % poly disperse elipsoid 
+            % poly disperse elipsoid
             %
             % Syntax:
             %   PolyDisperseElipse (  );
@@ -567,6 +697,31 @@ classdef DSCSClass < handle
             out = @(z) 1;
             obj.S = out;
             obj.C = out;
+        end
+        %% correlation length
+        function Lc = CalcLc(obj)
+            %2/variancia integral em R+ do obj.S
+            % assuing rho = 1
+            kappa = obj.mat.v^2*1;
+            variance = kappa*obj.mat.coefficients_of_variation(1);
+            Lc = integral(obj.S,0,Inf);
+            Lc = Lc*2/variance;
+        end
+        %% plot
+        function Plotsigma(obj)
+            figure
+            z = linspace(0,10,2*2048);
+            plot(z,obj.S(z));
+            xlabel('Normalized wavenumer [-]')
+            ylabel('Power Spectral Density [-]')
+            grid on
+            box on
+        end
+        %% OTHER
+        function h = heaviside(h)
+            h(h>0) = 1;
+            h(h==0) = 1/2;
+            h(h<0) = 0;
         end
     end
 end
