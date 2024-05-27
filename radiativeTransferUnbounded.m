@@ -73,4 +73,4 @@ obs.energyDomainCoherent = Ec(:,1:1+~acoustics)/obs.N;
 obs.Ei = squeeze(sum(obs.energyIncoherent,2));
 obs.Ec = coherentInABox(obs.energyDomainCoherent,obs.r,0,0,[0 0 0],t,d, ...
                                                  source.lambda,material);
-obs.energyDomainIncoherent = squeeze(pagemtimes(obs.dr,obs.Ei));
+obs.energyDomainIncoherent = shiftdim(pagemtimes(obs.dr,obs.Ei));

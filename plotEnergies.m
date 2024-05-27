@@ -38,6 +38,11 @@ end
 if isfield(type,'equipartition') && type.equipartition
     E = obs.energyDomainCoherent+obs.energyDomainIncoherent;
     figure; plot(obs.t,E/max(sum(E,2)));
+    if obs.acoustics
+        hold all
+       plot(obs.t,obs.energyDomainCoherent) 
+       plot(obs.t,obs.energyDomainIncoherent)
+    end
     if ~obs.acoustics
         eq = (material.vs/material.vp)^(obs.d)/(obs.d-1);
         hold on; plot(obs.t,sum(E,2)/max(sum(E,2)),'k--')
