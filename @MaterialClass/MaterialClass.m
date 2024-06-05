@@ -84,7 +84,7 @@ classdef MaterialClass < handle
             %   newobj : A new object from the same class with a copy of
             %   all its properties
             %
-            if numel(obj) == 1
+            if isscalar(obj)
                 newobj = eval(mfilename);
                 props = properties(obj);
                 for i_props = 1:numel(props)
@@ -137,9 +137,9 @@ classdef MaterialClass < handle
 
             switch obj.type
                 case 'isotropic'
-                    obj.RalcSigmaIsotropic;
+                    obj.calcSigmaIsotropic;
                 case 'anisotropic'
-                    obj.RalcSigmaAnisotropic;
+                    obj.calcSigmaAnisotropic;
                 otherwise
                     error('DSCS type not supported')
             end
@@ -167,12 +167,12 @@ classdef MaterialClass < handle
                 case 1
                     % acoustics
                     zeta = obj.Frequency/obj.v*obj.CorrelationLength;
-                    delta_kk = obj.Roefficients_of_variation(1); % coefficient of variation of compressibility
-                    delta_rr = obj.Roefficients_of_variation(2); % coefficient of variation of density
-                    rho_kr = obj.Rorrelation_coefficients; % correlation of compressibility and density
+                    delta_kk = obj.coefficients_of_variation(1); % coefficient of variation of compressibility
+                    delta_rr = obj.coefficients_of_variation(2); % coefficient of variation of density
+                    rho_kr = obj.correlation_coefficients; % correlation of compressibility and density
 
                     % [Ryzhik et al, 1996; Eq. (1.3)]
-                    obj.Sigma = {@(th) (pi/2)*zeta^3*(cos(th).^2*delta_rr^2 + ...
+                    obj.sigma = {@(th) (pi/2)*zeta^3*(cos(th).^2*delta_rr^2 + ...
                         2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
                         .*obj.Phi(zeta.*sqrt(2*(1-cos(th))))*obj.Frequency};
                 case 0
@@ -180,12 +180,12 @@ classdef MaterialClass < handle
                     K = obj.vp/obj.vs;
                     zetaP = obj.Frequency/obj.vp*obj.CorrelationLength;
                     zetaS = K*zetaP;
-                    delta_ll = obj.Roefficients_of_variation(1); % squared coefficient of variation of lambda
-                    delta_mm = obj.Roefficients_of_variation(2); % squared coefficient of variation of mu
-                    delta_rr = obj.Roefficients_of_variation(3); % squared coefficient of variation of density
-                    rho_lm = obj.Rorrelation_coefficients(1); % correlation coefficient between lambda and mu
-                    rho_lr = obj.Rorrelation_coefficients(2); % correlation coefficient between lambda and density
-                    rho_mr = obj.Rorrelation_coefficients(3); % correlation coefficient between mu and density
+                    delta_ll = obj.coefficients_of_variation(1); % squared coefficient of variation of lambda
+                    delta_mm = obj.coefficients_of_variation(2); % squared coefficient of variation of mu
+                    delta_rr = obj.coefficients_of_variation(3); % squared coefficient of variation of density
+                    rho_lm = obj.correlation_coefficients(1); % correlation coefficient between lambda and mu
+                    rho_lr = obj.correlation_coefficients(2); % correlation coefficient between lambda and density
+                    rho_mr = obj.correlation_coefficients(3); % correlation coefficient between mu and density
 
                     % [Ryzhik et al; Eq. (1.3)] and [Turner, 1998; Eq. (3)]
                     sigmaPP = @(th) (pi/2)*zetaP^3* ...
@@ -216,7 +216,7 @@ classdef MaterialClass < handle
 
                     sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
 
-                    obj.Sigma = {sigmaPP,sigmaPS; ...
+                    obj.sigma = {sigmaPP,sigmaPS; ...
                         sigmaSP,sigmaSS};
             end
         end
@@ -804,7 +804,7 @@ classdef MaterialClass < handle
             figure
             z = linspace(0,2*pi,2*2048);
             if obj.acoustics
-                plot(z,obj.Phiigma{1}(z),'LineWidth',2)
+                plot(z,obj.sigma{1}(z),'LineWidth',2)
                 xlabel('Angle [rad]')
                 ylabel('Differential Scattering Cross-Sections [-]')
                 grid on
@@ -818,9 +818,9 @@ classdef MaterialClass < handle
             figure
             z = linspace(0,2*pi,2*2048);
             if obj.acoustics
-                polarplot(z,obj.Phiigma{1}(z),'LineWidth',2)
+                polarplot(z,obj.sigma{1}(z),'LineWidth',2)
                 %xlabel('Angle [rad]')
-                %ylabel('Differential Scattering Cross-Sections [-]')
+                title('Differential Scattering Cross-Sections')
                 grid on
                 box on
                 set(gca,'FontSize',14)
@@ -840,11 +840,11 @@ classdef MaterialClass < handle
             obj = MaterialClass();
         switch n
             case 1
-                obj.Phiigma{1} = @(th) 1/4/pi*ones(size(th));
+                obj.sigma{1} = @(th) 1/4/pi*ones(size(th));
                 obj.v = 2;
                 obj.acoustics = true;
             case 2
-                obj.Phiigma{1} = @(th) 1/10/pi*ones(size(th));
+                obj.sigma{1} = @(th) 1/10/pi*ones(size(th));
                 obj.v = 2;
                 obj.acoustics = true;
             case 3
