@@ -6,13 +6,13 @@ clc
 geometry = struct( 'dimension', 3 );
 
 % Point source
-source = struct( 'numberParticles', 1e4, ...
+source = struct( 'numberParticles', 1e6, ...
                  'polarization', 'S', ...
                  'lambda', 0.1 );
 
 % observations
-observation = struct('dr', 0.04, ...        % size of bins in space
-                     'time', 0:0.5:1, ...  % observation times
+observation = struct('dr', 0.02, ...        % size of bins in space
+                     'time', 0:0.2:4, ...  % observation times
                      'Ndir', 10 );         % number of bins for directions           
 
 % material properties
@@ -20,20 +20,21 @@ observation = struct('dr', 0.04, ...        % size of bins in space
 % of lambda, mu (Lamé coefficients) and rho (density), respectively.
 % material.correlation_coefficients defines the correlation coefficient
 % between (lambda,mu), (lambda,rho), and (mu,rho), respectively.
-material = struct( 'acoustics', false, ...
-                   'vp', 6, ...
-                   'vs', 3.46, ...
-                   'Frequency', 0.1, ...
-                   'correlationLength', 20, ...
-                   'spectralType', 'exp', ...
-                   'coefficients_of_variation', [0.8 0.8 0.], ...
-                   'correlation_coefficients', [0.1 0. 0.]);
+
+mat = MaterialClass(geometry.dimension);
+mat.acoustics = false;
+mat.vp = 6;
+mat.vs = 6/sqrt(3);
+mat.Frequency = 0.1;
+mat.coefficients_of_variation = [0.8 0.8 0.];
+mat.correlation_coefficients = [0.1 0. 0.];
+
 
 % evaluate the Differential Scattering Cross-Sections
-dcs = DSCSClass(material,geometry.dimension);
-dcs.CalcSigma;
-material.sigma = dcs.sigma;
-
+lc = 60;
+mat.Exponential(lc);
+mat.CalcSigma;
+material = mat;
 % % 2D
 % material.sigma = {@(th) 1/2/pi*ones(size(th))*0.05*6, @(th) 1/2/pi*ones(size(th))*0.05*6; ...
 %                   @(th) 1/2/pi*ones(size(th))*0.029*3.46, @(th) 1/2/pi*ones(size(th))*0.144*3.46};
@@ -48,5 +49,7 @@ obs = radiativeTransferUnbounded( geometry.dimension, source, material, observat
 plotting = struct( 'equipartition', true, ...
                    'movieTotalEnergy', false, ...
                    'movieDirectionalEnergy', false, ...
+                   'timehistory', true, ...
                    'sensors', [1 0 0; 9 0 0; 9 0 1; 9 1 0]);
+
 plotEnergies( plotting, obs, material, source.lambda );

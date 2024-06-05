@@ -28,7 +28,7 @@ dt = mean(diff(t));
 r = source_station_dists;
 [m,n] = size(r); if m>n, r=r'; end
 
-Sigma = prepareSigmaOne(material.sigma,d);
+Sigma = prepareSigmaOne(material.sigma{1},d);
 meanFreePath = 1/Sigma;
 
 % Source position

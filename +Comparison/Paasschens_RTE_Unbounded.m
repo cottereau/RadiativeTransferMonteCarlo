@@ -20,10 +20,12 @@ Lmax = material.v*max(observation.time);
 r = linspace(0,Rmax,ceil(Rmax/observation.dr));
 dr = mean(diff(r));
 
-if ~isfield(material,'sigma')
-    material.sigma = PSDF2sigma(material,d);
+if isempty(material.sigma)
+    error(['The Differential Scattering Cross-Sections '...
+        'has been not defined, please defined it usign DSCS Class'])
 end
-Sigma = prepareSigmaOne(material.sigma,d); % homogeneous to 1/[T]
+
+Sigma = prepareSigmaOne(material.sigma{1},d); % homogeneous to 1/[T]
 meanFreeTime = 1/Sigma;
 
 % a (normalized time)      : Sigma*t
