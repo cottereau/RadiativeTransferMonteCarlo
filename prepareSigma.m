@@ -1,13 +1,13 @@
 function mat = prepareSigma(mat,d)
 
-if ~isfield(mat,'sigma')
+if isempty(mat.sigma)
     error(['The Differential Scattering Cross-Sections '...
         'has been not defined, please defined it usign DSCS Class'])
 end
 
 if mat.acoustics
     
-    [mat.Sigma,mat.Sigmapr,mat.invcdf] = prepareSigmaOne(mat.sigma,d);
+    [mat.Sigma,mat.Sigmapr,mat.invcdf] = prepareSigmaOne(mat.sigma{1},d);
 
     % Diffusion coefficient m²/s (Eq. (5.12), Ryzhik et al, 1996)
     mat.D = mat.v^2/(d*(mat.Sigma-mat.Sigmapr));

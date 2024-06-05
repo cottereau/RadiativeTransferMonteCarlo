@@ -40,8 +40,8 @@ if isfield(type,'equipartition') && type.equipartition
     figure; plot(obs.t,E/max(sum(E,2)));
     if obs.acoustics
         hold all
-       plot(obs.t,obs.energyDomainCoherent) 
-       plot(obs.t,obs.energyDomainIncoherent)
+        plot(obs.t,obs.energyDomainCoherent)
+        plot(obs.t,obs.energyDomainIncoherent)
     end
     if ~obs.acoustics
         eq = (material.vs/material.vp)^(obs.d)/(obs.d-1);
@@ -64,6 +64,10 @@ if isfield(type,'equipartition') && type.equipartition
         title('Total energy')
     end
     xlabel('time')
+end
+
+if isfield(type,'timehistory') && type.timehistory
+    plotTimeHistory(obs,type)
 end
 
 end
@@ -96,17 +100,22 @@ for i1=1:Nt
     surf(ax1, x,z(indp),obs.energyDensityBox(:,indp,i1,1)');
     view(2); shading flat; box on;
     cb1 = colorbar; colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
-    set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z(indp)) max(z(indp))], ...
+    if obs.acoustics
+        set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z(indp)) max(z(indp))], ...
+            'XTick',[]);
+    else
+        set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z(indp)) max(z(indp))], ...
             'XTick',[],'Position',[.13 .5838 .6964 .3412]);
+        set(cb1,'position',[.8411 .5833 .05 .31]);
+    end
     title(cb1,'P energy')
-    set(cb1,'position',[.8411 .5833 .05 .31]);
     title(ax1,['Total Energy Density, time t = ' num2str(obs.t(i1)) 's'])
     if ~obs.acoustics
         ax2 = subplot(n,1,2,'replace');
         surf(ax2,x,z(indn),obs.energyDensityBox(:,indn,i1,2)');
         view(2); shading flat; box on;
-        cb2 = colorbar; clim(ax2,[0 cmax(2)]); 
-        cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:)); 
+        cb2 = colorbar; clim(ax2,[0 cmax(2)]);
+        cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:));
         set(ax2,'XLim',[min(x) max(x)],'YLim',[min(z(indn)) max(z(indn))], ...
             'Position',[.13 .23 .6964 .3412]);
         title(cb2,'S energy')
@@ -139,7 +148,7 @@ level2  = logspace(-4,log10(cmax(2)),10);
 for i1=1:Nt
     if i1==1; figure; lappend = false; else; clf; lappend = true; end
     ax1 = axes;
-%    hold off; contour(ax1,x,z,obs.energyDensityBox(:,:,i1,1)',level1);
+    %    hold off; contour(ax1,x,z,obs.energyDensityBox(:,:,i1,1)',level1);
     hold off; surf(ax1,x,z,obs.energyDensityBox(:,:,i1,1)');
     view(2); shading flat;% alpha 0.5;
     colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
@@ -153,9 +162,9 @@ for i1=1:Nt
         title(cb1,'P energy')
         ax2 = axes;
         surf(ax2, x,z,obs.energyDensityBox(:,:,i1,2)');
-%         contour(ax2,x,z,obs.energyDensityBox(:,:,i1,2)',level2);
-       view(2); shading flat; alpha 0.5
-        cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:)); 
+        %         contour(ax2,x,z,obs.energyDensityBox(:,:,i1,2)',level2);
+        view(2); shading flat; alpha 0.5
+        cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:));
         clim(ax2,[0 cmax(2)]);
         set(ax2,'colorscale','log');
         ax2.XLim = [min(x) max(x)]; ax2.YLim = [min(z) max(z)];
@@ -207,7 +216,7 @@ for i2 = 1:Ns
         hold off;
         rlim([0 rmax(i2)])
         title(['sensor at [' num2str(sensors(i2,1)) ',' ...
-                  num2str(sensors(i2,3)) '], time t = ' num2str(obs.t(i1))])
+            num2str(sensors(i2,3)) '], time t = ' num2str(obs.t(i1))])
         legend
         % export graphics
         nameFig = ['movieDirectionalEnergy' num2str(i2) '.gif'];
@@ -276,11 +285,99 @@ for i2 = 1:obs.nSources
             Es = squeeze( interp1( obs.r', obsEi2, r ));
             Es2 = [ Es(end:-1:1,:,:); Es];
             Ei(:,:,i1,2) = Ei(:,:,i1,2) + interp1( psi2pi', Es2, psiRot );
-        end        
+        end
 
-    % end of loop on sources
+        % end of loop on sources
     end
 
-% end of loop on sensors
+    % end of loop on sensors
 end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function plotTimeHistory(obs,type)
+
+% source to sensors distance
+s = obs.positionSources(1,:);
+di = type.sensors - repmat(s,size(type.sensors,1),1);
+r = vecnorm(di')';
+
+n = 1+~obs.acoustics;
+
+% plots
+inds = zeros(size(r));
+for icap = 1 : numel(r)
+    try
+        inds(icap) = find(obs.r > r(icap),1,'first');
+        a = figure;
+
+        if ~obs.acoustics
+            subplot(3,n,1)
+            plot( obs.t, obs.Ei(inds(icap),:,1) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Incoherent P Energy')
+            subplot(3,2,3)
+            plot( obs.t, obs.Ec(inds(icap),:,1) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Coherent P Energy')
+            subplot(3,n,5)
+            plot( obs.t, obs.Ei(inds(icap),:,1) + obs.Ec(inds(icap),:,1) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Total P Energy')
+
+            subplot(3,n,2)
+            plot( obs.t, obs.Ei(inds(icap),:,2) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Incoherent S Energy')
+            subplot(3,n,4)
+            plot( obs.t, obs.Ec(inds(icap),:,2) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Coherent S Energy')
+            subplot(3,n,6)
+            plot( obs.t, obs.Ei(inds(icap),:,2) + obs.Ec(inds(icap),:,2) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Total S Energy')
+
+        else
+            subplot(3,n,1)
+            plot( obs.t, obs.Ei(inds(icap),:) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Incoherent Energy')
+            subplot(3,n,2)
+            plot( obs.t, obs.Ec(inds(icap),:) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Coherent Energy')
+            subplot(3,n,3)
+            plot( obs.t, obs.Ei(inds(icap),:) + obs.Ec(inds(icap),:) );
+            grid on
+            box on
+            xlabel('Time [s]')
+            ylabel('Total Energy')
+        end
+        aux = sprintf('Sensor: %g %g %g',(type.sensors(icap,1)),(type.sensors(icap,2)),(type.sensors(icap,3)));
+        sgtitle(aux)
+
+        saveas(a,['Sensor_',num2str(icap),'_energy.png'])
+    catch
+        er = sprintf('The sensor %d has not been found the coords are: [%f %f %f]',icap,type.sensors(icap,:));
+        warning(er)
+    end
+end
+
 end
