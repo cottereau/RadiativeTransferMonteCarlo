@@ -36,7 +36,6 @@ else
             mainLiteratureComparison('2dIsotropicAcoustic')
             mainLiteratureComparison('3dIsotropicAcoustic')
             mainLiteratureComparison('2dIsotropicElastic')
-
             %% 2D Isotropic scattering acoustic (isotropic differential scattering cross-section)
         case '2disotropicacoustic'
             titlecase = '2D acoustic case with isotropic scattering';
@@ -142,21 +141,24 @@ else
             vp = material.vp; vs = material.vs;
             K = vp/vs;
             Sigmapp = 0.05*vp; Sigmaps = 0.05*vp; Sigmap = Sigmapp + Sigmaps;
-            Sigmasp = Sigmaps/K^2; Sigmass = Sigmap -Sigmasp;
-            Sigmas = Sigmass + Sigmasp;
+            Sigmasp = Sigmaps/K^2; Sigmass = Sigmap-Sigmasp;
+            %Sigmas = Sigmass + Sigmasp;
             Sigma = {Sigmapp, Sigmaps; Sigmasp, Sigmass};
-            if (Sigmap ~= Sigmas)
-                error('This case cannot be dealt with in the framework of H. Sato 1994!')
-            else
-                eta = Sigmap;
-            end
+
+            % if (Sigmap ~= Sigmas)
+            %     keyboard
+            %     error('This case cannot be dealt with in the framework of H. Sato 1994!')
+            % else
+            %     eta = Sigmap;
+            % end
+            eta = Sigmap;
 
             material.sigma = {@(th) 1/2/pi*ones(size(th))*Sigmapp, @(th) 1/2/pi*ones(size(th))*Sigmaps; ...
                 @(th) 1/2/pi*ones(size(th))*Sigmasp, @(th) 1/2/pi*ones(size(th))*Sigmass};
 
-            observation = struct('r', 0:0.1:10, ... % size of bins in space
-                'time', 0:0.1:10, ...       % observation times
-                'Ndir', 10 );               % number of bins for directions
+            observation = struct('r', 0:0.1:20, ... % size of bins in space
+                                 'time', 0:0.0167:10, ...       % observation times
+                                 'Ndir', 10 );               % number of bins for directions
 
             % Run our code
             obsS = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
@@ -176,22 +178,28 @@ else
             % P-wave energy in terms of time
             b = 1; % Normalized distance
             ind = find(abs(obsP.r*eta/vp-b)<0.005);
-            E_analytical = Comparison.analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
-            figure; plot(obsP.t,2*pi*Ep(ind(1),:),'-b','linewidth',2);
-            hold on; plot(obsP.t,E_analytical(:,1)*(eta/vp)^2,'-r','linewidth',2);
+            E_analytical = analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
+            figure; semilogy(eta*obsP.t,2*pi*Ep(ind(1),:)/(eta/vp)^2,'-b','linewidth',2);
+            hold on; semilogy(eta*obsP.t,E_analytical(:,1),'-r','linewidth',2);
             xlabel('Time [s]'); ylabel('P-wave energy density');
-            xlim([0 6]); grid on; box on;
+            xlim([0 6]); ylim([1e-3 100]); grid on; box on;
 
             % S-wave energy in terms of time
-            figure; plot(obsP.t,2*pi*Es(ind(1),:),'-b','linewidth',2);
-            hold on; plot(obsP.t,E_analytical(:,2)*(eta/vp)^2,'-r','linewidth',2);
+            figure; semilogy(eta*obsP.t,2*pi*Es(ind(1),:)/(eta/vp)^2,'-b','linewidth',2);
+            hold on; semilogy(eta*obsP.t,E_analytical(:,2),'-r','linewidth',2);
+            xlabel('Time [s]'); ylabel('S-wave energy density');
+            xlim([0 6]); ylim([1e-3 100]); grid on; box on;
+
+            % Total energy in terms of time
+            figure; plot(obsP.t,2*pi*(Ep(ind(1),:)+Es(ind(1),:))/(eta/vp)^2,'-b','linewidth',2);
+            hold on; plot(obsP.t,sum(E_analytical,2),'-r','linewidth',2);
             xlabel('Time [s]'); ylabel('S-wave energy density');
             xlim([0 6]); grid on; box on;
             title(titlecase);
 
             %% 3D Anisotropic scattering (isotropic differential scattering cross-section)
             % to be done
-        case '3dIsotropicElastic'
+        case '3disotropicelastic'
             titlecase = '3D elastic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
 
@@ -237,11 +245,10 @@ else
             E = Ep + Es;
 
             % Total energy density in terms of time
-            b = 1; % Normalized distance
-            ind = find(abs(obsP.r*eta/vp-b)<0.005);
-            E_analytical = Comparison.analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
-            figure; plot(obsP.t,E(ind(1),:),'-b','linewidth',2);
-            hold on; plot(obsP.t,E_analytical*(eta/vp)^2,'-r','linewidth',2);
+
+            E_analytical = analyticalEnergyIsotropicElastic(geometry.dimension,K,[0.5 1 2],obsP.t,Sigma);
+            figure; plot(obsP.t,2*pi*E(1,:),'-b','linewidth',2);
+            hold on; plot(obsP.t,E_analytical(1,:)*(eta/vp)^3,'-r','linewidth',2);
             xlabel('Time [s]'); ylabel('Total energy density');
             xlim([0 6]); grid on; box on;
             title(titlecase);
