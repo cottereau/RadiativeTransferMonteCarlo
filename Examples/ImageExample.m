@@ -28,20 +28,20 @@ mat.coefficients_of_variation = [0.1 0.1];
 mat.correlation_coefficients = 1;
 
 % example of an image
-Im=imread('be1.png');
+Im=imread('rice.png');
 dx = 0.1e-3;
 imshow(Im)
 dir = 1;
 
 %dx = mean(diff(x));
 mat.GetPSDFromImage(Im,dir,dx,dx);
-return
 mat.CalcSigma;
 mat.PlotPSD
 
 %dcs.plotsigma
 mat.plotpolarsigma
 material = mat;
+return
 % 
 a = figure(1);
 saveas(a,'Sample.png')
