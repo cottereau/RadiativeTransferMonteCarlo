@@ -42,6 +42,8 @@ if isfield(type,'equipartition') && type.equipartition
         hold all
         plot(obs.t,obs.energyDomainCoherent)
         plot(obs.t,obs.energyDomainIncoherent)
+        legend('Total energy','Coherent','Incoherent')
+
     end
     if ~obs.acoustics
         eq = (material.vs/material.vp)^(obs.d)/(obs.d-1);

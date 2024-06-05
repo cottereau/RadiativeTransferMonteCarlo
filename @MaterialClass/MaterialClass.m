@@ -370,7 +370,7 @@ classdef MaterialClass < handle
             obj.Phi = out;
             obj.R = @(z) 1./(1+(pi^2*z.^2/4))^2;
         end
-        function out = Gaussian(obj)
+        function out = Gaussian(obj,lc)
             %% Gaussian
             % Compute the normalized power spectral density function for
             % Gaussian
@@ -393,7 +393,7 @@ classdef MaterialClass < handle
             obj.Phi = out;
             obj.R = @(z)exp(-pi*z.^2);
         end
-        function out = Triangular(obj)
+        function out = Triangular(obj,lc)
             %% Triangular
             % Compute the normalized power spectral density function for
             % Triangular
@@ -416,7 +416,7 @@ classdef MaterialClass < handle
             obj.Phi = out;
             obj.R = @(z)(12*(2-2*cos(2*pi*z)-(2*pi*z).*sin(2*pi*z)))./(2*pi*z).^4;
         end
-        function out = LowPass(obj)
+        function out = LowPass(obj,lc)
             %% LowPass
             % Compute the normalized power spectral density function for
             % LowPass
@@ -614,101 +614,6 @@ classdef MaterialClass < handle
             %obj.k = obj.k/obj.CorrelationLength;
 
             out = obj.Phi;
-        end
-        function out = MonoDisperseElipse(obj)
-            %% MonoDisperseElipse
-            % Compute the normalized power spectral density function for
-            % mono disperse elipsoid
-            %
-            % Syntax:
-            %   MonoDisperseElipse (  );
-            %
-            % Inputs:
-            %
-            % Output:
-
-            % Torquato S. and Stell G. (1985). Microstructure of two-phase
-            % random media. V. The n-point matrix probability functions for
-            % impenetrable spheres, J. Chem. Phys., 82(2), pp. 980-987.
-
-            % constants
-            rho = 3*phi/(4*pi);
-            % k = 0:0.01:100;
-
-            pad_x = numel(r);
-            x_fa = 1/mean(diff(r));
-            k = 0:x_fa/pad_x:x_fa-x_fa/pad_x;
-
-            eta = 4*pi*rho/3;
-            l1 = (1+2*eta)^2/(1-eta)^4;
-            l2 = -(1+eta/2)^2/(1-eta)^4;
-            V2 = 8*pi/3*ones( size(r) );
-            V2( r<2 ) = 4*pi/3*(1+3/4*r(r<2)-r(r<2).^3/16);
-            % computation
-            c = -4*pi./(8*k.^3) .* ( l1*(sin(2*k)-2*k.*cos(2*k)) + ...
-                3*eta*l2./k.*( 4*k.*sin(2*k) + (2-4*k.^2).*cos(2*k) - 2 ) + ...
-                eta*l1./(16*k.^3) .* (( 48*k.^2 - 24 -16*k.^4 ) .* cos(2*k) + ...
-                (32*k.^3-48*k).*sin(2*k) + 24 ));
-            c(1) = -pi/3*((4+eta)*l1+18*eta*l2);
-
-            % c = -4*pi./(k.^3) .* ( l1*(sin(2*k)-2*k.*cos(2*k)) + ...
-            % 3*eta*l2./k.*( 4*k.*sin(2*k) + (2-4*k.^2).* ...
-            % cos(2*k) - 2 ) + ...
-            % eta*l1./(2*k.^3) .* (( 6*k.^2 - 3 -2*k.^4 ) .* ...
-            % cos(2*k) + ...
-            % (4*k.^3-6*k).*sin(2*k) + 3 ));
-            % c(1) = -8*pi/3*((4+eta)*l1+18*eta*l2);
-
-            m = 4*pi./k .*( sin(k)./(k.^2) - cos(k)./k );
-            m(1) = 4*pi/3;
-            M = zeros( size(r) );
-            for i1 = 2:length(r)
-                M(i1) = 1/2/pi^2/r(i1) * ...
-                    trapz( k, c./(1-rho*c).*m.^2.*k.*sin(k*r(i1)) )+ 16*pi^2/9;
-            end
-            C = (1 - rho*V2 + rho^2*M -(1-phi)^2 ) / phi / (1-phi);
-            % C = (1 - rho*V2 + rho^2*M + eta^2 -(1-eta)^2 ) / eta / (1-eta);
-            % C = (1 - rho*V2 + rho^2*M -(1-phi)^2 ) / phi / (1-phi);
-
-            %
-            %
-            S = 1 - rho*V2 + rho^2*M ;
-
-            out = @(z) 1;
-            obj.Phi = out;
-            obj.R = out;
-        end
-        function out = PolyDisperseDisk(obj)
-            %% PolyDisperseDisk
-            % Compute the normalized power spectral density function for
-            % poly disperse disk
-            %
-            % Syntax:
-            %   PolyDisperseDisk (  );
-            %
-            % Inputs:
-            %
-            % Output:
-
-            out = @(z) 1;
-            obj.Phi = out;
-            obj.R = out;
-        end
-        function out = PolyDisperseElipse(obj)
-            %% PolyDisperseElipse
-            % Compute the normalized power spectral density function for
-            % poly disperse elipsoid
-            %
-            % Syntax:
-            %   PolyDisperseElipse (  );
-            %
-            % Inputs:
-            %
-            % Output:
-
-            out = @(z) 1;
-            obj.Phi = out;
-            obj.R = out;
         end
         %% function to evaluate PSDF: an image
         function out = GetPSDFromImage(obj,Im,dim,dx,dy)
