@@ -24,8 +24,6 @@ function mainLiteratureComparison(type)
 %     for the seismogram envelope formation. Geophys. J. Int 117,
 %     pp. 487-494 (1994).
 
-clc
-
 % with no argument, launch all validation cases
 if nargin==0
     mainLiteratureComparison('all')
@@ -178,7 +176,7 @@ else
             % P-wave energy in terms of time
             b = 1; % Normalized distance
             ind = find(abs(obsP.r*eta/vp-b)<0.005);
-            E_analytical = analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
+            E_analytical = Comparison.analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
             figure; semilogy(eta*obsP.t,2*pi*Ep(ind(1),:)/(eta/vp)^2,'-b','linewidth',2);
             hold on; semilogy(eta*obsP.t,E_analytical(:,1),'-r','linewidth',2);
             xlabel('Time [s]'); ylabel('P-wave energy density');
