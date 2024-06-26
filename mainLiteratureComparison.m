@@ -6,9 +6,10 @@ function mainLiteratureComparison(type)
 % when type='all' or empty, all validation cases are launched
 %
 % list of possible comparision cases with reference to literature
-%  - '2dIsotropicAcoustic' (1,2)
-%  - '3dIsotropicAcoustic' (1,2)
-%  - '2dIsotropicElastic'  (3)
+%  - '2dIsotropicAcoustic' (1,2,5)
+%  - '3dIsotropicAcoustic' (1,2,5)
+%  - '2dIsotropicElastic'  (3,5)
+%  - '3dIsotropicElastic'  (4,5)
 %
 % Our code is compared to the results described in the following papers:
 % (1) J. C. J. Paasschens. Solution of the time-dependent Boltzmann equation,
@@ -23,8 +24,16 @@ function mainLiteratureComparison(type)
 % (4) H. Sato. Multiple isotropic scattering model including P-S conversions
 %     for the seismogram envelope formation. Geophys. J. Int 117,
 %     pp. 487-494 (1994).
+% (5) K. Yoshimoto, Monte Carlo simulation of seismogram envelopes in 
+%     scattering media. Journal of Geophysical Research: Solid Earth (2000)
 
 % with no argument, launch all validation cases
+
+
+% Bug reports: 
+% Analytical comparison in 2D does not work at the moment (corresponding
+% line is commented)
+
 if nargin==0
     mainLiteratureComparison('all')
 else
@@ -39,42 +48,43 @@ else
             titlecase = '2D acoustic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
             % input data
-            source      = struct( 'numberParticles', 1e6, ...
-                'position', [-10 0 0], ...
-                'lambda', 0.001 );
+            source = struct( 'numberParticles', 1e6, ...
+                             'lambda', 1e-4 );
             
-            material = MaterialClass.preset(1);
+            %material = MaterialClass.preset(1);
+            material = struct( 'acoustics', true, ...
+                               'v', 1, ...
+                               'sigma', @(th) 1/4/pi*ones(size(th)) );
 
-            observation = struct( 'dr', 0.01, ...
-                'time', 0:0.1:15, ...
-                'Ndir', 100 );
-            geometry    = struct( 'type', 'fullspace', ...
-                'size', [4 3 3], ...
-                'dimension', 2 );
-            inds = [40 80 120]; % index of the desired observation points
+            observation = struct('r', 0:0.1:20, ...
+                                 'time', 0:0.05:20, ...   % observation times
+                                 'Ndir', 10);             % number of bins for directions
+
+            geometry = struct( 'type', 'fullspace', ...
+                                'dimension', 2 );
+            
+            inds = [20 50 80]; % index of the desired observation points
 
             % running our code, Monte Carlo-based
             obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-            Eus = (obs.Ei+obs.Ec).*obs.dr';
+            Eus = obs.Ei+obs.Ec;
+
+            % running Yoshimoto's Monte Carlo-based approach
+            EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
 
             % computing Paasschens solution
-            [EP,Ediff] = Comparison.Paasschens_RTE_Unbounded( source, material, observation, geometry );
-
-            % running Hoshiba's Monte Carlo-based approach
-            EH = Comparison.Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
-                source, material, geometry, 20 );
-            EH = EH.*(pi*obs.dr(inds));
+            [EP,Ediff] = Comparison.analyticalPaasschens( material, observation, geometry );
 
             % visual comparison
             figure; hold on; grid on; box on;
             h1 = plot( obs.t, Eus(inds,:), '-k' );
-            h2 = plot( obs.t, EP(inds,:), '-b' );
-            h3 = plot( obs.t, EH, '-r' );
+            h2 = plot( obs.t, EY(inds,:), '-r' );
+            h3 = plot( obs.t, EP(inds,:), '-b' );
             h4 = plot( obs.t, Ediff(inds,:), ':r' );
             legend( [h1(1), h2(1), h3(1), h4(1)], ...
-                {'Monte Carlo (our code)','Analytical (Paasschens, 1997)', ...
-                'Monte Carlo (Hoshiba 1991)', 'diffusion approximation'}, ...
-                'FontSize',12);
+                {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
+                 'Analytical (Paasschens, 1997)', 'diffusion approximation'}, ...
+                 'FontSize',12);
             xlabel('Lapse Time [s]');
             ylabel('Integrated energy density at different source-station distances')
             title(titlecase);
@@ -84,40 +94,43 @@ else
             titlecase = '3D acoustic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
             % input data
-            source      = struct( 'numberParticles', 1e6, ...
-                'position', [-10 0 0], ...
-                'lambda', 0.001 );
-            material = MaterialClass.preset(2);
-            observation = struct( 'dr', 0.05, ...
-                'time', 0:0.1:30, ...
-                'Ndir', 100 );
-            geometry    = struct( 'type', 'fullspace', ...
-                'size', [4 3 3], ...
-                'dimension', 3 );
-            inds = [40 80 120]; % index of the desired observation points
+            source = struct( 'numberParticles', 1e6, ...
+                             'lambda', 1e-4 );
+            
+            %material = MaterialClass.preset(1);
+            material = struct( 'acoustics', true, ...
+                               'v', 1, ...
+                               'sigma', @(th) 1/4/pi*ones(size(th)) );
+
+            observation = struct( 'r', 0:0.1:20, ...
+                                  'time', 0:0.05:20, ...   % observation times
+                                  'Ndir', 10 );             % number of bins for directions
+
+            geometry = struct( 'type', 'fullspace', ...
+                                'dimension', 3 );
+            
+            inds = [20 50 80]; % index of the desired observation points
 
             % running our code, Monte Carlo-based
-            obs = radiativeTransferUnbounded( geometry.dimension, source, ...
-                material, observation );
-            Eus = (obs.Ei+obs.Ec).*obs.dr';
+            obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+            Eus = obs.Ei+obs.Ec;
+
+            % running Yoshimoto's Monte Carlo-based approach
+            EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
 
             % computing Paasschens solution
-            [EP,Ediff] = Comparison.Paasschens_RTE_Unbounded( source, material, ...
-                observation, geometry );
-            % % running Hoshiba's Monte Carlo-based approach
-            % EH = Comparison.Hoshiba_RTE_Unbounded_MonteCarlo( obs.t, obs.r(inds), ...
-            %                                           source, material, geometry, 10 );
+            [EP,Ediff] = Comparison.analyticalPaasschens( material, observation, geometry );
 
-            % visual comparison
+            % comparison
             figure; hold on; grid on; box on;
             h1 = plot( obs.t, Eus(inds,:), '-k' );
-            h2 = plot( obs.t, EP(inds,:), '-b' );
-            %h3 = plot( obs.t, EH, '-r' );
+            h2 = plot( obs.t, EY(inds,:), '-r' );
+            h3 = plot( obs.t, EP(inds,:), '-b' );
             h4 = plot( obs.t, Ediff(inds,:), ':r' );
-            legend( [h1(1), h2(1), h4(1)], ...
-                {'Monte Carlo (our code)','Analytical (Paasschens, 1997)', ...
-                'diffusion approximation'}, ...
-                'FontSize',12);
+            legend( [h1(1), h2(1), h3(1), h4(1)], ...
+                {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
+                 'Analytical (Paasschens, 1997)', 'diffusion approximation'}, ...
+                 'FontSize',12);
             xlabel('Lapse Time [s]');
             ylabel('Integrated energy density at different source-station distances')
             title(titlecase);
@@ -127,73 +140,78 @@ else
             titlecase = '2D elastic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
 
-            % Load the results of the paper
-            % load('Nakahara_Yoshimoto_2011_Fig4_left.mat')
-
-            % input data : values taken from (H. Nakahara and K. Yoshimoto 2011)
             geometry = struct( 'dimension', 2 );
+            
             source = struct( 'numberParticles', 1e6, ...
-                'polarization', 'S', ...
-                'lambda', 0.001 );
-            material = MaterialClass.preset(3);
+                             'polarization', 'P', ...
+                             'lambda', 0.001 );
+            
+            material = struct( 'acoustics', false, ...
+                               'vp', 6, ...
+                               'vs', 3.46);
+            
+            observation = struct('r', 0:0.1:20, ... % size of bins in space
+                                 'time', 0:0.01:10, ...       % observation times
+                                 'Ndir', 10 );               % number of bins for directions
+            
+            d = geometry.dimension;
             vp = material.vp; vs = material.vs;
             K = vp/vs;
-            Sigmapp = 0.05*vp; Sigmaps = 0.05*vp; Sigmap = Sigmapp + Sigmaps;
-            Sigmasp = Sigmaps/K^2; Sigmass = Sigmap-Sigmasp;
-            %Sigmas = Sigmass + Sigmasp;
-            Sigma = {Sigmapp, Sigmaps; Sigmasp, Sigmass};
+            Sigmapp = 0.2*vp; Sigmaps = 0.2*vp; Sigmap = Sigmapp + Sigmaps;
+            Sigmasp = Sigmaps/((d-1)*K^d); Sigmass = Sigmap -Sigmasp;
+            
+            material.sigma = {@(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmapp, @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmaps; ...
+                              @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmasp, @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmass};
+            
+            Wsp = 0; % S to P wave energy ratio at the source
+            
+            inds = [20 50 80]; % index of the desired observation points
+            
+            % running our code, Monte Carlo-based
+            obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+            
+            Epc = obs.Ec(:,:,1); Epi = obs.Ei(:,:,1); Ep = Epc + Epi; 
+            Esc = obs.Ec(:,:,2); Esi = obs.Ei(:,:,2); Es = Esc + Esi;
+            %Etotus = Ep + Es;
 
-            % if (Sigmap ~= Sigmas)
-            %     keyboard
-            %     error('This case cannot be dealt with in the framework of H. Sato 1994!')
-            % else
-            %     eta = Sigmap;
-            % end
-            eta = Sigmap;
+            % running Yoshimoto's Monte Carlo-based approach
+            EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
+            %EtotY = sum(EY,3);
 
-            material.sigma = {@(th) 1/2/pi*ones(size(th))*Sigmapp, @(th) 1/2/pi*ones(size(th))*Sigmaps; ...
-                @(th) 1/2/pi*ones(size(th))*Sigmasp, @(th) 1/2/pi*ones(size(th))*Sigmass};
-
-            observation = struct('r', 0:0.1:20, ... % size of bins in space
-                                 'time', 0:0.0167:10, ...       % observation times
-                                 'Ndir', 10 );               % number of bins for directions
-
-            % Run our code
-            obsS = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-
-            source.polarization = 'P';
-            obsP = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-
-            EpcP = obsP.Ec(:,:,1); EpiP = obsP.Ei(:,:,1); EpP = EpcP+EpiP;
-            EscP = obsP.Ec(:,:,2); EsiP = obsP.Ei(:,:,2); EsP = EscP+EsiP;
-
-            EpcS = obsS.Ec(:,:,1); EpiS = obsS.Ei(:,:,1); EpS = EpcS+EpiS;
-            EscS = obsS.Ec(:,:,2); EsiS = obsS.Ei(:,:,2); EsS = EscS+EsiS;
-
-            Ep = (1*EpP+1.5*K^5*EpS)/(1+1.5*K^5);
-            Es = (1*EsP+1.5*K^5*EsS)/(1+1.5*K^5);
-
-            % P-wave energy in terms of time
-            b = 1; % Normalized distance
-            ind = find(abs(obsP.r*eta/vp-b)<0.005);
-            E_analytical = Comparison.analyticalEnergyIsotropicElastic(geometry.dimension,K,obsP.r(ind(1))*eta/vp,obsP.t,Sigma);
-            figure; semilogy(eta*obsP.t,2*pi*Ep(ind(1),:)/(eta/vp)^2,'-b','linewidth',2);
-            hold on; semilogy(eta*obsP.t,E_analytical(:,1),'-r','linewidth',2);
-            xlabel('Time [s]'); ylabel('P-wave energy density');
-            xlim([0 6]); ylim([1e-3 100]); grid on; box on;
-
-            % S-wave energy in terms of time
-            figure; semilogy(eta*obsP.t,2*pi*Es(ind(1),:)/(eta/vp)^2,'-b','linewidth',2);
-            hold on; semilogy(eta*obsP.t,E_analytical(:,2),'-r','linewidth',2);
-            xlabel('Time [s]'); ylabel('S-wave energy density');
-            xlim([0 6]); ylim([1e-3 100]); grid on; box on;
-
-            % Total energy in terms of time
-            figure; plot(obsP.t,2*pi*(Ep(ind(1),:)+Es(ind(1),:))/(eta/vp)^2,'-b','linewidth',2);
-            hold on; plot(obsP.t,sum(E_analytical,2),'-r','linewidth',2);
-            xlabel('Time [s]'); ylabel('S-wave energy density');
-            xlim([0 6]); grid on; box on;
+            % computing semi-analytical solution (Nakahara 2011, Sato 1994)
+            % Eanalytical = Comparison.analyticalEnergyIsotropicElastic(geometry, material, observation, observation.r(inds), Wsp);
+            
+            % comparison of P energy densities
+            figure; hold on; grid on; box on;
+            h1 = plot( obs.t, Ep(inds,:), '-r' );
+            h2 = plot( obs.t, EY(inds,:,1), '-b' );
+            legend( [h1(1), h2(1)], ...
+            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)'}, 'FontSize',12);
+            xlabel('Lapse Time [s]');
+            ylabel('P-wave energy densities at different source-station distances')
             title(titlecase);
+
+            % comparison of S energy densities
+            figure; hold on; grid on; box on;
+            h1 = plot( obs.t, Es(inds,:), '-r' );
+            h2 = plot( obs.t, EY(inds,:,2), '-b' );
+            legend( [h1(1), h2(1)], ...
+            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)'}, 'FontSize',12);
+            xlabel('Lapse Time [s]');
+            ylabel('S-wave energy densities at different source-station distances')
+            title(titlecase);
+
+            % % comparison of total energy densities
+            % figure; hold on; grid on; box on;
+            % h1 = plot( obs.t, Etotus(inds,:), '-k' );
+            % h2 = plot( obs.t, EtotY(inds,:), '-r' );
+            % h3 = plot( obs.t, Eanalytical, '-b' );
+            % legend( [h1(1), h2(1), h3(1)], ...
+            % {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
+            %  'Analytical (Sato, 1994)'}, 'FontSize',12);
+            % xlabel('Lapse Time [s]');
+            % ylabel('Energy densities at different source-station distances')
+            % title(titlecase);
 
             %% 3D Anisotropic scattering (isotropic differential scattering cross-section)
             % to be done
@@ -201,55 +219,79 @@ else
             titlecase = '3D elastic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
 
-            % input data : values taken from (H. Nakahara and K. Yoshimoto 2011)
             geometry = struct( 'dimension', 3 );
+            
             source = struct( 'numberParticles', 1e6, ...
-                'polarization', 'S', ...
-                'lambda', 0.001 );
-            material = MaterialClass.preset(4);
+                             'polarization', 'P', ...
+                             'lambda', 0.001 );
+            
+            material = struct( 'acoustics', false, ...
+                               'vp', 6, ...
+                               'vs', 3.46);
+            
+            observation = struct('r', 0:0.1:20, ... % size of bins in space
+                                 'time', 0:0.01:10, ...       % observation times
+                                 'Ndir', 10 );               % number of bins for directions
+            
+            d = geometry.dimension;
             vp = material.vp; vs = material.vs;
             K = vp/vs;
-            Sigmapp = 0.05*vp; Sigmaps = 0.05*vp; Sigmap = Sigmapp + Sigmaps;
-            Sigmasp = Sigmaps/K^2; Sigmass = Sigmap -Sigmasp;
-            Sigmas = Sigmass + Sigmasp;
-            Sigma = {Sigmapp, Sigmaps; Sigmasp, Sigmass};
-            if (Sigmap ~= Sigmas)
-                error('This case cannot be dealt with in the framework of H. Sato 1994!')
-            else
-                eta = Sigmap;
-            end
+            Sigmapp = 0.2*vp; Sigmaps = 0.2*vp; Sigmap = Sigmapp + Sigmaps;
+            Sigmasp = Sigmaps/((d-1)*K^d); Sigmass = Sigmap -Sigmasp;
+            
+            material.sigma = {@(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmapp, @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmaps; ...
+                              @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmasp, @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmass};
+            
+            Wsp = 0; % S to P wave energy ratio at the source
+            
+            inds = [20 50 80]; % index of the desired observation points
+            
+            % running our code, Monte Carlo-based
+            obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+            
+            Epc = obs.Ec(:,:,1); Epi = obs.Ei(:,:,1); Ep = Epc + Epi; 
+            Esc = obs.Ec(:,:,2); Esi = obs.Ei(:,:,2); Es = Esc + Esi;
+            Etotus = Ep + Es;
 
-            material.sigma = {@(th) 1/4/pi*ones(size(th))*Sigmapp, @(th) 1/4/pi*ones(size(th))*Sigmaps; ...
-                @(th) 1/4/pi*ones(size(th))*Sigmasp, @(th) 1/4/pi*ones(size(th))*Sigmass};
+            % running Yoshimoto's Monte Carlo-based approach
+            EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
+            EtotY = sum(EY,3);
 
-            observation = struct('r', 0:0.05:15, ... % size of bins in space
-                'time', 0:0.01:6, ...       % observation times
-                'Ndir', 10 );               % number of bins for directions
-
-            % Run our code
-            obsS = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-
-            source.polarization = 'P';
-            obsP = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-
-            EpcP = obsP.Ec(:,:,1); EpiP = obsP.Ei(:,:,1); EpP = EpcP+EpiP;
-            EscP = obsP.Ec(:,:,2); EsiP = obsP.Ei(:,:,2); EsP = EscP+EsiP;
-
-            EpcS = obsS.Ec(:,:,1); EpiS = obsS.Ei(:,:,1); EpS = EpcS+EpiS;
-            EscS = obsS.Ec(:,:,2); EsiS = obsS.Ei(:,:,2); EsS = EscS+EsiS;
-
-            Ep = (1*EpP+1.5*K^5*EpS)/(1+1.5*K^5);
-            Es = (1*EsP+1.5*K^5*EsS)/(1+1.5*K^5);
-            E = Ep + Es;
-
-            % Total energy density in terms of time
-
-            E_analytical = analyticalEnergyIsotropicElastic(geometry.dimension,K,[0.5 1 2],obsP.t,Sigma);
-            figure; plot(obsP.t,2*pi*E(1,:),'-b','linewidth',2);
-            hold on; plot(obsP.t,E_analytical(1,:)*(eta/vp)^3,'-r','linewidth',2);
-            xlabel('Time [s]'); ylabel('Total energy density');
-            xlim([0 6]); grid on; box on;
+            % computing semi-analytical solution (Nakahara 2011, Sato 1994)
+            Eanalytical = Comparison.analyticalEnergyIsotropicElastic(geometry, material, observation, observation.r(inds), Wsp);
+            
+            % comparison of P energy densities
+            figure; hold on; grid on; box on;
+            h1 = plot( obs.t, Ep(inds,:), '-k' );
+            h2 = plot( obs.t, EY(inds,:,1), '-b' );
+            legend( [h1(1), h2(1)], ...
+            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)'}, 'FontSize',12);
+            xlabel('Lapse Time [s]');
+            ylabel('P-wave energy densities at different source-station distances')
             title(titlecase);
+
+            % comparison of S energy densities
+            figure; hold on; grid on; box on;
+            h1 = plot( obs.t, Es(inds,:), '-k' );
+            h2 = plot( obs.t, EY(inds,:,2), '-b' );
+            legend( [h1(1), h2(1)], ...
+            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)'}, 'FontSize',12);
+            xlabel('Lapse Time [s]');
+            ylabel('S-wave energy densities at different source-station distances')
+            title(titlecase);
+
+            % comparison of total energy densities
+            figure; hold on; grid on; box on;
+            h1 = plot( obs.t, Etotus(inds,:), '-k' );
+            h2 = plot( obs.t, EtotY(inds,:), '-r' );
+            h3 = plot( obs.t, Eanalytical, '-b' );
+            legend( [h1(1), h2(1), h3(1)], ...
+            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
+             'Analytical (Sato, 1994)'}, 'FontSize',12);
+            xlabel('Lapse Time [s]');
+            ylabel('Energy densities at different source-station distances')
+            title(titlecase);
+
         otherwise
             error('unknown validation case')
     end

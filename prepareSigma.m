@@ -7,7 +7,7 @@ end
 
 if mat.acoustics
     
-    [mat.Sigma,mat.Sigmapr,mat.invcdf] = prepareSigmaOne(mat.sigma{1},d);
+    [mat.Sigma,mat.Sigmapr,mat.invcdf] = prepareSigmaOne(mat.sigma,d);
 
     % Diffusion coefficient m²/s (Eq. (5.12), Ryzhik et al, 1996)
     mat.D = mat.v^2/(d*(mat.Sigma-mat.Sigmapr));
@@ -26,7 +26,6 @@ else
     [mat.Sigma(2,1),mat.Sigmapr(2,1),mat.invcdf{2,1}] = prepareSigmaOne(mat.sigma{2,1},d);
     [mat.Sigma(2,2),mat.Sigmapr(2,2),mat.invcdf{2,2}] = prepareSigmaOne(mat.sigma{2,2},d);
     mat.meanFreeTime = 1./sum(mat.Sigma,2);
-    
     
     K = mat.vp/mat.vs;
     % Transport mean free paths of P & S waves

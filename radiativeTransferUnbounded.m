@@ -66,11 +66,14 @@ parfor ip = 1:Np
 
 % end of loop on packages
 end
-obs.energyIncoherent = (1./(obs.dr'*obs.N)).*double(Ei);
-obs.energyDomainCoherent = Ec(:,1:1+~acoustics)/obs.N;
+obs.energyDensityIncoherent = (1./(obs.dr'*obs.N*obs.dS)).*double(Ei);
 
-% energy density as a function of [x t] and [t]
-obs.Ei = squeeze(sum(obs.energyIncoherent,2));
-obs.Ec = coherentInABox(obs.energyDomainCoherent,obs.r,0,0,[0 0 0],t,d, ...
+% energy density as a function of [x t]
+obs.energyCoherent = Ec(:,1:1+~acoustics)/obs.N;
+obs.energyDensityIncoherent = (1./(obs.dr'*obs.N*obs.dS)).*double(Ei);
+obs.Ei = squeeze(sum(obs.energyDensityIncoherent,2));
+obs.Ec = coherentInABox(obs.energyCoherent,obs.r,0,0,[0 0 0],t,d, ...
                                                  source.lambda,material);
-obs.energyDomainIncoherent = shiftdim(pagemtimes(obs.dr,obs.Ei));
+% energy as a function of [t]
+obs.energyCoherent = obs.dS*obs.energyCoherent;
+obs.energyIncoherent = obs.dS*shiftdim(pagemtimes(obs.dr,obs.Ei));

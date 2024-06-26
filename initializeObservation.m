@@ -41,6 +41,7 @@ Ec = zeros(Nt,2);
 
 % energy in a small volume of the domain
 dr = volumeEnergy(d,r);
+dS = 2^(d-1)*pi;
 
 % initialize structure
 obs = struct('acoustics', acoustics, ... % true if acoustics problem
@@ -54,6 +55,7 @@ obs = struct('acoustics', acoustics, ... % true if acoustics problem
              'r', r, ...                 % sensor positions
              'Nr', Nr, ...               % number of positions
              'dr', dr, ...               % weight of small interval of radius
+             'dS', dS, ...
              'd', d);                    % dimension of the problem
 %             'energy', energy, ...       % matrix of observations
 
