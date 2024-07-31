@@ -70,7 +70,6 @@ obs.energyDensityIncoherent = (1./(obs.dr'*obs.N*obs.dS)).*double(Ei);
 
 % energy density as a function of [x t]
 obs.energyCoherent = Ec(:,1:1+~acoustics)/obs.N;
-obs.energyDensityIncoherent = (1./(obs.dr'*obs.N*obs.dS)).*double(Ei);
 obs.Ei = squeeze(sum(obs.energyDensityIncoherent,2));
 obs.Ec = coherentInABox(obs.energyCoherent,obs.r,0,0,[0 0 0],t,d, ...
                                                  source.lambda,material);

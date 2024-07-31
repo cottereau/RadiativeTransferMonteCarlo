@@ -27,34 +27,26 @@ geometry = struct( 'type', 'box', ...
                    'dimension', 3 );
 
 % Point source
-source = struct( 'numberParticles', 1e4, ...
+source = struct( 'numberParticles', 1e6, ...
                  'position', [2.5 1 -2], ... 
                  'lambda', 0.001 );
 
 % observations
 observation = struct('dr', 0.05, ...        % size of bins in space
-                     'time', 0:0.05:5, ...  % observation times
+                     'time', 0:0.05:20, ...  % observation times
                      'Ndir', 10 );         % number of bins for directions           
 
-% material properties
-% material.coefficients_of_variation defines the coefficients of variation
-% of kappa (bulk modulus) and rho (density), respectively.
-% material.correlation_coefficients defines the correlation coefficient
-% between kappa (bulk modulus) and rho (density).
-mat = MaterialClass(geometry.dimension);
-mat.acoustics = true;
-mat.v = 1;
-mat.Frequency = 10;
-mat.coefficients_of_variation = [0.1 0.2];
-mat.correlation_coefficients = -0.5;
-
-lc = 0.1;
-mat.Exponential(lc);
-mat.CalcSigma;
-%mat.sigma = mat.sigma{1};
-mat.plotpolarsigma
-mat.PlotPSD
-material = mat;
+% material properties - more examples can be found in Example folder
+% here is a basic example
+material = MaterialClass( geometry, ...
+                          source, ...
+                          true, ...            % true for acoustics
+                          1, ...               % defines the velocity of pressure waves
+                          [0.1 0.2], ...       % defines the coefficients of variation of kappa (bulk modulus) and rho (density), respectively.
+                          -0.5, ...            % defines the correlation coefficient
+                          'exp', ...           % defines the autocorrelation function
+                          0.1);                % defines the correlation coefficient
+                          
 % radiative transfer solution - acoustic with boundaries
 switch geometry.type
     case 'fullspace'

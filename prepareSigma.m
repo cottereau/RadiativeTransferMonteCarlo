@@ -1,7 +1,8 @@
 function mat = prepareSigma(mat,d)
 
 if isempty(mat.sigma)
-    error(['The Differential Scattering Cross-Sections '...
+    mat.CalcSigma;
+    warning(['The Differential Scattering Cross-Sections '...
         'has been not defined, please defined it usign DSCS Class'])
 end
 

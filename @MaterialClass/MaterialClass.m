@@ -49,7 +49,9 @@ classdef MaterialClass < handle
         SpectralLaw_def = {'exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersedisk','monodisperseelipse','polydispersedisk','polydisperseelipse','image'};
     end
     methods
-        function obj = MaterialClass(d)
+        function obj = MaterialClass(geometry,source,acoustics, ...
+                v,coefficients_of_variation,correlation_coefficients, ...
+                acf,lc)
             %% MaterialClass
             % MaterialClass contructor
             %
@@ -61,12 +63,22 @@ classdef MaterialClass < handle
             %     d   : dimension of the problem
 
             if nargin ~=0
-                if d~=3
+                if geometry.dimension~=3
                     warning(['Total scattering cross-sections for 2D case are to be ' ...
                         'implemented in future releases of the code'])
                 end
 
-                obj.d = d;
+                obj.d = geometry.dimension;
+
+                obj.acoustics = acoustics;
+                
+                obj.v = v;
+                obj.coefficients_of_variation = coefficients_of_variation;
+                obj.correlation_coefficients = correlation_coefficients;
+
+                obj.Frequency = obj.v/source.lambda;
+                obj.CorrelationLength = lc;
+                obj.SpectralLaw = acf;
             end
         end
         function newobj = copyobj(obj)
@@ -263,7 +275,7 @@ classdef MaterialClass < handle
 
             % constants
 
-            if any(abs(obj.Rorrelation_coefficients)>1)
+            if any(abs(obj.correlation_coefficients)>1)
                 error('Absolute values of correlation coefficients should be less than 1!')
             end
 
@@ -275,20 +287,20 @@ classdef MaterialClass < handle
                 case 3
                     switch obj.SpectralLaw
                         case 'exp'
-                            obj.SpectralParam = struct('Lc',obj.CorrelationLength);
-                            obj.Exponential;
+                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
+                            obj.Exponential(obj.CorrelationLength);
                         case 'power_law'
-                            obj.SpectralParam = struct('Lc',obj.CorrelationLength);
-                            obj.PowerLaw;
+                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
+                            obj.PowerLaw(obj.CorrelationLength);
                         case 'gaussian'
-                            obj.SpectralParam = struct('Lc',obj.CorrelationLength);
-                            obj.Gaussian;
+                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
+                            obj.Gaussian(obj.CorrelationLength);
                         case 'triangular'
-                            obj.SpectralParam = struct('Lc',obj.CorrelationLength);
-                            obj.Triangular;
+                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
+                            obj.Triangular(obj.CorrelationLength);
                         case 'low_pass'
-                            obj.SpectralParam = struct('Lc',obj.CorrelationLength);
-                            obj.LowPass;
+                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
+                            obj.LowPass(obj.CorrelationLength);
                         case 'VonKarman'
                             if ~isfield(obj.SpectralParam,'H') && ~isfield(obj.SpectralParam,'nu')
                                 error('Please add the VonKarman parameters for the PSDF')

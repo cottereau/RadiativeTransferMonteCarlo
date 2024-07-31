@@ -1,7 +1,7 @@
 function plotEnergies( type, obs, material, lambda, cmax, rmax )
 
 % constants
-Nac = size(obs.energyDomainCoherent,2);
+Nac = size(obs.energyCoherent,2);
 
 % unbounded case
 if ~isfield(obs,'nSources')
@@ -36,12 +36,12 @@ end
 
 % plot total energy and equipartition
 if isfield(type,'equipartition') && type.equipartition
-    E = obs.energyDomainCoherent+obs.energyDomainIncoherent;
+    E = obs.energyCoherent+obs.energyIncoherent;
     figure; plot(obs.t,E/max(sum(E,2)));
     if obs.acoustics
         hold all
-        plot(obs.t,obs.energyDomainCoherent)
-        plot(obs.t,obs.energyDomainIncoherent)
+        plot(obs.t,obs.energyCoherent)
+        plot(obs.t,obs.energyIncoherent)
         legend('Total energy','Coherent','Incoherent')
 
     end
@@ -53,9 +53,9 @@ if isfield(type,'equipartition') && type.equipartition
     end
     if ~obs.acoustics
         % Determine the polarization type of the source
-        if obs.energyDomainCoherent(1,1)==1 && obs.energyDomainCoherent(1,2)==0
+        if obs.energyCoherent(1,1)==1 && obs.energyCoherent(1,2)==0
             pol_type = 'P';
-        elseif obs.energyDomainCoherent(1,1)==0 && obs.energyDomainCoherent(1,2)==1
+        elseif obs.energyCoherent(1,1)==0 && obs.energyCoherent(1,2)==1
             pol_type = 'S';
         else
             error('The source polarization should be either P or S')
@@ -243,11 +243,11 @@ psibounds = [0 (psi2pi(1:end-1)+psi2pi(2:end))/2 2*pi];
 % initialization
 Ec = zeros(2*obs.Npsi,obs.Nt,Ns,1+~obs.acoustics);
 Ei = zeros(2*obs.Npsi,obs.Nt,Ns,1+~obs.acoustics);
-obsEc1 = obs.energyDomainCoherent(:,1);
-obsEi1 = obs.energyIncoherent(:,ind,:,1);
+obsEc1 = obs.energyCoherent(:,1);
+obsEi1 = obs.energyDensityIncoherent(:,ind,:,1);
 if ~obs.acoustics
-    obsEc2 = obs.energyDomainCoherent(:,2);
-    obsEi2 = obs.energyIncoherent(:,ind,:,2);
+    obsEc2 = obs.energyCoherent(:,2);
+    obsEi2 = obs.energyDensityIncoherent(:,ind,:,2);
 end
 
 % loop on sources

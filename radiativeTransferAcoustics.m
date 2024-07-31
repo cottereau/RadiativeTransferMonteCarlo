@@ -53,7 +53,7 @@ for i1 = 1:ns
 end
 
 % add coherent energy
-Ecoherent = coherentInABox(obs.energyDomainCoherent, ...
+Ecoherent = coherentInABox(obs.energyCoherent, ...
                    boxx(:),posS(1,2),boxz(:),posS,obs.t,d,lambda,material);
 E = E + Ecoherent;
 
