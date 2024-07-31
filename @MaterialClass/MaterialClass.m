@@ -38,11 +38,12 @@ classdef MaterialClass < handle
         P2P
         S2S
 
-        Phi                       = []; %power spectral density / function_handle
+        Phi                     = []; %power spectral density / function_handle
         k               double  = [];% wavenumber vector
         R                       = []; %Correlation / function_handle
         r               double  = [];% r vector
 
+        pol
     end
     properties (SetAccess = private, Hidden = true)
         Type_def = {'isotropic'}; %the anisotropic should be implemented
@@ -69,14 +70,30 @@ classdef MaterialClass < handle
                 end
 
                 obj.d = geometry.dimension;
-
                 obj.acoustics = acoustics;
-                
-                obj.v = v;
+
+                if acoustics
+                    obj.v = v;
+                    obj.Frequency = obj.v/source.lambda;
+                    obj.pol = 'P';
+                else
+                    obj.vp = v(1);
+                    obj.vs = v(2);
+                    switch source.polarization
+                        case 'S'
+                            obj.Frequency = obj.vs/source.lambda;
+                            obj.pol = 'S';
+                        case 'P'
+                            obj.Frequency = obj.vp/source.lambda;
+                            obj.pol = 'P';
+                        otherwise
+                            error('Polarization not supported');
+                    end
+                end
+
                 obj.coefficients_of_variation = coefficients_of_variation;
                 obj.correlation_coefficients = correlation_coefficients;
 
-                obj.Frequency = obj.v/source.lambda;
                 obj.CorrelationLength = lc;
                 obj.SpectralLaw = acf;
             end

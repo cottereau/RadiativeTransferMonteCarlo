@@ -52,14 +52,15 @@ if isfield(type,'equipartition') && type.equipartition
         legend('P energy','S energy','total energy','equipartition')
     end
     if ~obs.acoustics
-        % Determine the polarization type of the source
-        if obs.energyCoherent(1,1)==1 && obs.energyCoherent(1,2)==0
-            pol_type = 'P';
-        elseif obs.energyCoherent(1,1)==0 && obs.energyCoherent(1,2)==1
-            pol_type = 'S';
-        else
-            error('The source polarization should be either P or S')
-        end
+        % % Determine the polarization type of the source
+        % if obs.energyCoherent(1,1)==1 && obs.energyCoherent(1,2)==0
+        %     pol_type = 'P';
+        % elseif obs.energyCoherent(1,1)==0 && obs.energyCoherent(1,2)==1
+        %     pol_type = 'S';
+        % else
+        %     error('The source polarization should be either P or S')
+        % end
+        pol_type = material.pol;
         title(['Energy partitioning for a source with polarization type "' pol_type '"'])
         set(gca,'YLim',[0 1.2]);
     else

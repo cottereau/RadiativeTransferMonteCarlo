@@ -3,7 +3,7 @@ function mat = prepareSigma(mat,d)
 if isempty(mat.sigma)
     mat.CalcSigma;
     warning(['The Differential Scattering Cross-Sections '...
-        'has been not defined, please defined it usign DSCS Class'])
+        'has been not calculated, Material Class has evaluated DSCS'])
 end
 
 if mat.acoustics
