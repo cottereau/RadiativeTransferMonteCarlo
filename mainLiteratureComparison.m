@@ -50,7 +50,7 @@ else
             disp(['Testing ' titlecase ' ...']);
             % input data
             source = struct( 'numberParticles', 1e6, ...
-                             'lambda', 1e-4 );
+                             'lambda', 2e-4 );
             
             material = MaterialClass.preset(1);
 
@@ -93,7 +93,7 @@ else
             disp(['Testing ' titlecase ' ...']);
             % input data
             source = struct( 'numberParticles', 1e6, ...
-                             'lambda', 1e-4 );
+                             'lambda', 2e-4 );
             
             material = MaterialClass.preset(1);
 
@@ -139,7 +139,7 @@ else
             
             source = struct( 'numberParticles', 1e6, ...
                              'polarization', 'P', ...
-                             'lambda', 0.001 );
+                             'lambda', 0.002 );
             
             material = MaterialClass.preset(3);
             
@@ -216,7 +216,7 @@ else
             
             source = struct( 'numberParticles', 1e6, ...
                              'polarization', 'P', ...
-                             'lambda', 0.001 );
+                             'lambda', 0.002 );
             
             material = MaterialClass.preset(3);
             

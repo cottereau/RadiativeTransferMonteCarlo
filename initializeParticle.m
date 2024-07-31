@@ -2,7 +2,7 @@ function P = initializeParticle( N, d, acoustics, source )
 
 % initial position of each particle: radius follows a Gaussian law with
 % standard deviation lambda, and angle follows a uniform law.
-r = abs(randn(N,1)*source.lambda);
+r = abs(randn(N,1)*source.lambda/2);
 
 % initial angles and directions
 if d==2

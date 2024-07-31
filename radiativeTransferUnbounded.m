@@ -30,7 +30,6 @@ material = prepareSigma( material, d );
 
 % loop on packages of particles
 parfor ip = 1:Np
-
     % PARTICLES
     % N            : number of particles
     % d            : dimension of the problem
@@ -74,5 +73,5 @@ obs.Ei = squeeze(sum(obs.energyDensityIncoherent,2));
 obs.Ec = coherentInABox(obs.energyCoherent,obs.r,0,0,[0 0 0],t,d, ...
                                                  source.lambda,material);
 % energy as a function of [t]
-obs.energyCoherent = obs.dS*obs.energyCoherent;
+%obs.energyCoherent = obs.dS*obs.energyCoherent;
 obs.energyIncoherent = obs.dS*shiftdim(pagemtimes(obs.dr,obs.Ei));
