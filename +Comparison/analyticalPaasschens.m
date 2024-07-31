@@ -26,7 +26,7 @@ if isempty(material.sigma)
         'has been not defined, please defined it usign DSCS Class'])
 end
 
-Sigma = prepareSigmaOne(material.sigma,d); % homogeneous to 1/[T]
+Sigma = prepareSigmaOne(material.sigma{1},d); % homogeneous to 1/[T]
 meanFreeTime = 1/Sigma;
 
 % a (normalized time)      : Sigma*t

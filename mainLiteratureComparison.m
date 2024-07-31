@@ -43,6 +43,7 @@ else
             mainLiteratureComparison('2dIsotropicAcoustic')
             mainLiteratureComparison('3dIsotropicAcoustic')
             mainLiteratureComparison('2dIsotropicElastic')
+            mainLiteratureComparison('3disotropicelastic')
             %% 2D Isotropic scattering acoustic (isotropic differential scattering cross-section)
         case '2disotropicacoustic'
             titlecase = '2D acoustic case with isotropic scattering';
@@ -51,10 +52,7 @@ else
             source = struct( 'numberParticles', 1e6, ...
                              'lambda', 1e-4 );
             
-            %material = MaterialClass.preset(1);
-            material = struct( 'acoustics', true, ...
-                               'v', 1, ...
-                               'sigma', @(th) 1/4/pi*ones(size(th)) );
+            material = MaterialClass.preset(1);
 
             observation = struct('r', 0:0.1:20, ...
                                  'time', 0:0.05:20, ...   % observation times
@@ -97,10 +95,7 @@ else
             source = struct( 'numberParticles', 1e6, ...
                              'lambda', 1e-4 );
             
-            %material = MaterialClass.preset(1);
-            material = struct( 'acoustics', true, ...
-                               'v', 1, ...
-                               'sigma', @(th) 1/4/pi*ones(size(th)) );
+            material = MaterialClass.preset(1);
 
             observation = struct( 'r', 0:0.1:20, ...
                                   'time', 0:0.05:20, ...   % observation times
@@ -146,9 +141,7 @@ else
                              'polarization', 'P', ...
                              'lambda', 0.001 );
             
-            material = struct( 'acoustics', false, ...
-                               'vp', 6, ...
-                               'vs', 3.46);
+            material = MaterialClass.preset(3);
             
             observation = struct('r', 0:0.1:20, ... % size of bins in space
                                  'time', 0:0.01:10, ...       % observation times
@@ -225,9 +218,7 @@ else
                              'polarization', 'P', ...
                              'lambda', 0.001 );
             
-            material = struct( 'acoustics', false, ...
-                               'vp', 6, ...
-                               'vs', 3.46);
+            material = MaterialClass.preset(3);
             
             observation = struct('r', 0:0.1:20, ... % size of bins in space
                                  'time', 0:0.01:10, ...       % observation times
