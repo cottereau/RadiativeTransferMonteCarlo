@@ -44,28 +44,26 @@ else
             mainLiteratureComparison('3dIsotropicAcoustic')
             mainLiteratureComparison('2dIsotropicElastic')
             mainLiteratureComparison('3disotropicelastic')
-            %% 2D Isotropic scattering acoustic (isotropic differential scattering cross-section)
+
+        %% 2D Isotropic scattering acoustic (isotropic differential scattering cross-section)
         case '2disotropicacoustic'
             titlecase = '2D acoustic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
             % input data
+            geometry = struct( 'dimension', 2 );
             source = struct( 'numberParticles', 1e6, ...
-                             'lambda', 1e-4 );
-            
+                             'lambda', 1e-4 );            
             material = MaterialClass.preset(1);
-
-            observation = struct('r', 0:0.1:20, ...
-                                 'time', 0:0.05:20, ...   % observation times
-                                 'Ndir', 10);             % number of bins for directions
-
-            geometry = struct( 'type', 'fullspace', ...
-                                'dimension', 2 );
+            observation = struct('r', 0:0.03:9, ...
+                                 'azimuth', [-pi pi], ... 
+                                 'directions', [0 pi], ...             
+                                 'time', 0:0.05:20 );
             
-            inds = [20 50 80]; % index of the desired observation points
+            inds = [60 150 240]; % index of the desired observation points
 
             % running our code, Monte Carlo-based
             obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-            Eus = obs.Ei+obs.Ec;
+            Eus = squeeze(obs.energyDensity);
 
             % running Yoshimoto's Monte Carlo-based approach
             EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
@@ -87,7 +85,7 @@ else
             ylabel('Integrated energy density at different source-station distances')
             title(titlecase);
 
-            %% 3D Isotropic scattering (isotropic differential scattering cross-section)
+        %% 3D Isotropic scattering (isotropic differential scattering cross-section)
         case '3disotropicacoustic'
             titlecase = '3D acoustic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
@@ -97,7 +95,10 @@ else
             
             material = MaterialClass.preset(1);
 
-            observation = struct( 'r', 0:0.1:20, ...
+            observation = struct( 'r', 0:0.1:10, ...
+                                  'azimuth', [-pi pi], ... 
+                                  'elevation', [-pi/2 pi/2], ... 
+                                  'directions', [0 pi], ...             
                                   'time', 0:0.05:20, ...   % observation times
                                   'Ndir', 10 );             % number of bins for directions
 
@@ -108,7 +109,7 @@ else
 
             % running our code, Monte Carlo-based
             obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-            Eus = obs.Ei+obs.Ec;
+            Eus = squeeze(obs.energyDensity)*obs.phi;
 
             % running Yoshimoto's Monte Carlo-based approach
             EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
@@ -130,7 +131,7 @@ else
             ylabel('Integrated energy density at different source-station distances')
             title(titlecase);
 
-            %% 2D Isotropic scattering elastic (Nakahara & Yoshimoto, 2011)
+        %% 2D Isotropic scattering elastic (Nakahara & Yoshimoto, 2011)
         case '2disotropicelastic'
             titlecase = '2D elastic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
@@ -144,8 +145,9 @@ else
             material = MaterialClass.preset(3);
             
             observation = struct('r', 0:0.1:20, ... % size of bins in space
-                                 'time', 0:0.01:10, ...       % observation times
-                                 'Ndir', 10 );               % number of bins for directions
+                                 'azimuth', [-pi pi], ... 
+                                 'directions', [0 pi], ...             
+                                 'time', 0:0.01:10 );           
             
             d = geometry.dimension;
             vp = material.vp; vs = material.vs;
@@ -163,9 +165,8 @@ else
             % running our code, Monte Carlo-based
             obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
             
-            Epc = obs.Ec(:,:,1); Epi = obs.Ei(:,:,1); Ep = Epc + Epi; 
-            Esc = obs.Ec(:,:,2); Esi = obs.Ei(:,:,2); Es = Esc + Esi;
-            %Etotus = Ep + Es;
+            Ep = squeeze(obs.energyDensity(:,:,:,1));
+            Es = squeeze(obs.energyDensity(:,:,:,2));
 
             % running Yoshimoto's Monte Carlo-based approach
             EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
@@ -194,20 +195,8 @@ else
             ylabel('S-wave energy densities at different source-station distances')
             title(titlecase);
 
-            % % comparison of total energy densities
-            % figure; hold on; grid on; box on;
-            % h1 = plot( obs.t, Etotus(inds,:), '-k' );
-            % h2 = plot( obs.t, EtotY(inds,:), '-r' );
-            % h3 = plot( obs.t, Eanalytical, '-b' );
-            % legend( [h1(1), h2(1), h3(1)], ...
-            % {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
-            %  'Analytical (Sato, 1994)'}, 'FontSize',12);
-            % xlabel('Lapse Time [s]');
-            % ylabel('Energy densities at different source-station distances')
-            % title(titlecase);
-
-            %% 3D Anisotropic scattering (isotropic differential scattering cross-section)
-            % to be done
+        %% 3D Anisotropic scattering (isotropic differential scattering cross-section)
+        % to be done
         case '3disotropicelastic'
             titlecase = '3D elastic case with isotropic scattering';
             disp(['Testing ' titlecase ' ...']);
@@ -221,8 +210,10 @@ else
             material = MaterialClass.preset(3);
             
             observation = struct('r', 0:0.1:20, ... % size of bins in space
-                                 'time', 0:0.01:10, ...       % observation times
-                                 'Ndir', 10 );               % number of bins for directions
+                                 'azimuth', [-pi pi], ... 
+                                 'elevation', [-pi/2 pi/2], ... 
+                                 'directions', [0 pi], ...             
+                                 'time', 0:0.01:10 );            
             
             d = geometry.dimension;
             vp = material.vp; vs = material.vs;
@@ -240,8 +231,8 @@ else
             % running our code, Monte Carlo-based
             obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
             
-            Epc = obs.Ec(:,:,1); Epi = obs.Ei(:,:,1); Ep = Epc + Epi; 
-            Esc = obs.Ec(:,:,2); Esi = obs.Ei(:,:,2); Es = Esc + Esi;
+            Ep = squeeze(obs.energyDensity(:,:,:,1))/obs.dphi;
+            Es = squeeze(obs.energyDensity(:,:,:,2))/obs.dphi;
             Etotus = Ep + Es;
 
             % running Yoshimoto's Monte Carlo-based approach

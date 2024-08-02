@@ -1,5 +1,10 @@
 function P = initializeParticle( N, d, acoustics, source )
 
+% default source
+if ~isfield(source,'position')
+    source.position = [0 0 0];
+end
+
 % initial position of each particle: radius follows a Gaussian law with
 % standard deviation lambda, and angle follows a uniform law.
 r = abs(randn(N,1)*source.lambda);
@@ -18,7 +23,8 @@ dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
 perp = [-sin(theta) cos(theta) zeros(N,1)];
 
 % initial positions in cartesian coordinates
-x = r.*[cos(theta0).*sin(phi0) sin(theta0).*sin(phi0) cos(phi0)];
+x = source.position + ...
+              r.*[cos(theta0).*sin(phi0) sin(theta0).*sin(phi0) cos(phi0)];
 
 % current time for the particle
 t = zeros(N,1);
