@@ -195,7 +195,7 @@ classdef MaterialClass < handle
             switch obj.acoustics
                 case 1
                     % acoustics
-                    zeta = obj.Frequency/obj.v*obj.CorrelationLength;
+                    zeta = (2*pi*obj.Frequency)/obj.v*obj.CorrelationLength;
                     delta_kk = obj.coefficients_of_variation(1); % coefficient of variation of compressibility
                     delta_rr = obj.coefficients_of_variation(2); % coefficient of variation of density
                     rho_kr = obj.correlation_coefficients; % correlation of compressibility and density
@@ -203,11 +203,12 @@ classdef MaterialClass < handle
                     % [Ryzhik et al, 1996; Eq. (1.3)]
                     obj.sigma = {@(th) (pi/2)*zeta^3*(cos(th).^2*delta_rr^2 + ...
                         2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
-                        .*obj.Phi(zeta.*sqrt(2*(1-cos(th))))*obj.Frequency};
+                        .*obj.Phi(zeta.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency)};
+                    
                 case 0
                     %elastic
                     K = obj.vp/obj.vs;
-                    zetaP = obj.Frequency/obj.vp*obj.CorrelationLength;
+                    zetaP = (2*pi*obj.Frequency)/obj.vp*obj.CorrelationLength;
                     zetaS = K*zetaP;
                     delta_ll = obj.coefficients_of_variation(1); % squared coefficient of variation of lambda
                     delta_mm = obj.coefficients_of_variation(2); % squared coefficient of variation of mu
@@ -222,25 +223,25 @@ classdef MaterialClass < handle
                         + (4/K^4)*delta_mm^2*cos(th).^4 + delta_rr^2*cos(th).^2 ...
                         + 2*(1-2/K^2)*rho_lr*delta_ll*delta_rr*cos(th) ...
                         + (4/K^2)*rho_mr*delta_mm*delta_rr*cos(th).^3 ) ...
-                        .*obj.Phi(zetaP.*sqrt(2*(1-cos(th))))*obj.Frequency;
+                        .*obj.Phi(zetaP.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency);
 
                     %  Ryzhik et al; Eqs. (4.56), (1.20), (1.22)
                     sigmaPS = @(th) (pi/2)*K*zetaP^3* ...
                         ( K^2*delta_rr^2 + 4*delta_mm^2*cos(th).^2 + 4*K*rho_mr*delta_mm*delta_rr*cos(th) )...
-                        .*(1-cos(th).^2).*obj.Phi(zetaP.*sqrt(1+K^2-2*K*cos(th)))*obj.Frequency;
+                        .*(1-cos(th).^2).*obj.Phi(zetaP.*sqrt(1+K^2-2*K*cos(th)))*(2*pi*obj.Frequency);
 
                     %  Ryzhik et al; Eqs. (4.56), (1.20), (1.21)
                     sigmaSP = @(th) (pi/4/K^3)*zetaS^3* ...
                         ( delta_rr^2 + (4/K^2)*delta_mm^2*cos(th).^2 + (4/K)*rho_mr*delta_mm*delta_rr*cos(th) ) ...
-                        .*(1-cos(th).^2).*obj.Phi(zetaS.*sqrt(1+1/K^2-2/K*cos(th)))*obj.Frequency;
+                        .*(1-cos(th).^2).*obj.Phi(zetaS.*sqrt(1+1/K^2-2/K*cos(th)))*(2*pi*obj.Frequency);
 
                     % Ryzhik et al; Eq. (4.54)
                     sigmaSS_TT = @(th) (pi/4)*zetaS^3*delta_rr^2*(1+cos(th).^2)...
-                        .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*obj.Frequency;
+                        .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency);
                     sigmaSS_GG = @(th) (pi/4)*zetaS^3*delta_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
-                        .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*obj.Frequency;
+                        .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency);
                     sigmaSS_GT = @(th) (pi/4)*zetaS^3*rho_mr*delta_mm*delta_rr*(4*cos(th).^3)...
-                        .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*obj.Frequency;
+                        .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency);
 
 
                     sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
@@ -748,8 +749,10 @@ classdef MaterialClass < handle
                 error('Not implemented')
             end
         end
-        function plotpolarsigma(obj)
-            figure
+        function h = plotpolarsigma(obj,h)
+            if ~exist('h','var')
+                h = figure;
+            end
             z = linspace(0,2*pi,2*2048);
             if obj.acoustics
                 polarplot(z,obj.sigma{1}(z),'LineWidth',2)
