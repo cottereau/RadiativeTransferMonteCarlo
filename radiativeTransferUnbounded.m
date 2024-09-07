@@ -15,13 +15,14 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 material = prepareSigma( material, d );      
 
 % loop on packages of particles
-for ip = 1:Np
+parfor ip = 1:Np
 
     % initialize particles
     P = initializeParticle( Npk, d, acoustics, source );
     x = zeros( Npk, 3, Nt ); x(:,:,1) = P.x;
     p = true( Npk, Nt ); p(:,1) = P.p;
     dir = zeros( Npk, 3, Nt ); dir(:,:,1) = P.dir;
+    coherenti = true(1,Nt);
 
     % loop on time
     for it = 2:Nt
@@ -33,16 +34,18 @@ for ip = 1:Np
         x(:,:,it) = P.x;
         p(:,it) = P.p;
         dir(:,:,it) = P.dir;
-        coherent(it) = coherent(it) + sum(P.coherent);
+        coherenti(it) = sum(P.coherent);
 
     % end of loop on time
     end
     
     % aggregate results
+    coherent = coherent + coherenti;
     E = E + observeTime( d, acoustics, x, p, dir, bins, ibins, vals );
 
 % end of loop on packages
 end
+obs.coherent = coherent;
 obs.energyDensity = (1./(d1'*(d2*obs.N))).*double(E);
 
 % energy as a function of [t]
