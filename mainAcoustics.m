@@ -2,29 +2,8 @@
 % with standard deviation source.lambda and uniformly-distributed angle(s).
 % The initial direction is uniform.
 
-% - 'type' is either 'fullspace', 'halfspace', 'slab', or 'box'.
-% 'halfspace' is defined for z<0. 'slab' is bounded between two planes of
-% constant z. In 2D, 'box' is bounded in x and z.
-% - 'size' is a vector of length the dimension of the problem. It specifies
-% the [width depth height] of the simulation and/or plotting box. More
-% specifically:
-%  (1) height is the size (in z) of the plotting box, and also the size of
-%      the simulation box, in the case of types 'slab' and 'box'. The
-%      range of coordinates of the box in z are [-heigth 0]
-%  (2) width is the size (in x) of the plotting box, and also the length
-%      of the simulation box, in the case of type 'box'. The range of
-%      coordinates of the box in x are [0 width]
-%  (3) depth is the size (in y) of the simulation box for type 'box' in 3
-%      dimensions (unused for other cases).  The range of coordinates of
-%      the box in y are [0 depth]
-% The plotting box is always drawn in the plane of the source (in y). For
-% now, only homogeneous Neumann boundary conditions are enforced
-
-clc
-
-geometry = struct( 'type', 'box', ...
-                   'size', [4 3 3], ...
-                   'dimension', 3 );
+% geometry
+geometry = struct( 'dimension', 3 );
 
 % Point source
 source = struct( 'numberParticles', 1e6, ...
@@ -32,38 +11,33 @@ source = struct( 'numberParticles', 1e6, ...
                  'lambda', 0.1 ); %wavelength 
 
 % observations
-observation = struct('dr', 0.05, ...        % size of bins in space
-                     'time', 0:0.05:20, ...  % observation times
-                     'Ndir', 10 );         % number of bins for directions           
+% choose two variables only to perform histograms (r, theta, phi, psi)
+observation = struct('r', 0:.1:1, ...                 % bins in space
+                     'azimuth', linspace(-pi,pi,10), ... % bins for azimuth angle [-pi pi]
+                     'elevation', [-pi/20 pi/20], ... % bins for elevation angle [-pi/2 pi/2] in 3d only
+                     'directions', [0 pi], ...        % number of bins for directions [0 pi]         
+                     'time', 0:0.3:10 );              % observation times
 
 % material properties - more examples can be found in Example folder
 % here is a basic example
 material = MaterialClass( geometry, ...
                           source, ...
-                          true, ...            % true for acoustics
-                          1, ...               % defines the velocity of pressure waves
-                          [0.1 0.2], ...       % defines the coefficients of variation of kappa (bulk modulus) and rho (density), respectively.
-                          -0.5, ...            % defines the correlation coefficient
-                          'exp', ...           % defines the autocorrelation function
-                          0.1);                % defines the correlation coefficient
+                          true, ...          % true for acoustics
+                          1, ...             % average wave velocity
+                          [0.1 0.2], ...     % coefficients of variation of kappa and rho.
+                          -0.5, ...          % correlation coefficient of kappa/rho
+                          'exp', ...         % autocorrelation function
+                          0.1);              % correlation coefficient
                           
 % radiative transfer solution - acoustic with boundaries
-switch geometry.type
-    case 'fullspace'
-        obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-    otherwise
-        obs = radiativeTransferAcoustics( source, material, observation, geometry );
-end
+obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
 
 % plotting output
-sensors = [3   1 -0.5; 
-           3.9 1 -2.5;
-           0.2 1 -1.5;
-           1.5 1 -2.5;
-           3.5 1 -2.8];
+sensors = [0 0 0; 
+           0 0 5];
 
-plotting = struct( 'equipartition', true, ...
-                   'movieTotalEnergy', true, ...
+plotting = struct( 'equipartition', false, ...
+                   'movieTotalEnergy', false, ...
                    'movieDirectionalEnergy', false, ...
                    'timehistory', true, ...
                    'sensors', sensors);
