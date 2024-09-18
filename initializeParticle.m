@@ -3,11 +3,20 @@ function P = initializeParticle( N, d, acoustics, source )
 % default source
 if ~isfield(source,'position')
     source.position = [0 0 0];
+    disp('source position by default: [0 0 0]');
 end
 
 % initial position of each particle: radius follows a Gaussian law with
 % standard deviation lambda, and angle follows a uniform law.
-r = abs(randn(N,1)*source.lambda/2);
+% if radial option is used, a user-defined function (of the radius) is used
+% instead
+if ~isfield(source,'radial') || isempty(source.radial)
+    r = abs(randn(N,1)*source.lambda/2);
+else
+    Rmax = source.radial.GridVectors{1}(end);
+    invcdfsource = inverseCDF(source.radial,d,Rmax);
+    r = invcdfsource(rand(N,1));
+end
 
 % initial angles and directions
 if d==2
@@ -50,3 +59,19 @@ P = struct( 'd', d, ...                 % dimension of the problem
             't', t, ...                 % current time for the particle
             'coherent', coherent );     % false when particle has been scattered
 
+end
+
+% compute the cumulative distribution radial function corresponding to a
+% given (positive) function to draw randomly from it
+function invcdf = inverseCDF(f,d,Rmax)
+Nth = 10000;
+xth = linspace(0,Rmax,Nth);
+intF = trapz(xth,(xth.^(d-1)).*f(xth));
+pdf = (xth.^(d-1)).*f(xth)/intF;
+cdf = cumsum(pdf)*mean(diff(xth));
+cdf(1) = 0;
+cdf(end) = 1;
+ind = find(diff(cdf)>0);
+ind = unique([ind ind+1]);
+invcdf = griddedInterpolant(cdf(ind),xth(ind),'linear','nearest');
+end
