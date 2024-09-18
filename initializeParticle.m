@@ -3,7 +3,6 @@ function P = initializeParticle( N, d, acoustics, source )
 % default source
 if ~isfield(source,'position')
     source.position = [0 0 0];
-    disp('source position by default: [0 0 0]');
 end
 
 % initial position of each particle: radius follows a Gaussian law with

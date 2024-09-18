@@ -41,6 +41,8 @@ parfor ip = 1:Np
 
 % end of loop on packages
 end
+
+% energy density as a function of [x1 x2 t]
 obs.energyDensity = (1./(d1'*(d2*obs.N))).*double(E);
 
 % energy as a function of [t]

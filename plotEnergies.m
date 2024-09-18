@@ -1,70 +1,50 @@
 function plotEnergies( type, obs, material, lambda, cmax, rmax )
 
-% constants
-Nac = size(obs.energyCoherent,2);
-
-% unbounded case
-if ~isfield(obs,'nSources')
-    obs.nSources = 1;
-    obs.positionSources = [0 0 0];
-    xx = obs.r(obs.r<=max(obs.r)/sqrt(2));
-    obs.boxX = [-xx(end:-1:2) xx];
-    obs.boxZ = obs.boxX;
-    Nx = length(obs.boxX);
-    [boxx,boxz] = meshgrid(obs.boxX,obs.boxZ);
-    r = sqrt(boxx.^2+boxz.^2);
-    E = interp1( obs.r', obs.Ei, r(:), 'linear', 0 );
-    E = E + interp1( obs.r', obs.Ec, r(:), 'linear', 0 );
-    E = permute( reshape(E,Nx,Nx,obs.Nt,Nac), [2 1 3 4] );
-    obs.energyDensityBox = E;
-end
-
+% % unbounded case
+% if ~isfield(obs,'nSources')
+%     obs.nSources = 1;
+%     obs.positionSources = [0 0 0];
+%     xx = obs.r(obs.r<=max(obs.r)/sqrt(2));
+%     obs.boxX = [-xx(end:-1:2) xx];
+%     obs.boxZ = obs.boxX;
+%     Nx = length(obs.boxX);
+%     [boxx,boxz] = meshgrid(obs.boxX,obs.boxZ);
+%     r = sqrt(boxx.^2+boxz.^2);
+%     E = interp1( obs.r', obs.Ei, r(:), 'linear', 0 );
+%     E = E + interp1( obs.r', obs.Ec, r(:), 'linear', 0 );
+%     E = permute( reshape(E,Nx,Nx,obs.Nt,Nac), [2 1 3 4] );
+%     obs.energyDensityBox = E;
+% end
 
 % plot total energy
-if isfield(type,'movieTotalEnergy') && type.movieTotalEnergy
-    if nargin<5; cmax = []; end
-    plotTotalEnergy( obs, cmax );
+if isfield(type,'movieEnergy') && type.movieTotalEnergy
+    if obs.Npsi==2
+        if nargin<5; cmax = []; end
+        plotTotalEnergy( obs, cmax );
+    elseif obs.Npsi>2
+        if nargin>3 && ~isempty(type.sensors)
+            if nargin<6; rmax = []; end
+            plotDirectionalEnergy( obs, material, lambda, type.sensors, rmax );
+        end
+    end
 end
 
 % plot directional energy
 if isfield(type,'movieDirectionalEnergy') && type.movieDirectionalEnergy
-    if nargin>3 && ~isempty(type.sensors)
-        if nargin<6; rmax = []; end
-        plotDirectionalEnergy( obs, material, lambda, type.sensors, rmax );
-    end
 end
 
 % plot total energy and equipartition
-if isfield(type,'equipartition') && type.equipartition
-    E = obs.energyCoherent+obs.energyIncoherent;
-    figure; plot(obs.t,E/max(sum(E,2)));
-    if obs.acoustics
+if isfield(type,'checkEnergy') && type.checkEnergy
+    Etot = sum(obs.energy,3);
+    figure; plot(obs.t,Etot,'r-');
+    if ~obs.acoustics
         hold all
-        plot(obs.t,obs.energyCoherent)
-        plot(obs.t,obs.energyIncoherent)
-        legend('Total energy','Coherent','Incoherent')
-
-    end
-    if ~obs.acoustics
+        plot(obs.t,obs.energy(:,1)/obs.energy(:,2),'b-')
         eq = (material.vs/material.vp)^(obs.d)/(obs.d-1);
-        hold on; plot(obs.t,sum(E,2)/max(sum(E,2)),'k--')
-        hold on; plot(obs.t,eq*(E(:,2)./E(:,1)))
-        legend('P energy','S energy','total energy','equipartition')
-    end
-    if ~obs.acoustics
-        % % Determine the polarization type of the source
-        % if obs.energyCoherent(1,1)==1 && obs.energyCoherent(1,2)==0
-        %     pol_type = 'P';
-        % elseif obs.energyCoherent(1,1)==0 && obs.energyCoherent(1,2)==1
-        %     pol_type = 'S';
-        % else
-        %     error('The source polarization should be either P or S')
-        % end
-        pol_type = material.pol;
-        title(['Energy partitioning for a source with polarization type "' pol_type '"'])
-        set(gca,'YLim',[0 1.2]);
+        hold on; plot(obs.t([1 end]),eq*[1 1],'k--')
+        legend('Total energy','P/S energy ratio','equipartition ratio (theory)')
     else
-        title('Total energy')
+        legend('Total energy')
     end
     xlabel('time')
 end
