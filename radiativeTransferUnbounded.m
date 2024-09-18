@@ -8,7 +8,7 @@ Npk = 1e4; % size of packets
 Np = ceil(source.numberParticles/Npk); % number of packets
 
 % initialize observation structure
-[ obs, E, coherent, bins, ibins, vals, Nt, t , d1, d2 ] = ...
+[ obs, E, bins, ibins, vals, Nt, t , d1, d2 ] = ...
                 initializeObservation( d, acoustics, observation, Np*Npk );
 
 % prepare scattering cross sections 
@@ -21,7 +21,6 @@ parfor ip = 1:Np
     x = zeros( Npk, 3, Nt ); x(:,:,1) = P.x;
     p = true( Npk, Nt ); p(:,1) = P.p;
     dir = zeros( Npk, 3, Nt ); dir(:,:,1) = P.dir;
-    coherenti = true(1,Nt);
 
     % loop on time
     for it = 2:Nt
@@ -33,18 +32,15 @@ parfor ip = 1:Np
         x(:,:,it) = P.x;
         p(:,it) = P.p;
         dir(:,:,it) = P.dir;
-        coherenti(it) = sum(P.coherent);
 
     % end of loop on time
     end
     
     % aggregate results
-    coherent = coherent + coherenti;
     E = E + observeTime( d, acoustics, x, p, dir, bins, ibins, vals );
 
 % end of loop on packages
 end
-obs.coherent = coherent;
 obs.energyDensity = (1./(d1'*(d2*obs.N))).*double(E);
 
 % energy as a function of [t]
