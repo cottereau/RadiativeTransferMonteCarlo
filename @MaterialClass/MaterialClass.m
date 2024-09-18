@@ -43,14 +43,13 @@ classdef MaterialClass < handle
         R                       = []; %Correlation / function_handle
         r               double  = [];% r vector
 
-        pol
     end
     properties (SetAccess = private, Hidden = true)
         Type_def = {'isotropic'}; %the anisotropic should be implemented
         SpectralLaw_def = {'exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersedisk','monodisperseelipse','polydispersedisk','polydisperseelipse','image'};
     end
     methods
-        function obj = MaterialClass(geometry,source,acoustics, ...
+        function obj = MaterialClass(geometry,freq,acoustics, ...
                 v,coefficients_of_variation,correlation_coefficients, ...
                 acf,lc)
             %% MaterialClass
@@ -71,24 +70,13 @@ classdef MaterialClass < handle
 
                 obj.d = geometry.dimension;
                 obj.acoustics = acoustics;
+                obj.Frequency = freq;
 
                 if acoustics
                     obj.v = v;
-                    obj.Frequency = obj.v/source.lambda;
-                    obj.pol = 'P';
                 else
                     obj.vp = v(1);
                     obj.vs = v(2);
-                    switch source.polarization
-                        case 'S'
-                            obj.Frequency = obj.vs/source.lambda;
-                            obj.pol = 'S';
-                        case 'P'
-                            obj.Frequency = obj.vp/source.lambda;
-                            obj.pol = 'P';
-                        otherwise
-                            error('Polarization not supported');
-                    end
                 end
 
                 obj.coefficients_of_variation = coefficients_of_variation;
