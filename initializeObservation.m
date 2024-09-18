@@ -1,4 +1,4 @@
-function [ obs, energy, coherent, bins, ibins, vals, Nt, t, d1, d2 ] = ...
+function [ obs, energy, bins, ibins, vals, Nt, t, d1, d2 ] = ...
             initializeObservation( d, acoustics, observation, N )
 
 % times
@@ -80,7 +80,6 @@ end
 
 % initialize matrix of observations
 energy = zeros(length(bins{1})-1,length(bins{2})-1,Nt,1+~acoustics,'uint32');
-coherent = zeros(1,Nt);
 
 % initialize observation structured array
 obs = struct('d', d, ...                 % dimension of the problem
