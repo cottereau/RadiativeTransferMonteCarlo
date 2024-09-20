@@ -1,5 +1,5 @@
 function [Sigma,Sigma_prime,invcdf] = prepareSigmaOne(sigma,d)
-Nth = 1000;
+Nth = 1e6;
 xth = linspace(0,pi,Nth);
 if d==2
     Sigma = 2*integral(sigma,0,pi);
@@ -12,7 +12,7 @@ elseif d==3
 end
 pdf = sigmaNorm(xth);
 cdf = cumsum(pdf)*(pi/Nth);
-ind = [find(diff(cdf)>0) Nth];
-ind(1) = 1;
+ind = find(diff(cdf)>1e-12);
+ind = unique([ind ind+1]);
 invcdf = griddedInterpolant(cdf(ind),xth(ind));
 end
