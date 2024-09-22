@@ -109,7 +109,7 @@ else
 
             % running our code, Monte Carlo-based
             obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-            Eus = squeeze(obs.energyDensity)*obs.phi;
+            Eus = squeeze(obs.energyDensity)/obs.dphi;
 
             % running Yoshimoto's Monte Carlo-based approach
             EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
