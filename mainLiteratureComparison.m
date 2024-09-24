@@ -240,7 +240,7 @@ else
             EtotY = sum(EY,3);
 
             % computing semi-analytical solution (Nakahara 2011, Sato 1994)
-            Eanalytical = Comparison.analyticalEnergyIsotropicElastic(geometry, material, observation, observation.r(inds), Wsp);
+            Eanalytical = Comparison.analyticalEnergyIsotropicElastic(geometry, material, observation, obs.r(inds), Wsp);
             
             % comparison of P energy densities
             figure; hold on; grid on; box on;

@@ -19,13 +19,14 @@ if nargin<5
 end
 
 d = geometry.dimension;
+Np = source.numberParticles;   
 t = observation.time;        
 dt = mean(diff(t));
-r = observation.r;           
-dr = mean(diff(r));
-Np = source.numberParticles; 
-    
-material = prepareSigma(material,d);
+% sensor positions : radius
+binR = observation.r;
+r = (binR(1:end-1)+binR(2:end))/2;
+dr = diff(binR);
+
 Sigma = material.Sigma;
 
 if material.acoustics
@@ -86,9 +87,9 @@ xs = radius.*dir;
 positions = xs;
 
 if d==2 
-    dV = 2*pi*r*dr;
+    dV = 2*pi*r.*dr;
 elseif d==3
-    dV = 4*pi*r.^2*dr;
+    dV = 4*pi*r.^2.*dr;
 end
 
 if strcmpi(movie,'true')
@@ -149,7 +150,7 @@ for timeIdx = 1:length(t)
     if material.acoustics
         % Calculate energy density
         for k=1:length(r)
-            withinVolume = r(k)-dr/2 <= distances & distances <= r(k)+dr/2;
+            withinVolume = r(k)-dr(k)/2 <= distances & distances <= r(k)+dr(k)/2;
             n = sum(withinVolume);
             % Normalization
             energyDensity(k,timeIdx) = n/Np/dV(k);
@@ -158,7 +159,7 @@ for timeIdx = 1:length(t)
     else
         % Calculate energy density
         for k=1:length(r)
-            withinVolume = r(k)-dr/2 <= distances & distances <= r(k)+dr/2;
+            withinVolume = r(k)-dr(k)/2 <= distances & distances <= r(k)+dr(k)/2;
             nP = sum(withinVolume & isPwave);
             nS = sum(withinVolume & ~isPwave);
             % Normalization

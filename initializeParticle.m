@@ -22,8 +22,8 @@ if d==2
     phi0 = (pi/2)*ones(N,1);
     phi = (pi/2)*ones(N,1);
 elseif d==3
-    phi0 = 2*pi*rand(N,1);
-    phi = 2*pi*rand(N,1);
+    phi0 = acos(-1+2*rand(N,1));
+    phi = acos(-1+2*rand(N,1));
 end
 theta0 = 2*pi*rand(N,1);
 theta = 2*pi*rand(N,1);
