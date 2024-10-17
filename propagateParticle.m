@@ -17,13 +17,13 @@ while any(ind)
     if length(mat.meanFreeTime)>1
         Nj(s) = poissrnd(dt(s)./mat.meanFreeTime(2));
     end
-    scatter = Nj>0;
-    Nscatter = sum(scatter);
-    P.coherent(scatter) = false;
+    scat = Nj>0;
+    Nscatter = sum(scat);
+    P.coherent(scat) = false;
 
     % flying time until next scattering event
-    if any(scatter)
-        dt(scatter) = timeNextJump(Nj(scatter),dt(scatter));
+    if any(scat)
+        dt(scat) = timeNextJump(Nj(scat),dt(scat));
     end
 
     % propagate particles
@@ -33,11 +33,11 @@ while any(ind)
     % scattering around direction of propagation
     if P.d==2
         phi = randi([0 1],Nscatter,1,'logical');
-        P.perp(scatter,:) = ((-1).^phi).*P.perp(scatter,:);
+        P.perp(scat,:) = ((-1).^phi).*P.perp(scat,:);
     elseif P.d==3
         phi = (2*pi)*rand(Nscatter,1);
-        P.perp(scatter,:) = cos(phi).*P.perp(scatter,:) ...
-                     + sin(phi).*cross(P.dir(scatter,:),P.perp(scatter,:));
+        P.perp(scat,:) = cos(phi).*P.perp(scat,:) ...
+                     + sin(phi).*cross(P.dir(scat,:),P.perp(scat,:));
     end
 
     % scattering for acoustics
@@ -50,9 +50,9 @@ while any(ind)
     else
 
         % change polarization
-        p = scatter & p;
+        p = scat & p;
         P.p( p & (rand(P.N,1)>mat.P2P) ) = false;
-        s = scatter & s;
+        s = scat & s;
         P.p( s & (rand(P.N,1)>mat.S2S) ) = true;
 
         % draw scattering angle away from direction of propagation
@@ -61,16 +61,16 @@ while any(ind)
         theta( ~P.p & p ) = mat.invcdf{1,2}( theta( ~P.p & p ) );
         theta(  P.p & s ) = mat.invcdf{2,1}( theta(  P.p & s ) );
         theta( ~P.p & s ) = mat.invcdf{2,2}( theta( ~P.p & s ) );
-        theta = theta(scatter);
+        theta = theta(scat);
 
     end
 
     % scattering away from direction of propagation
-    dir = P.dir(scatter,:);
-    P.dir(scatter,:) =  cos(theta).*dir + sin(theta).*P.perp(scatter,:);
-    P.dir(scatter,:) = P.dir(scatter,:)./sqrt(sum(P.dir(scatter,:).^2,2));
-    P.perp(scatter,:)= -sin(theta).*dir + cos(theta).*P.perp(scatter,:);
-    P.perp(scatter,:) = P.perp(scatter,:)./sqrt(sum(P.perp(scatter,:).^2,2));
+    dir = P.dir(scat,:);
+    P.dir(scat,:) =  cos(theta).*dir + sin(theta).*P.perp(scat,:);
+    P.dir(scat,:) = P.dir(scat,:)./sqrt(sum(P.dir(scat,:).^2,2));
+    P.perp(scat,:)= -sin(theta).*dir + cos(theta).*P.perp(scat,:);
+    P.perp(scat,:) = P.perp(scat,:)./sqrt(sum(P.perp(scat,:).^2,2));
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
