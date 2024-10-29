@@ -27,6 +27,10 @@ elseif d==3
 end
 theta0 = 2*pi*rand(N,1);
 theta = 2*pi*rand(N,1);
+if isfield(source,'direction') && strcmp(source.direction,'outgoing')
+    theta = theta0;
+    phi = phi0;
+end
 dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
 perp = [-sin(theta) cos(theta) zeros(N,1)];
 
