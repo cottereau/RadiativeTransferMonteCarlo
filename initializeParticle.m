@@ -52,9 +52,6 @@ if ~acoustics && isfield(source,'polarization') && source.polarization=='S'
     p = false(N,1);
 end
 
-% coherent flag (false when particle has been scattered at least once)
-coherent = true(N,1);
- 
 % initialize structure
 P = struct( 'd', d, ...                 % dimension of the problem
             'N', N, ...                 % number of particles
@@ -62,8 +59,7 @@ P = struct( 'd', d, ...                 % dimension of the problem
             'dir', dir, ...             % direction of propagation
             'perp', perp, ...           % orthogonal to direction of propagation
             'p', p, ...                 % polarization (used only in elasticity)
-            't', t, ...                 % current time for the particle
-            'coherent', coherent );     % false when particle has been scattered
+            't', t, ... );              % current time for the particle
 
 end
 
