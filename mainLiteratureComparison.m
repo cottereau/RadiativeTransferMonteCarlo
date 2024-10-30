@@ -54,15 +54,15 @@ else
             source = struct( 'numberParticles', 1e6, ...
                              'lambda', 2e-4 );
             material = MaterialClass.preset(1);
-            observation = struct('r', 0:0.03:9, ...
-                                 'azimuth', [-pi pi], ... 
+            observation = struct('x', 0:0.03:9, ...
+                                 'y', [-pi pi], ... 
                                  'directions', [0 pi], ...             
                                  'time', 0:0.05:20 );
             
             inds = [60 150 240]; % index of the desired observation points
 
             % running our code, Monte Carlo-based
-            obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+            obs = radiativeTransferUnbounded( geometry, source, material, observation );
             Eus = squeeze(obs.energyDensity);
 
             % running Yoshimoto's Monte Carlo-based approach
@@ -95,9 +95,9 @@ else
             
             material = MaterialClass.preset(1);
 
-            observation = struct( 'r', 0:0.1:10, ...
-                                  'azimuth', [-pi pi], ... 
-                                  'elevation', [-pi/2 pi/2], ... 
+            observation = struct( 'x', 0:0.1:10, ...
+                                  'y', [-pi pi], ... 
+                                  'z', [-pi/2 pi/2], ... 
                                   'directions', [0 pi], ...             
                                   'time', 0:0.05:20, ...   % observation times
                                   'Ndir', 10 );             % number of bins for directions
@@ -108,8 +108,8 @@ else
             inds = [20 50 80]; % index of the desired observation points
 
             % running our code, Monte Carlo-based
-            obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
-            Eus = squeeze(obs.energyDensity)/obs.dphi;
+            obs = radiativeTransferUnbounded( geometry, source, material, observation );
+            Eus = squeeze(obs.energyDensity)/obs.dz;
 
             % running Yoshimoto's Monte Carlo-based approach
             EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
@@ -144,8 +144,8 @@ else
             
             material = MaterialClass.preset(3);
             
-            observation = struct('r', 0:0.1:20, ... % size of bins in space
-                                 'azimuth', [-pi pi], ... 
+            observation = struct('x', 0:0.1:20, ... % size of bins in space
+                                 'y', [-pi pi], ... 
                                  'directions', [0 pi], ...             
                                  'time', 0:0.01:10 );           
             
@@ -163,7 +163,7 @@ else
             inds = [20 50 80]; % index of the desired observation points
             
             % running our code, Monte Carlo-based
-            obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+            obs = radiativeTransferUnbounded( geometry, source, material, observation );
             
             Ep = squeeze(obs.energyDensity(:,:,:,1));
             Es = squeeze(obs.energyDensity(:,:,:,2));
@@ -209,9 +209,9 @@ else
             
             material = MaterialClass.preset(3);
             
-            observation = struct('r', 0:0.1:20, ... % size of bins in space
-                                 'azimuth', [-pi pi], ... 
-                                 'elevation', [-pi/2 pi/2], ... 
+            observation = struct('x', 0:0.1:20, ... % size of bins in space
+                                 'y', [-pi pi], ... 
+                                 'z', [-pi/2 pi/2], ... 
                                  'directions', [0 pi], ...             
                                  'time', 0:0.01:10 );            
             
@@ -229,10 +229,10 @@ else
             inds = [20 50 80]; % index of the desired observation points
             
             % running our code, Monte Carlo-based
-            obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+            obs = radiativeTransferUnbounded( geometry, source, material, observation );
             
-            Ep = squeeze(obs.energyDensity(:,:,:,1))/obs.dphi;
-            Es = squeeze(obs.energyDensity(:,:,:,2))/obs.dphi;
+            Ep = squeeze(obs.energyDensity(:,:,:,1))/obs.dz;
+            Es = squeeze(obs.energyDensity(:,:,:,2))/obs.dz;
             Etotus = Ep + Es;
 
             % running Yoshimoto's Monte Carlo-based approach
@@ -240,7 +240,7 @@ else
             EtotY = sum(EY,3);
 
             % computing semi-analytical solution (Nakahara 2011, Sato 1994)
-            Eanalytical = Comparison.analyticalEnergyIsotropicElastic(geometry, material, observation, obs.r(inds), Wsp);
+            Eanalytical = Comparison.analyticalEnergyIsotropicElastic(geometry, material, observation, obs.x(inds), Wsp);
             
             % comparison of P energy densities
             figure; hold on; grid on; box on;

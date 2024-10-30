@@ -19,7 +19,7 @@ function [E,E_diff] = analyticalPaasschens(material,observation,geometry)
 d = geometry.dimension;
 v = material.v;
 t = observation.time;
-r = observation.r;
+r = observation.x;
 
 if isempty(material.sigma)
     error(['The Differential Scattering Cross-Sections '...

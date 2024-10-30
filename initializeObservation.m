@@ -1,37 +1,47 @@
 function [ obs, energy, bins, ibins, vals, Nt, t, d1, d2 ] = ...
-            initializeObservation( d, acoustics, observation, N )
+            initializeObservation( geometry, acoustics, observation, N )
+
+% constants
+d = geometry.dimension;
 
 % times
 t = [0 setdiff(observation.time,0)];
 Nt = length(t);
 
-% sensor positions : radius
-binR = observation.r;
-r = (binR(1:end-1)+binR(2:end))/2;
-Nr = length(r);
-dr = diff(binR);
+% sensor positions : x in cartesian or radius in spherical
+binX = observation.x;
+x = (binX(1:end-1)+binX(2:end))/2;
+Nx = length(x);
+dx = diff(binX);
 
-% sensor positions : angles
-% in 2D, theta in [-pi,pi], phi is unused
-% in 3D, theta (azimuth) in [-pi,pi], phi (elevation) in [-pi/2,pi/2]
-if isfield(observation,'azimuth') && ~isempty(observation.azimuth)
-    binTheta = observation.azimuth;
+% sensor positions : (y,z) in cartesian or (theta,phi) in spherical
+% in 2D spherical, theta in [-pi,pi], phi is unused
+% in 3D spherical, theta (azimuth) in [-pi,pi], phi (elevation) in [-pi/2,pi/2]
+if isfield(geometry,'frame') && strcmp(geometry.frame,'cartesian')
+    binY = [-Inf Inf];
+    binZ = [-Inf Inf];
 else
-    binTheta = [-2*pi 2*pi];
-    disp('no azimuth bins defined: integrating over all angles')
+    binY = [-2*pi 2*pi];
+    binZ = [-pi/2 pi/2];
 end
-theta = (binTheta(1:end-1)+binTheta(2:end))/2;
-Ntheta = length(theta);
-dtheta = diff(binTheta);
-binPhi = [-pi/2 pi/2];
-if d==3 && isfield(observation,'elevation') && ~isempty(observation.elevation)
-    binPhi = observation.elevation;
+if isfield(observation,'y') && ~isempty(observation.y)
+    binY = observation.y;
+else
+    disp(['no y bins defined: integrating over [' num2str(binY) ']'])
+end
+y = (binY(1:end-1)+binY(2:end))/2;
+Ny = length(y);
+dy = diff(binY);
+if dy==Inf; dy = 1; end
+if d==3 && isfield(observation,'z') && ~isempty(observation.z)
+    binZ = observation.z;
 elseif d==3
-    disp('no elevation bins defined: integrating over all angles')
+    disp(['no z bins defined: integrating over [' num2str(binZ) ']'])
 end
-phi = (binPhi(1:end-1)+binPhi(2:end))/2;
-Nphi = length(phi);
-dphi = diff(binPhi);
+z = (binZ(1:end-1)+binZ(2:end))/2;
+Nz = length(z);
+dz = diff(binZ);
+if dz==Inf; dz = 1; end
 
 % angles between propagation direction and position vector
 % for d==3, the bins correspond to cos(psi)
@@ -39,7 +49,7 @@ if isfield(observation,'directions') && ~isempty(observation.directions)
     binPsi = observation.directions;
 else
     binPsi = [0 pi];
-    disp('no directions bins defined: integrating over all angles')
+    disp(['no directions bins defined: integrating over [' num2str(binPsi) ']'])
 end
 if  d==3
     binPsi = cos(binPsi(end:-1:1));
@@ -49,10 +59,12 @@ Npsi = length(psi);
 dpsi = diff(binPsi);
 
 % energy in a small volume of the domain
-[dr,dphi] = volumeEnergy(d,r,dr,phi,dphi);
+if ~(isfield(geometry,'frame') && strcmp(geometry.frame,'cartesian'))
+    [dx,dz] = volumeEnergy(d,x,dx,z,dz);
+end
 
 % bins for histograms have the following dimensions
-ibins = find([Nr Ntheta Nphi Npsi]>1);
+ibins = find([Nx Ny Nz Npsi]>1);
 if isscalar(ibins) && (ibins==1 || ibins==2)
     ibins = [1 2];
 end
@@ -60,19 +72,19 @@ if length(ibins)>2
     error('histograms can only be constructed along two directions')
 end
 if all(ibins==[1 2])
-    bins = {binR binTheta};
-    vals = {binPhi binPsi};
-    d1 = dr;
-    d2 = dtheta;
+    bins = {binX binY};
+    vals = {binPsi binZ};
+    d1 = dx;
+    d2 = dy;
 elseif all(ibins==[1 3])
-    bins = {binR binPhi};
-    vals = {binTheta binPsi};
-    d1 = dr;
-    d2 = dphi;
+    bins = {binX binZ};
+    vals = {binY binPsi};
+    d1 = dx;
+    d2 = dz;
 elseif all(ibins==[1 4])
-    bins = {binR binPsi};
-    vals = {binTheta binPhi};
-    d1 = dr;
+    bins = {binX binPsi};
+    vals = {binY binZ};
+    d1 = dx;
     d2 = dpsi;
 else
     error('other combinations of bins to be implemented if need be')
@@ -87,18 +99,18 @@ obs = struct('d', d, ...                 % dimension of the problem
              'N', N, ...                 % total number of particles
              't', t, ...                 % time instants
              'Nt', Nt, ...               % number of time instants
-             'r', r, ...                 % sensor positions
-             'Nr', Nr, ...               % number of positions
-             'dr', dr, ...               % weight of radius bins
-             'binR', binR, ...           % radius bins
-             'theta', theta, ...         % sensor angle (elevation)
-             'Ntheta', Ntheta, ...       % number of elevations
-             'dtheta', dtheta, ...       % weight of azimuth bins
-             'binTheta', binTheta, ...   % azimuth bins
-             'phi', phi, ...             % sensor angle (azimuth)
-             'Nphi', Nphi, ...           % number of azimuths
-             'dphi', dphi, ...           % weight of elevation bins
-             'binPhi', binPhi, ...       % elevation bins
+             'x', x, ...                 % sensor positions
+             'Nx', Nx, ...               % number of positions
+             'dx', dx, ...               % weight of radius bins
+             'binX', binX, ...           % radius bins
+             'y', y, ...                 % sensor angle (elevation)
+             'Ny', Ny, ...               % number of elevations
+             'dy', dy, ...               % weight of azimuth bins
+             'binY', binY, ...           % azimuth bins
+             'z', z, ...                 % sensor angle (azimuth)
+             'Nz', Nz, ...               % number of azimuths
+             'dz', dz, ...               % weight of elevation bins
+             'binZ', binZ, ...           % elevation bins
              'psi', psi, ...             % propagation directions
              'Npsi', Npsi, ...           % number of directions
              'dpsi', dpsi, ...           % weight of direction bins
@@ -108,7 +120,7 @@ obs = struct('d', d, ...                 % dimension of the problem
 
 end
 
-% volume energy (optimized for efficiency in 3D)
+% volume energy (optimized for efficiency in 3D) for spherical frame
 % total energy in 2D (the direction variable is psi) 
 %       int_r( int_psi ( a(r,psi) dpsi ) (r dr) )
 % total energy in 3D (the direction variable is cos(psi))
@@ -126,6 +138,6 @@ elseif d==3
     end
     dphi = sin(phi+dphi/2)-sin(phi-dphi/2);
 end
-if isscalar(r); dr = r^d/d; end 
-if d==2; dphi = 1; end 
+if isscalar(r); dr = r^d/d; end
+if d==2; dphi = 1; end
 end
