@@ -59,7 +59,7 @@ P = struct( 'd', d, ...                 % dimension of the problem
             'dir', dir, ...             % direction of propagation
             'perp', perp, ...           % orthogonal to direction of propagation
             'p', p, ...                 % polarization (used only in elasticity)
-            't', t, ... );              % current time for the particle
+            't', t );                   % current time for the particle
 
 end
 
