@@ -22,12 +22,20 @@ d = geometry.dimension;
 Np = source.numberParticles;   
 t = observation.time;        
 dt = mean(diff(t));
-% sensor positions : radius
-binR = observation.x;
+% sensor positions 
+if isfield(observation,'r')
+    binR = observation.r;
+else
+    binR = observation.x;
+end
 r = (binR(1:end-1)+binR(2:end))/2;
 dr = diff(binR);
 
-Sigma = prepareSigmaOne(material.sigma{1},d);
+if ~isempty(material.Sigma)
+    Sigma = material.Sigma;
+else
+    Sigma = prepareSigmaOne(material.sigma{1},d);
+end
 
 if material.acoustics
     
@@ -45,7 +53,7 @@ if material.acoustics
 else
 
     vp = material.vp; vs = material.vs;
-    Sigmap = Sigma(1,1) + Sigma(1,2); Sigmas = Sigma(2,1) + Sigma(2,2);
+    Sigmap = sum(Sigma(1,:)); Sigmas = sum(Sigma(2,:));
     mft_PS = 1./sum(Sigma,2);  % mean free times of P & S waves
     
     if dt>0.1*min(mft_PS)

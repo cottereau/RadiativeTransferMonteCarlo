@@ -71,6 +71,7 @@ else
             % computing Paasschens solution
             [EP,Ediff] = Comparison.analyticalPaasschens( material, observation, geometry );
 
+            
             % visual comparison
             figure; hold on; grid on; box on;
             h1 = plot( obs.t, Eus(inds,:), '-k' );
@@ -79,11 +80,12 @@ else
             h4 = plot( obs.t, Ediff(inds,:), ':r' );
             legend( [h1(1), h2(1), h3(1), h4(1)], ...
                 {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
-                 'Analytical (Paasschens, 1997)', 'diffusion approximation'}, ...
+                 'Analytical (Paasschens, 1997)', 'Diffusion approximation'}, ...
                  'FontSize',12);
             xlabel('Lapse Time [s]');
             ylabel('Integrated energy density at different source-station distances')
             title(titlecase);
+
 
         %% 3D Isotropic scattering (isotropic differential scattering cross-section)
         case '3disotropicacoustic'
@@ -125,7 +127,7 @@ else
             h4 = plot( obs.t, Ediff(inds,:), ':r' );
             legend( [h1(1), h2(1), h3(1), h4(1)], ...
                 {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
-                 'Analytical (Paasschens, 1997)', 'diffusion approximation'}, ...
+                 'Analytical (Paasschens, 1997)', 'Diffusion approximation'}, ...
                  'FontSize',12);
             xlabel('Lapse Time [s]');
             ylabel('Integrated energy density at different source-station distances')
@@ -176,22 +178,19 @@ else
             % Eanalytical = Comparison.analyticalEnergyIsotropicElastic(geometry, material, observation, observation.r(inds), Wsp);
             
             % comparison of P energy densities
-            figure; hold on; grid on; box on;
-            h1 = plot( obs.t, Ep(inds,:), '-r' );
-            h2 = plot( obs.t, EY(inds,:,1), '-b' );
-            legend( [h1(1), h2(1)], ...
-            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)'}, 'FontSize',12);
-            xlabel('Lapse Time [s]');
+            figure; grid on; box on;
+            semilogy( obs.t, Ep(inds,:), '-r', obs.t, EY(inds,:,1), '-b' );
+            
+            legend('Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)');
+            xlabel('Lapse Time [s]')
             ylabel('P-wave energy densities at different source-station distances')
             title(titlecase);
 
             % comparison of S energy densities
-            figure; hold on; grid on; box on;
-            h1 = plot( obs.t, Es(inds,:), '-r' );
-            h2 = plot( obs.t, EY(inds,:,2), '-b' );
-            legend( [h1(1), h2(1)], ...
-            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)'}, 'FontSize',12);
-            xlabel('Lapse Time [s]');
+            figure; grid on; box on;
+            semilogy( obs.t, Es(inds,:), '-r', obs.t, EY(inds,:,2), '-b' );
+            legend('Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)');
+            xlabel('Lapse Time [s]')
             ylabel('S-wave energy densities at different source-station distances')
             title(titlecase);
 
@@ -243,35 +242,31 @@ else
             Eanalytical = Comparison.analyticalEnergyIsotropicElastic(geometry, material, observation, obs.x(inds), Wsp);
             
             % comparison of P energy densities
-            figure; hold on; grid on; box on;
-            h1 = plot( obs.t, Ep(inds,:), '-k' );
-            h2 = plot( obs.t, EY(inds,:,1), '-b' );
-            legend( [h1(1), h2(1)], ...
-            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)'}, 'FontSize',12);
+            figure; grid on; box on;
+            semilogy( obs.t, Ep(inds,:), '-k', obs.t, EY(inds,:,1), '-b' );
+            legend('Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)');
             xlabel('Lapse Time [s]');
             ylabel('P-wave energy densities at different source-station distances')
             title(titlecase);
 
             % comparison of S energy densities
-            figure; hold on; grid on; box on;
-            h1 = plot( obs.t, Es(inds,:), '-k' );
-            h2 = plot( obs.t, EY(inds,:,2), '-b' );
-            legend( [h1(1), h2(1)], ...
-            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)'}, 'FontSize',12);
+            figure; grid on; box on;
+            semilogy( obs.t, Es(inds,:), '-k', obs.t, EY(inds,:,2), '-b' );
+            legend('Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)');
             xlabel('Lapse Time [s]');
             ylabel('S-wave energy densities at different source-station distances')
             title(titlecase);
 
             % comparison of total energy densities
-            figure; hold on; grid on; box on;
-            h1 = plot( obs.t, Etotus(inds,:), '-k' );
-            h2 = plot( obs.t, EtotY(inds,:), '-r' );
-            h3 = plot( obs.t, Eanalytical, '-b' );
-            legend( [h1(1), h2(1), h3(1)], ...
-            {'Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
-             'Analytical (Sato, 1994)'}, 'FontSize',12);
+            figure; grid on; box on;
+            semilogy( obs.t, Etotus(inds,:), '-k', obs.t, EtotY(inds,:), '-r', ...
+                      obs.t, Eanalytical, '-b');
+            legend('Monte Carlo (our code)', 'Monte Carlo (Yoshimoto 2000)', ...
+                   'Analytical (Sato, 1994)');
             xlabel('Lapse Time [s]');
             ylabel('Energy densities at different source-station distances')
+            currentYLim = ylim(gca); 
+            ylim(gca, [1e-6 currentYLim(2)]);
             title(titlecase);
 
         otherwise
