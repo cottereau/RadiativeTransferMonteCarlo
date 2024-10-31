@@ -32,7 +32,6 @@ end
 y = (binY(1:end-1)+binY(2:end))/2;
 Ny = length(y);
 dy = diff(binY);
-if dy==Inf; dy = 1; end
 if d==3 && isfield(observation,'z') && ~isempty(observation.z)
     binZ = observation.z;
 elseif d==3
@@ -41,7 +40,6 @@ end
 z = (binZ(1:end-1)+binZ(2:end))/2;
 Nz = length(z);
 dz = diff(binZ);
-if dz==Inf; dz = 1; end
 
 % angles between propagation direction and position vector
 % for d==3, the bins correspond to cos(psi)
