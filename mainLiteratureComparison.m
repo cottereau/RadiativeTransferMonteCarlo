@@ -43,10 +43,12 @@ else
             mainLiteratureComparison('2dIsotropicAcoustic')
             mainLiteratureComparison('3dIsotropicAcoustic')
             mainLiteratureComparison('2dIsotropicElastic')
-            mainLiteratureComparison('3disotropicelastic')
+            mainLiteratureComparison('3disotropicElastic')
             mainLiteratureComparison('2dAnisotropicAcoustic')
             mainLiteratureComparison('3dAnisotropicAcoustic')
-
+            %mainLiteratureComparison('2dAnisotropicElastic') % To be done
+            mainLiteratureComparison('3dAnisotropicElastic')
+            
             %% 2D Isotropic scattering acoustic (isotropic differential scattering cross-section)
         case '2disotropicacoustic'
             titlecase = '2D acoustic case with isotropic scattering';
@@ -284,7 +286,7 @@ else
             title(titlecase);
 
             %% 2D Anisotropic scattering acoustic (anisotropic differential scattering cross-section)
-        case '2dAnisotropicAcoustic'
+        case '2danisotropicacoustic'
             titlecase = '2D acoustic case with anisotropic scattering';
             disp(['Testing ' titlecase ' ...']);
             
@@ -325,7 +327,7 @@ else
             title(titlecase);
 
             %% 3D Anisotropic scattering (anisotropic differential scattering cross-section)
-        case '3dAnisotropicacoustic'
+        case '3danisotropicacoustic'
             titlecase = '3D acoustic case with anisotropic scattering';
             disp(['Testing ' titlecase ' ...']);
            
@@ -380,7 +382,7 @@ else
             %% 2D Anisotropic scattering elastic
             % This case is to be further investigated since scattering
             % operators for 2D media are not given in Ryzhik et al, 1996
-        case '2dAnisotropicelastic'
+        case '2danisotropicelastic'
             titlecase = '2D elastic case with anisotropic scattering';
             disp(['Testing ' titlecase ' ...']);
 
@@ -441,7 +443,7 @@ else
             title(titlecase);
 
             %% 3D Anisotropic scattering (anisotropic differential scattering cross-section)
-        case '3dAnisotropicAcoustic'
+        case '3danisotropicelastic'
             titlecase = '3D elastic case with anisotropic scattering';
             disp(['Testing ' titlecase ' ...']);
 
