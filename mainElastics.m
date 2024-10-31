@@ -17,14 +17,15 @@ observation = struct('dr', 0.04, ...        % size of bins in space
 
 % material properties - more examples can be found in Example folder
 % here is a basic example
+freq = 10; % in Hz
 material = MaterialClass( geometry, ...
-                          source, ...
+                          freq, ...
                           false, ...            % true for acoustics
                           [6 6/sqrt(3)], ...    % defines the velocity of pressure waves and the shear waves
                           [0.8 0.8 0.], ...     % defines the coefficients of variation of lambda, mu (Lamé coefficients) and rho (density), respectively.
                           [0.1 0. 0.], ...      % defines the correlation coefficient between (lambda,mu), (lambda,rho), and (mu,rho), respectively
                           'exp', ...            % defines the autocorrelation function
-                          0.1);                 % defines the correlation coefficient
+                          0.1);                 % defines the correlation length
 
 % radiative transfer solution - acoustic with boundaries
 obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );

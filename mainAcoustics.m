@@ -28,7 +28,7 @@ observation = struct('x', 0:.1:10, ...                    % bins in space
 
 % material properties - more examples can be found in Example folder
 % here is a basic example
-freq = 2*pi*10; % in rad/s
+freq = 10; % in Hz
 material = MaterialClass( geometry, ...
                           freq, ...
                           true, ...          % true for acoustics
@@ -36,7 +36,7 @@ material = MaterialClass( geometry, ...
                           [0.1 0.2], ...     % coefficients of variation of kappa and rho.
                           -0.5, ...          % correlation coefficient of kappa/rho
                           'exp', ...         % autocorrelation function
-                          0.1);              % correlation coefficient
+                           0.1);              % correlation length
                           
 % radiative transfer solution - acoustic with boundaries
 obs = radiativeTransferUnbounded( geometry, source, material, observation );
