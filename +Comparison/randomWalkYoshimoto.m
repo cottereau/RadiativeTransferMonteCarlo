@@ -15,7 +15,7 @@ function energyDensity = randomWalkYoshimoto(geometry, source, material, observa
 
 % default: no movie
 if nargin<5
-    movie = 'fasle';
+    movie = 'false';
 end
 
 d = geometry.dimension;
@@ -27,7 +27,7 @@ binR = observation.r;
 r = (binR(1:end-1)+binR(2:end))/2;
 dr = diff(binR);
 
-Sigma = material.Sigma;
+Sigma = prepareSigmaOne(material.sigma{1},d);
 
 if material.acoustics
     
@@ -65,7 +65,7 @@ else
     if source.polarization == 'P'
         isPwave = true([Np 1]);
     elseif source.polarization == 'S'
-        isPwave = true([Np 1]);
+        isPwave = false([Np 1]);
     else
         error('Source polarization type should be either "P" or "S"')
     end
@@ -112,7 +112,7 @@ for timeIdx = 1:length(t)
             phi(scatter_inds) = acos(-1+2*rand([nnz(scatter_inds) 1]));
         end
 
-    else  
+    else
         % Update positions based on wave type and velocities
         positions = positions + (isPwave .* vp + ~isPwave .* vs) .* dir * dt;
      
@@ -145,7 +145,8 @@ for timeIdx = 1:length(t)
     dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
     
     % Check if particles are within the receiver volume
-    distances = sqrt(sum((positions-xs).^2,2));
+    %distances = sqrt(sum((positions-xs).^2,2));
+    distances = sqrt(sum(positions.^2, 2));
 
     if material.acoustics
         % Calculate energy density
