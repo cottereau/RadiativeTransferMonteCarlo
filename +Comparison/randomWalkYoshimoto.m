@@ -23,7 +23,7 @@ Np = source.numberParticles;
 t = observation.time;        
 dt = mean(diff(t));
 % sensor positions : radius
-binR = observation.r;
+binR = observation.x;
 r = (binR(1:end-1)+binR(2:end))/2;
 dr = diff(binR);
 

@@ -27,6 +27,13 @@ elseif d==3
 end
 theta0 = 2*pi*rand(N,1);
 theta = 2*pi*rand(N,1);
+if isfield(source,'direction') && strcmp(source.direction,'outgoing')
+    theta = theta0;
+    phi = phi0;
+elseif isfield(source,'direction') && strcmp(source.direction,'plane')
+    theta = zeros(N,1);
+    phi = (pi/2)*ones(N,1);
+end
 dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
 perp = [-sin(theta) cos(theta) zeros(N,1)];
 
@@ -45,9 +52,6 @@ if ~acoustics && isfield(source,'polarization') && source.polarization=='S'
     p = false(N,1);
 end
 
-% coherent flag (false when particle has been scattered at least once)
-coherent = true(N,1);
- 
 % initialize structure
 P = struct( 'd', d, ...                 % dimension of the problem
             'N', N, ...                 % number of particles
@@ -55,8 +59,7 @@ P = struct( 'd', d, ...                 % dimension of the problem
             'dir', dir, ...             % direction of propagation
             'perp', perp, ...           % orthogonal to direction of propagation
             'p', p, ...                 % polarization (used only in elasticity)
-            't', t, ...                 % current time for the particle
-            'coherent', coherent );     % false when particle has been scattered
+            't', t );                   % current time for the particle
 
 end
 
