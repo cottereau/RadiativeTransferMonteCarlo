@@ -4,6 +4,9 @@ function P = initializeParticle( N, d, acoustics, source )
 if ~isfield(source,'position')
     source.position = [0 0 0];
 end
+if d==2 && length(source.position)==2
+    source.position = [source.position 0];
+end
 
 % initial position of each particle: radius follows a Gaussian law with
 % standard deviation lambda, and angle follows a uniform law.
