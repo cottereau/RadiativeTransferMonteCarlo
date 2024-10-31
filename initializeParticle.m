@@ -39,6 +39,11 @@ elseif isfield(source,'direction') && strcmp(source.direction,'plane')
 end
 dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
 perp = [-sin(theta) cos(theta) zeros(N,1)];
+% random rotation of the perp vector in 3D
+if d==3
+    alpha = 2*pi*rand(N,1);
+    perp = perp.*cos(alpha) + cross(dir,perp,2).*sin(alpha);
+end
 
 % initial positions in cartesian coordinates
 x = source.position + ...
