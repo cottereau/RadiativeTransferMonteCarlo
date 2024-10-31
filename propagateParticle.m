@@ -19,7 +19,6 @@ while any(ind)
     end
     scat = Nj>0;
     Nscatter = sum(scat);
-    P.coherent(scat) = false;
 
     % flying time until next scattering event
     if any(scat)
