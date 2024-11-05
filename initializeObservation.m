@@ -21,7 +21,7 @@ if isfield(geometry,'frame') && strcmp(geometry.frame,'cartesian')
     binY = [-Inf Inf];
     binZ = [-Inf Inf];
 else
-    binY = [-2*pi 2*pi];
+    binY = [-pi pi];
     binZ = [-pi/2 pi/2];
 end
 if isfield(observation,'y') && ~isempty(observation.y)
