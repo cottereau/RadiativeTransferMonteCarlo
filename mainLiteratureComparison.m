@@ -5,7 +5,7 @@ function mainLiteratureComparison(type)
 %
 % when type='all' or empty, all validation cases are launched
 %
-% list of possible comparision cases with reference to literature
+% list of possible comparison cases with reference to literature
 %  - '2dIsotropicAcoustic' (1,2,5)
 %  - '3dIsotropicAcoustic' (1,2,5)
 %  - '2dIsotropicElastic'  (3,5)
@@ -26,13 +26,6 @@ function mainLiteratureComparison(type)
 %     pp. 487-494 (1994).
 % (5) K. Yoshimoto, Monte Carlo simulation of seismogram envelopes in
 %     scattering media. Journal of Geophysical Research: Solid Earth (2000)
-
-% with no argument, launch all validation cases
-
-
-% Bug reports:
-% Analytical comparison in 2D does not work at the moment (corresponding
-% line is commented)
 
 if nargin==0
     mainLiteratureComparison('all')
