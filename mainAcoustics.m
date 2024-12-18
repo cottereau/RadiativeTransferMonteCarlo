@@ -36,7 +36,8 @@ material = MaterialClass( geometry, ...
                           [0.1 0.2], ...     % coefficients of variation of kappa and rho.
                           -0.5, ...          % correlation coefficient of kappa/rho
                           'exp', ...         % autocorrelation function
-                           0.1);              % correlation length
+                           0.1 );            % correlation length
+material.timeSteps = 0;                      % time Steps : 0=small 1=large
                           
 % radiative transfer solution - acoustic with boundaries
 obs = radiativeTransferUnbounded( geometry, source, material, observation );

@@ -17,6 +17,7 @@ material = prepareSigma( material, d );
 
 % loop on packages of particles
 for ip = 1:Np
+
     % initialize particles
     P = initializeParticle( Npk, d, acoustics, source );
 
@@ -24,7 +25,11 @@ for ip = 1:Np
     for it = 2:Nt
 
         % propagate particles
-        P = propagateParticle( material, P, t(it) );
+        if material.timeSteps==0
+            P = propagateParticleSmallDt( material, P, t(it) );
+        elseif material.timeSteps==1
+            P = propagateParticle( material, P, t(it) );
+        end
 
         % observe energies (as a function of [Psi x t])
         E(:,:,it,:) = E(:,:,it,:) + observeTime( geometry, acoustics, ...
@@ -32,7 +37,7 @@ for ip = 1:Np
 
     % end of loop on time
     end
-    
+
 % end of loop on packages
 end
 

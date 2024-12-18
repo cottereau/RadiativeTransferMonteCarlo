@@ -31,6 +31,7 @@ material = MaterialClass( geometry, ...
                           [0.1 0. 0.], ...      % defines the correlation coefficient between (lambda,mu), (lambda,rho), and (mu,rho), respectively
                           'exp', ...            % defines the autocorrelation function
                           0.1);                 % defines the correlation length
+material.timeSteps = 0;                         % time Steps : 0=small 1=large
 
 % radiative transfer solution - acoustic with boundaries
 obs = radiativeTransferUnbounded( geometry, source, material, observation );

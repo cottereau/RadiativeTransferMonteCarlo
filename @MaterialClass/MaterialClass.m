@@ -42,6 +42,7 @@ classdef MaterialClass < handle
         k               double  = [];% wavenumber vector
         R                       = []; %Correlation / function_handle
         r               double  = [];% r vector
+        timeSteps               = 0;% time Steps : 0=small 1=large
 
     end
     properties (SetAccess = private, Hidden = true)
