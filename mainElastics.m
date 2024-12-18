@@ -11,9 +11,14 @@ source = struct( 'numberParticles', 1e6, ...
                  'lambda', 0.1 );
 
 % observations
-observation = struct('dr', 0.04, ...        % size of bins in space
-                     'time', 0:0.1:5, ...  % observation times
-                     'Ndir', 10 );         % number of bins for directions           
+% choose 2 variables only to perform histograms (among x, y, z, directions)
+% if geometry.frame = 'spherical', (x,y,z) correspond respectively to
+%  x=r, y=azimuth (in [-pi pi]), z=elevation (in [-pi/2 pi/2])
+observation = struct('x', 0:.04:5, ...                    % bins in space
+                     'y', [-Inf Inf], ...                 
+                     'z', [-Inf Inf], ...                 % unused in 2D
+                     'directions', linspace(0,pi,10), ... % number of bins for directions [0 pi]         
+                     'time', 0:0.1:1 );                   % observation times
 
 % material properties - more examples can be found in Example folder
 % here is a basic example
@@ -28,7 +33,7 @@ material = MaterialClass( geometry, ...
                           0.1);                 % defines the correlation length
 
 % radiative transfer solution - acoustic with boundaries
-obs = radiativeTransferUnbounded( geometry.dimension, source, material, observation );
+obs = radiativeTransferUnbounded( geometry, source, material, observation );
 
 % plotting output
 plotting = struct( 'equipartition', true, ...
