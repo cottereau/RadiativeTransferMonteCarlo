@@ -83,5 +83,22 @@ cdf(1) = 0;
 cdf(end) = 1;
 ind = find(diff(cdf)>0);
 ind = unique([ind ind+1]);
-invcdf = griddedInterpolant(cdf(ind),xth(ind),'linear','nearest');
+
+% [~,ind] = unique(sort(cdf(ind)));
+%invcdf = griddedInterpolant(sort(cdf(ind)),sort(xth(ind)),'linear','nearest');
+
+% Sort and remove duplicates
+[unique_cdf, idx] = unique(sort(cdf(ind)));
+ds = sort(xth(ind));
+unique_xth = ds(idx);
+
+% Ensure monotonicity
+if ~issorted(unique_cdf)
+    [unique_cdf, sort_idx] = sort(unique_cdf);
+    unique_xth = unique_xth(sort_idx);
+end
+
+% Create the interpolant
+invcdf = griddedInterpolant(unique_cdf, unique_xth, 'linear', 'nearest');
+
 end
