@@ -1,5 +1,4 @@
 function plotEnergies( type, obs, material, lambda, cmax, rmax )
-
 % % unbounded case
 % if ~isfield(obs,'nSources')
 %     obs.nSources = 1;
@@ -16,29 +15,26 @@ function plotEnergies( type, obs, material, lambda, cmax, rmax )
 %     obs.energyDensityBox = E;
 % end
 
-% plot total energy
-if isfield(type,'movieEnergy') && type.movieTotalEnergy
-    if obs.Npsi==2
-        if nargin<5; cmax = []; end
-        plotTotalEnergy( obs, cmax );
-    elseif obs.Npsi>2
-        if nargin>3 && ~isempty(type.sensors)
-            if nargin<6; rmax = []; end
-            plotDirectionalEnergy( obs, material, lambda, type.sensors, rmax );
-        end
-    end
+% constants
+if nargin<5
+    cmax = [];
 end
 
-% plot directional energy
-if isfield(type,'movieDirectionalEnergy') && type.movieDirectionalEnergy
+% plot total energy
+if isfield(type,'movieTotalEnergy') && type.movieTotalEnergy
+    if obs.Npsi==1
+        plotTotalEnergy( obs, cmax )
+    else
+        plotDirectionalEnergy( obs, material, lambda, type.sensors, rmax );
+    end
 end
 
 % plot total energy and equipartition
 if isfield(type,'checkEnergy') && type.checkEnergy
     Etot = sum(obs.energy,3);
-    figure; plot(obs.t,Etot,'r-');
+    figure; plot(obs.t,Etot,'r-x');
     if ~obs.acoustics
-        hold all
+        hold on
         plot(obs.t,obs.energy(:,1)/obs.energy(:,2),'b-')
         eq = (material.vs/material.vp)^(obs.d)/(obs.d-1);
         hold on; plot(obs.t([1 end]),eq*[1 1],'k--')
@@ -58,21 +54,27 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotTotalEnergy( obs, cmax )
 
+% values to be plotted
+if obs.Nx == 1
+    x = obs.y;
+    z = obs.z;
+else
+    x = obs.x;
+    if obs.Ny == 1
+        z = obs.z;
+    else
+        z = obs.y;
+    end
+end
+val = obs.energyDensity;
+
 % constants
 Nt = length(obs.t);
-x = obs.boxX;
-z = obs.boxZ;
 n = 1+~obs.acoustics;
-indp = z>=0;
-indn = z<0;
-
-if obs.acoustics
-    indp = z==z;
-end
 
 % estimate cmax and make sure low values are not plotted
 if isempty(cmax)
-    cmax = squeeze(max(max(obs.energyDensityBox,[],1),[],2));
+    cmax = squeeze(max(max(obs.energyDensity,[],1),[],2));
     cmax = cmax(ceil(obs.Nt/2),:);
 end
 
@@ -80,26 +82,19 @@ end
 figure; lappend = false;
 for i1=1:Nt
     ax1 = subplot(n,1,1,'replace');
-    surf(ax1, x,z(indp),obs.energyDensityBox(:,indp,i1,1)');
+    surf( ax1, x, z, val(:,:,i1,1)' );
     view(2); shading flat; box on;
     cb1 = colorbar; colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
-    if obs.acoustics
-        set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z(indp)) max(z(indp))], ...
-            'XTick',[]);
-    else
-        set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z(indp)) max(z(indp))], ...
-            'XTick',[],'Position',[.13 .5838 .6964 .3412]);
-        set(cb1,'position',[.8411 .5833 .05 .31]);
-    end
+    set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z) max(z)],'XTick',[]);
     title(cb1,'P energy')
     title(ax1,['Total Energy Density, time t = ' num2str(obs.t(i1)) 's'])
     if ~obs.acoustics
         ax2 = subplot(n,1,2,'replace');
-        surf(ax2,x,z(indn),obs.energyDensityBox(:,indn,i1,2)');
+        surf( ax1, x, z, val(:,:,i1,2)' );
         view(2); shading flat; box on;
         cb2 = colorbar; clim(ax2,[0 cmax(2)]);
         cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:));
-        set(ax2,'XLim',[min(x) max(x)],'YLim',[min(z(indn)) max(z(indn))], ...
+        set(ax2,'XLim',[min(x) max(x)],'YLim',[min(z) max(z)], ...
             'Position',[.13 .23 .6964 .3412]);
         title(cb2,'S energy')
         set(cb2,'position',[.8411 .2298 .05 .31]);
@@ -110,63 +105,6 @@ for i1=1:Nt
 end
 
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function plotTotalEnergy_old( obs, cmax )
-
-% constants
-Nt = length(obs.t);
-x = obs.boxX;
-z = obs.boxZ;
-
-% estimate cmax and make sure low values are not plotted
-if isempty(cmax)
-    cmax = squeeze(max(max(obs.energyDensityBox,[],1),[],2));
-    cmax = cmax(ceil(obs.Nt/2),:);
-end
-level1  = logspace(-4,log10(cmax(1)),10);
-level2  = logspace(-4,log10(cmax(2)),10);
-
-% plot total energy - loop on time
-
-for i1=1:Nt
-    if i1==1; figure; lappend = false; else; clf; lappend = true; end
-    ax1 = axes;
-    %    hold off; contour(ax1,x,z,obs.energyDensityBox(:,:,i1,1)',level1);
-    hold off; surf(ax1,x,z,obs.energyDensityBox(:,:,i1,1)');
-    view(2); shading flat;% alpha 0.5;
-    colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
-    set(ax1,'Position',[.15 .11 .685 .815],'colorscale','log');
-    ax1.XLim = [min(x) max(x)]; ax1.YLim = [min(z) max(z)];
-    ax1.PlotBoxAspectRatio = [range(x) range(z) 1];
-    grid(ax1,'off')
-    cb1 = colorbar(ax1,'Position',[.84 .11 .03 .815]);
-    title(ax1,['Total Energy Density, time t = ' num2str(obs.t(i1)) 's'])
-    if ~obs.acoustics
-        title(cb1,'P energy')
-        ax2 = axes;
-        surf(ax2, x,z,obs.energyDensityBox(:,:,i1,2)');
-        %         contour(ax2,x,z,obs.energyDensityBox(:,:,i1,2)',level2);
-        view(2); shading flat; alpha 0.5
-        cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:));
-        clim(ax2,[0 cmax(2)]);
-        set(ax2,'colorscale','log');
-        ax2.XLim = [min(x) max(x)]; ax2.YLim = [min(z) max(z)];
-        ax2.PlotBoxAspectRatio = [range(x) range(z) 1];
-        linkaxes([ax1,ax2])
-        set([ax1,ax2],'Position',[.1 .11 .685 .815]);
-        ax2.Visible = 'off';
-        ax2.XTick = [];
-        ax2.YTick = [];
-        cb1.Position = [.8 .11 .03 .815];
-        cb2 = colorbar(ax2,'Position',[.9 .11 .03 .815]);
-        title(cb2,'S energy')
-    end
-
-    % export graphics
-    exportgraphics(gcf,'movieTotalEnergy.gif','Append',lappend);
-end
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotDirectionalEnergy( obs, material, lambda, sensors, rmax )
 
