@@ -5,6 +5,8 @@
 % geometry
 geometry = struct( 'dimension', 3 , ...
                    'frame', 'cartesian' ); % 'spherical' (default) or 'cartesian'
+% add boundaries (1='x', 2='y', 3='z')
+geometry.bnd(1) = struct('dir',3,'val',0);
 
 % Point source
 r = [0 5 7 9 11 13 15 17 19 10000]/100;
@@ -20,11 +22,11 @@ source = struct( 'numberParticles', 1e6, ...
 % choose 2 variables only to perform histograms (among x, y, z, directions)
 % if geometry.frame = 'spherical', (x,y,z) correspond respectively to
 %  x=r, y=azimuth (in [-pi pi]), z=elevation (in [-pi/2 pi/2])
-observation = struct('x', 0:.1:10, ...                    % bins in space
+observation = struct('x', 0:.1:10, ...                  % bins in space
                      'y', [-Inf Inf], ...                 
-                     'z', [-Inf Inf], ...                 % unused in 2D
-                     'directions', linspace(0,pi,10), ... % number of bins for directions [0 pi]         
-                     'time', 0:0.3:1 );                   % observation times
+                     'z', -4:0.1:1, ...                 % unused in 2D
+                     'directions', [0 pi], ...          % bins for directions [0 pi]         
+                     'time', 0:0.05:3 );                % observation times
 
 % material properties - more examples can be found in Example folder
 % here is a basic example

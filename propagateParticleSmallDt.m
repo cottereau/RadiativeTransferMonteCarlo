@@ -1,4 +1,4 @@
-function P = propagateParticleSmallDt(mat,P,T)
+function P = propagateParticleSmallDt(mat,boundaries,P,T)
 
 % choice of time sub-step
 T = T-mean(P.t);
@@ -14,8 +14,17 @@ for i1 = 1:Nt
     s = ~P.p;
 
     % propagate particles
+    x1 = P.x;
     P.x(p,:) = P.x(p,:) + (mat.vp.*dt).*P.dir(p,:);
     P.x(s,:) = P.x(s,:) + (mat.vs.*dt).*P.dir(s,:);
+
+    % bounce on boundaries
+    for i2 = 1:length(boundaries)
+        bnd = boundaries(i2);
+        ind = (P.x(:,bnd.dir)-bnd.val).*(bnd.val-x1(:,bnd.dir))>0;
+        P.x(ind,bnd.dir) = (2*bnd.val)-P.x(ind,bnd.dir);
+        P.dir(ind,bnd.dir) = -P.dir(ind,bnd.dir);
+    end
 
     % choose particles that are scattered at the end of time step
     Nscat = poissrnd(dt/mat.meanFreeTime(1),P.N,1);
