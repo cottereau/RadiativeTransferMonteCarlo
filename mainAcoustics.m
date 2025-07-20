@@ -5,7 +5,8 @@
 % geometry
 geometry = struct( 'dimension', 3 , ...
                    'frame', 'cartesian' ); % 'spherical' (default) or 'cartesian'
-% add boundaries (1='x', 2='y', 3='z')
+% add boundaries, specifying fields 'dir' for normal direction to the plane
+% (1='x', 2='y', 3='z'), and 'val' for the position of the plane
 geometry.bnd(1) = struct('dir',3,'val',0);
 
 % Point source
