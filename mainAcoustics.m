@@ -10,22 +10,21 @@ geometry = struct( 'dimension', 3 , ...
 geometry.bnd(1) = struct('dir',3,'val',0);
 
 % Point source
-r = [0 5 7 9 11 13 15 17 19 10000]/100;
-s = [0 .0743 .9697 .2064 .0571 .0544 .0013 .0066 0 0]*1e-13;
-s = griddedInterpolant(r,s);
 source = struct( 'numberParticles', 1e6, ...
-                 'position', [2.5 1 -2], ...  % always in cartesian frame
-                 'lambda', 0.1, ...
-                 'direction', 'outgoing', ... % initial direction 'uniform' (default) or 'outgoing' or 'plane'
-                 'radial', s );               % initial condition function of radius (always spherical)
+                 'type', 'plane', ...         % 'point' (default) or 'plane'
+                 'position', [0 0 -2], ...    % always in cartesian frame
+                 'direction', 3,          ... % only used with point sources ('uniform' (default) or 'outgoing')
+                 'radial', 0, ...             % only used with point sources. Initial condition function of radius (always spherical coordinates)
+                 'extent', [10 10], ...       % only used with plane sources. Extent of the source around 'position' (always cartesian coordinates)
+                 'lambda', 0.1 );    
 
 % observations
 % choose 2 variables only to perform histograms (among x, y, z, directions)
 % if geometry.frame = 'spherical', (x,y,z) correspond respectively to
 %  x=r, y=azimuth (in [-pi pi]), z=elevation (in [-pi/2 pi/2])
-observation = struct('x', 0:.1:10, ...                  % bins in space
+observation = struct('x', -2:.1:2, ...                  % bins in space
                      'y', [-Inf Inf], ...                 
-                     'z', -4:0.1:1, ...                 % unused in 2D
+                     'z', -4:0.1:0, ...                 % unused in 2D
                      'directions', [0 pi], ...          % bins for directions [0 pi]         
                      'time', 0:0.05:3 );                % observation times
 

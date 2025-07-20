@@ -1,6 +1,9 @@
 function P = initializeParticle( N, d, acoustics, source )
 
 % default source
+if ~isfield(source,'type')
+    source.type = 'point';
+end
 if ~isfield(source,'position')
     source.position = [0 0 0];
 end
@@ -8,46 +11,63 @@ if d==2 && length(source.position)==2
     source.position = [source.position 0];
 end
 
-% initial position of each particle: radius follows a Gaussian law with
-% standard deviation lambda, and angle follows a uniform law.
-% if radial option is used, a user-defined function (of the radius) is used
-% instead
-if ~isfield(source,'radial') || isempty(source.radial)
-    r = abs(randn(N,1)*source.lambda/2);
-else
-    Rmax = source.radial.GridVectors{1}(end);
-    invcdfsource = inverseCDF(source.radial,d,Rmax);
-    r = invcdfsource(rand(N,1));
-end
+% initial position of each particle
+switch source.type
 
-% initial angles and directions
-if d==2
-    phi0 = (pi/2)*ones(N,1);
-    phi = (pi/2)*ones(N,1);
-elseif d==3
-    phi0 = acos(-1+2*rand(N,1));
-    phi = acos(-1+2*rand(N,1));
-end
-theta0 = 2*pi*rand(N,1);
-theta = 2*pi*rand(N,1);
-if isfield(source,'direction') && strcmp(source.direction,'outgoing')
-    theta = theta0;
-    phi = phi0;
-elseif isfield(source,'direction') && strcmp(source.direction,'plane')
-    theta = zeros(N,1);
-    phi = (pi/2)*ones(N,1);
-end
-dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
-perp = [-sin(theta) cos(theta) zeros(N,1)];
-% random rotation of the perp vector in 3D
-if d==3
-    alpha = 2*pi*rand(N,1);
-    perp = perp.*cos(alpha) + cross(dir,perp,2).*sin(alpha);
-end
+    % point source
+    case 'point'
+        % radius follows a Gaussian law with standard deviation lambda, and
+        % angle follows a uniform law. If radial option is used, a 
+        % user-defined function (of the radius) is used instead.
+        if ~isfield(source,'radial') || isempty(source.radial)
+            r = abs(randn(N,1)*source.lambda/2);
+        else
+            Rmax = source.radial.GridVectors{1}(end);
+            invcdfsource = inverseCDF(source.radial,d,Rmax);
+            r = invcdfsource(rand(N,1));
+        end
 
-% initial positions in cartesian coordinates
-x = source.position + ...
-              r.*[cos(theta0).*sin(phi0) sin(theta0).*sin(phi0) cos(phi0)];
+        % initial angles and directions
+        if d==2
+            phi0 = (pi/2)*ones(N,1);
+            phi = (pi/2)*ones(N,1);
+        elseif d==3
+            phi0 = acos(-1+2*rand(N,1));
+            phi = acos(-1+2*rand(N,1));
+        end
+        theta0 = 2*pi*rand(N,1);
+        theta = 2*pi*rand(N,1);
+        if isfield(source,'direction') && strcmp(source.direction,'outgoing')
+            theta = theta0;
+            phi = phi0;
+        elseif isfield(source,'direction') && strcmp(source.direction,'plane')
+            theta = zeros(N,1);
+            phi = (pi/2)*ones(N,1);
+        end
+        dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
+        perp = [-sin(theta) cos(theta) zeros(N,1)];
+        % random rotation of the perp vector in 3D
+        if d==3
+            alpha = 2*pi*rand(N,1);
+            perp = perp.*cos(alpha) + cross(dir,perp,2).*sin(alpha);
+        end
+
+        % initial positions in cartesian coordinates
+        x = source.position + ...
+            r.*[cos(theta0).*sin(phi0) sin(theta0).*sin(phi0) cos(phi0)];
+
+    % plane waves
+    case 'plane'
+        extent = zeros(N,3);
+        extent(:,setdiff(1:3,source.direction)) = repmat(source.extent,[N 1]);
+        x = source.position + (rand(N,3)-0.5).*extent;
+        dir = zeros(N,3);
+        dir(:,abs(source.direction)) = sign(source.direction);
+        perp = zeros(N,3);
+        theta = rand(N,1)*2*pi;
+        perp(:,setdiff(1:3,source.direction)) = [cos(theta) sin(theta)];
+
+end
 
 % current time for the particle
 t = zeros(N,1);
