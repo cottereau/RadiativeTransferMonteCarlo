@@ -26,7 +26,7 @@ for ip = 1:Np
 
         % propagate particles
         if material.timeSteps==0
-            P = propagateParticleSmallDt( material, geometry.bnd, P, t(it) );
+            P = propagateParticleSmallDt( material, geometry, P, t(it) );
         elseif material.timeSteps==1
             P = propagateParticle( material, P, t(it) );
         end
