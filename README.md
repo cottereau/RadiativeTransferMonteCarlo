@@ -27,7 +27,7 @@ The approximations provided by this code can be compared to the results describe
 4. H. Sato. Multiple isotropic scattering model including P-S conversions for the seismogram envelope formation. *Geophys. J. Int* 117, pp. 487-494 (1994). [DOI](https://doi.org/10.1111/j.1365-246X.1994.tb03946.x)
 5. K. Yoshimoto, Monte Carlo simulation of seismogram envelopes in scattering media. *J. Geophys. Res.: Solid Earth* (2000)
 
-The function `mainLiteratureComparison(type)` can be used to run the comparison between our code and the literature presented above. The input of the function is a chain of characters in the following list: 'all', '2dIsotropicAcoustic', '3dIsotropicAcoustic', '2dAnisotropicAcoustic', '3dAnisotropicAcoustic', '2dIsotropicElastic', '3dIsotropicElastic', or '3dAnisotropicElastic' .
+The function `mainLiteratureComparison(type)` can be used to run the comparison between our code and the literature presented above. The input of the function is a chain of characters in the following list: `all`, `2dIsotropicAcoustic`, `3dIsotropicAcoustic`, `2dAnisotropicAcoustic`, `3dAnisotropicAcoustic`, `2dIsotropicElastic`, `3dIsotropicElastic`, or `3dAnisotropicElastic` .
 
 ## Usage
 
@@ -43,24 +43,24 @@ Here is the format for the four structured arrays used as input: `source`, `mate
 
 #### Geometry
   - `dimension` (integer 2 or 3): dimensionality of the propagation space.
-  - `frame` (chain of characters 'spherical' (default) or 'cartesian'): frame in which coordinates are expressed on output.
+  - `frame` (chain of characters `spherical` (default) or `cartesian`): frame in which coordinates are expressed on output.
   - `bnd` (structured array(s)): description of the boundaries through their normal (field `dir`, with values 1=`x`, 2=`y`, 3=`z`) and position (indicated by field `pos`).
 
 #### Source
 Source is actually an initial distribution of the energy in phase-space. The shape is controlled by the fields below:
 - `numberParticles` (integer): number of particles used to discretized the initial distribution of the energy
-- `type` (chain of characters 'plane' or 'point'): energy is initially located around a plane or a point
+- `type` (chain of characters `plane` or `point`): energy is initially located around a plane or a point
 - `position` (1x3 float vector): central position around which the initial energy is distributed
 - `lambda` (scalar float): standard deviation of the Gaussian source. This controls the wavelength/wavenumber simulated, and is related to frequency.
-- `direction` (with point source, chain of characters 'outgoing' or 'uniform' ): initial energy radiates away from the center position or randomly
-- `radial` (with point source, function handle): describes the initial distribution in space (and overrules 'lambda')
+- `direction` (with point source, chain of characters `outgoing` or `uniform` ): initial energy radiates away from the center position or randomly
+- `radial` (with point source, function handle): describes the initial distribution in space (and overrules `lambda`)
 - `direction` (with plane source, signed integer): initial direction of the energy 1=+x, 2=+y, 3=+z, -1=-x, -2=-y, -3=-z 
-- `extent` (with plane source, 1x2 float vector): dimensions of the plane perpendicular to 'direction' over which particles are initially sampled 
+- `extent` (with plane source, 1x2 float vector): dimensions of the plane perpendicular to `direction` over which particles are initially sampled 
 
 #### Observations
-The energy density is in general a function of position (3 variables), wavevector (2 unknowns, because norm is related to the fixed frequency) and time. For simplicity, the wavevector is assumed to only depend on the angle between the propagation direction and the position vector. The choice in this code has been to model the energy density as a 4-dimensional (3 dimensions for positions and one angle for direction) distribution evaluated at discrete times. To accelerate evaluation, the user can only consider two dimensions among the four ('x', 'y', 'z', 'directions'), while the other two are automatically integrated upon. The output energy density is therefore a 3-dimensional matrix (last dimension represents time).
+The energy density is in general a function of position (3 variables), wavevector (2 unknowns, because norm is related to the fixed frequency) and time. For simplicity, the wavevector is assumed to only depend on the angle between the propagation direction and the position vector. The choice in this code has been to model the energy density as a 4-dimensional (3 dimensions for positions and one angle for direction) distribution evaluated at discrete times. To accelerate evaluation, the user can only consider two dimensions among the four (`x`, `y`, `z`, `directions`), while the other two are automatically integrated upon. The output energy density is therefore a 3-dimensional matrix (last dimension represents time).
 The structure is composed of:
-- 'x', 'y', 'z', 'directions' (Nx1 vectors): bins for space and propagation direction. In spherical coordinates (geometry.frame='spherical'), 'x', 'y', 'z' respresent respectively radius, azimuth (between -pi and pi) and elevation (between -pi/2 and pi/2). At least two of these must be 2x1 vectors to indicate over which values integration should be performed. The other two vectors should be Nx1 vectors (N>=2) indicating the boundaries of the bins over which distributions should be monitored.
+- `x`, `y`, `z`, `directions` (Nx1 vectors): bins for space and propagation direction. In spherical coordinates (geometry.frame=`spherical`), `x`, `y`, `z` respresent respectively radius, azimuth (between -pi and pi) and elevation (between -pi/2 and pi/2). At least two of these must be 2x1 vectors to indicate over which values integration should be performed. The other two vectors should be Nx1 vectors (N>=2) indicating the boundaries of the bins over which distributions should be monitored.
 - `time` (Mx1 vector): times at which distributions should be monitored.
 
 #### Material
