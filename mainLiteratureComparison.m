@@ -10,7 +10,9 @@ function mainLiteratureComparison(type)
 %  - '3dIsotropicAcoustic' (1,2,5)
 %  - '2dIsotropicElastic'  (3,5)
 %  - '3dIsotropicElastic'  (4,5)
-%
+%  - '2dIsotropicAcoustic'
+%  - '3dIsotropicAcoustic'
+%  - '3dIsotropicElastic'
 % Our code is compared to the results described in the following papers:
 % (1) J. C. J. Paasschens. Solution of the time-dependent Boltzmann equation,
 %     Phys. Rev. E 56(1), pp. 1135-1141 (1997).

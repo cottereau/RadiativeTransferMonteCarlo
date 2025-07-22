@@ -3,6 +3,7 @@ function obs = radiativeTransferUnbounded( geometry, source, material, observati
 % physics
 d = geometry.dimension;
 acoustics = material.acoustics;
+material.timeSteps = 0;
 
 % discretization in packets of particles  (for optimal vectorization)
 Npk = 1e5; % size of packets 
