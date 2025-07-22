@@ -21,7 +21,7 @@ for i1 = 1:Nt
     % bounce on boundaries
     if isfield(geometry,'bnd')
         for i2 = 1:length(geometry.bnd)
-            bnd = geometry.boundaries(i2);
+            bnd = geometry.bnd(i2);
             ind = (P.x(:,bnd.dir)-bnd.val).*(bnd.val-x1(:,bnd.dir))>0;
             P.x(ind,bnd.dir) = (2*bnd.val)-P.x(ind,bnd.dir);
             P.dir(ind,bnd.dir) = -P.dir(ind,bnd.dir);
