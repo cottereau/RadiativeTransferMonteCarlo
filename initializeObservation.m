@@ -3,6 +3,7 @@ function [ obs, energy, bins, ibins, vals, Nt, t, d1, d2 ] = ...
 
 % constants
 d = geometry.dimension;
+frame = geometry.frame;
 
 % times
 t = [0 setdiff(observation.time,0)];
@@ -32,10 +33,14 @@ end
 y = (binY(1:end-1)+binY(2:end))/2;
 Ny = length(y);
 dy = diff(binY);
+% in 3D spherical, binZ corresponds to sin(phi)
 if d==3 && isfield(observation,'z') && ~isempty(observation.z)
     binZ = observation.z;
 elseif d==3
     disp(['no z bins defined: integrating over [' num2str(binZ) ']'])
+end
+if  d==3 && strcmp(frame,'spherical')
+    binZ = sin(binZ);
 end
 z = (binZ(1:end-1)+binZ(2:end))/2;
 Nz = length(z);
@@ -60,6 +65,7 @@ dpsi = diff(binPsi);
 if ~(isfield(geometry,'frame') && strcmp(geometry.frame,'cartesian'))
     [dx,dz] = volumeEnergy(d,x,dx,z,dz);
 end
+dx = volumeEnergy(d,x,dx);
 
 % bins for histograms have the following dimensions
 ibins = find([Nx Ny Nz Npsi]>1);
@@ -124,12 +130,21 @@ end
 % total energy in 3D (the direction variable is cos(psi))
 %       int_r( int_cospsi ( a(r,cospsi) dcospsi ) (r^2 dr) )
 function [dr,dphi] = volumeEnergy(d,r,d0r,phi,dphi)
+% volume energy (optimized for efficiency in 3D for spherical frame)
+% total energy in 2D cartesian/spherical (the direction variable is psi) 
+%       int_r( int_th( int_psi ( a(r,th,psi) dpsi dth r dr )))
+% total energy in 3D cartesian (the direction variable is cos(psi))
+%       int_r( int_th( int_z( int_cospsi ( a(r,th,z,cospsi) dcospsi dth dz r^2 dr ))))
+% total energy in 3D spherical (the direction variable is cos(psi))
+%       int_r( int_th( int_sinphi( int_cospsi ( a(r,th,sinphi,cospsi) dcospsi dth dsinphi r^2 dr ))))
+function dr = volumeEnergy(d,r,d0r)
 if d==2
     dr = r.*d0r;
     if r(1)==0
         dr(1) = d0r(1)^2/8;
     end
 elseif d==3
+else
     dr = r.^2.*d0r + d0r.^3/12;
     if r(1)==0
         dr(1) = d0r(1)^3/24;

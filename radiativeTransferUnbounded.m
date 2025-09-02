@@ -4,6 +4,9 @@ function obs = radiativeTransferUnbounded( geometry, source, material, observati
 d = geometry.dimension;
 acoustics = material.acoustics;
 material.timeSteps = 0;
+if ~isfield(geometry,'frame')
+    geometry.frame = 'spherical';
+end
 
 % discretization in packets of particles  (for optimal vectorization)
 Npk = 1e5; % size of packets 

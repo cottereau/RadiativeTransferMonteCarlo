@@ -2,6 +2,7 @@ function E = observeTime(geometry,acoustics,x,p,dir,bins,ibins,vals)
 
 % constants
 d = geometry.dimension;
+frame = geometry.frame;
 N1 = length(bins{1})-1;
 N2 = length(bins{2})-1;
 E = zeros(N1,N2,1,1+~acoustics,'uint32');
@@ -11,6 +12,10 @@ if d==2
     [theta,r] = cart2pol(x(:,1),x(:,2));
 elseif d==3
     [theta,phi,r] = cart2sph(x(:,1),x(:,2),x(:,3));
+end
+% in 3D spherical, binZ corresponds to sin(phi)
+if d==3 && strcmp(frame,'spherical')
+    phi = sin(phi);
 end
 
 % compute angle between direction of propagation and position
