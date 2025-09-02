@@ -16,14 +16,21 @@ Nx = length(x);
 dx = diff(binX);
 
 % sensor positions : (y,z) in cartesian or (theta,phi) in spherical
+% in 2D cylindrical, theta in [-pi,pi], phi is unused
+% in 3D cylindrical, theta (azimuth) in [-pi,pi], z in [-Inf Inf]
 % in 2D spherical, theta in [-pi,pi], phi is unused
 % in 3D spherical, theta (azimuth) in [-pi,pi], phi (elevation) in [-pi/2,pi/2]
-if isfield(geometry,'frame') && strcmp(geometry.frame,'cartesian')
+if strcmp(frame,'cartesian')
     binY = [-Inf Inf];
     binZ = [-Inf Inf];
-else
+elseif strcmp(frame,'cylindrical')
+    binY = [-pi pi];
+    binZ = [-Inf Inf];
+elseif strcmp(frame,'spherical')
     binY = [-pi pi];
     binZ = [-pi/2 pi/2];
+else
+    error('unknown frame type');
 end
 if isfield(observation,'y') && ~isempty(observation.y)
     binY = observation.y;
@@ -62,9 +69,6 @@ Npsi = length(psi);
 dpsi = diff(binPsi);
 
 % energy in a small volume of the domain
-if ~(isfield(geometry,'frame') && strcmp(geometry.frame,'cartesian'))
-    [dx,dz] = volumeEnergy(d,x,dx,z,dz);
-end
 dx = volumeEnergy(d,x,dx);
 
 % bins for histograms have the following dimensions
@@ -124,13 +128,7 @@ obs = struct('d', d, ...                 % dimension of the problem
 
 end
 
-% volume energy (optimized for efficiency in 3D) for spherical frame
-% total energy in 2D (the direction variable is psi) 
-%       int_r( int_psi ( a(r,psi) dpsi ) (r dr) )
-% total energy in 3D (the direction variable is cos(psi))
-%       int_r( int_cospsi ( a(r,cospsi) dcospsi ) (r^2 dr) )
-function [dr,dphi] = volumeEnergy(d,r,d0r,phi,dphi)
-% volume energy (optimized for efficiency in 3D for spherical frame)
+% volume energy
 % total energy in 2D cartesian/spherical (the direction variable is psi) 
 %       int_r( int_th( int_psi ( a(r,th,psi) dpsi dth r dr )))
 % total energy in 3D cartesian (the direction variable is cos(psi))
@@ -143,14 +141,11 @@ if d==2
     if r(1)==0
         dr(1) = d0r(1)^2/8;
     end
-elseif d==3
 else
     dr = r.^2.*d0r + d0r.^3/12;
     if r(1)==0
         dr(1) = d0r(1)^3/24;
     end
-    dphi = sin(phi+dphi/2)-sin(phi-dphi/2);
 end
 if isscalar(r); dr = r^d/d; end
-if d==2; dphi = 1; end
 end

@@ -4,7 +4,7 @@
 
 % geometry
 geometry = struct( 'dimension', 3 , ...   
-                   'frame', 'cartesian' );
+                   'frame', 'cylindrical' );
 % boundaries with normal 'dir' (1='x', 2='y', 3='z') and position 'val'
 geometry.bnd(1) = struct('dir',3,'val',0);
 
@@ -21,9 +21,11 @@ source = struct( 'numberParticles', 1e6, ...
 % choose 2 variables only to perform histograms (among x, y, z, directions)
 % if geometry.frame = 'spherical', (x,y,z) correspond respectively to
 %  x=r, y=azimuth (in [-pi pi]), z=elevation (in [-pi/2 pi/2])
+% if geometry.frame = 'cylindrical', (x,y,z) correspond respectively to
+%  x=r, y=azimuth (in [-pi pi]), z
 observation = struct('x', -2:.1:2, ...                  % bins in space
-                     'y', [-Inf Inf], ...                 
-                     'z', -4:0.1:0, ...                 % unused in 2D
+                     'y', linspace(-pi,pi,30), ...                 
+                     'z', [-Inf Inf], ...                 % unused in 2D
                      'directions', [0 pi], ...          % bins for directions [0 pi]         
                      'time', 0:0.05:3 );                % observation times
 
