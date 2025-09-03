@@ -36,7 +36,6 @@ if d==3 && strcmp(frame,'spherical')
     phi = sin(phi);
 end
 
-
 % prepare histograms
 if strcmp(frame,'cartesian')
     if all(ibins==[1 2])
