@@ -73,8 +73,12 @@ dx = volumeEnergy(d,x,dx);
 
 % bins for histograms have the following dimensions
 ibins = find([Nx Ny Nz Npsi]>1);
-if isscalar(ibins) && (ibins==1 || ibins==2)
-    ibins = [1 2];
+if isscalar(ibins)
+    if ibins~=1
+        ibins = [1 ibins];
+    else
+        ibins = [1 2];
+    end
 end
 if length(ibins)>2
     error('histograms can only be constructed along two directions')
