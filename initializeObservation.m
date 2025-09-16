@@ -69,7 +69,9 @@ Npsi = length(psi);
 dpsi = diff(binPsi);
 
 % energy in a small volume of the domain
-dx = volumeEnergy(d,x,dx);
+if strcmp(frame,'spherical') || strcmp(frame,'cylindrical')
+    dx = volumeEnergy(d,x,dx);
+end
 
 % bins for histograms have the following dimensions
 ibins = find([Nx Ny Nz Npsi]>1);
@@ -97,6 +99,16 @@ elseif all(ibins==[1 4])
     bins = {binX binPsi};
     vals = {binY binZ};
     d1 = dx;
+    d2 = dpsi;
+elseif all(ibins==[2 4])
+    bins = {binY binPsi};
+    vals = {binX binZ};
+    d1 = dy;
+    d2 = dpsi;
+elseif all(ibins==[3 4])
+    bins = {binZ binPsi};
+    vals = {binX binY};
+    d1 = dz;
     d2 = dpsi;
 else
     error('other combinations of bins to be implemented if need be')
@@ -133,10 +145,14 @@ obs = struct('d', d, ...                 % dimension of the problem
 end
 
 % volume energy
-% total energy in 2D cartesian/spherical (the direction variable is psi) 
+% total energy in 2D cartesian (the direction variable is psi) 
+%       int_x( int_y( int_psi ( a(x,y,psi) dpsi dx dy )))
+% total energy in 2D cylindrical/spherical (the direction variable is psi) 
 %       int_r( int_th( int_psi ( a(r,th,psi) dpsi dth r dr )))
 % total energy in 3D cartesian (the direction variable is cos(psi))
-%       int_r( int_th( int_z( int_cospsi ( a(r,th,z,cospsi) dcospsi dth dz r^2 dr ))))
+%       int_x( int_y( int_z( int_cospsi ( a(x,y,z,cospsi) dcospsi dth dz dy dx ))))
+% total energy in 3D cylindrical (the direction variable is cos(psi))
+%       int_r( int_th( int_z( int_cospsi ( a(r,th,z,cospsi) dcospsi dth dz r dr ))))
 % total energy in 3D spherical (the direction variable is cos(psi))
 %       int_r( int_th( int_sinphi( int_cospsi ( a(r,th,sinphi,cospsi) dcospsi dth dsinphi r^2 dr ))))
 function dr = volumeEnergy(d,r,d0r)

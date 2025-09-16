@@ -53,6 +53,8 @@ if strcmp(frame,'cartesian')
         if d==3, int2 = x(:,3); end
         hist1 = x(:,1);
         hist2 = psi;
+    else
+        error('bin combination not implemented yet')
     end
 elseif strcmp(frame,'cylindrical')
     if all(ibins==[1 2])
@@ -70,6 +72,18 @@ elseif strcmp(frame,'cylindrical')
         if d==3, int2 = x(:,3); end
         hist1 = r;
         hist2 = psi;
+    elseif all(ibins==[2 4])
+        int1 = r;
+        if d==3, int2 = x(:,3); end
+        hist1 = theta;
+        hist2 = psi;
+    elseif all(ibins==[3 4])
+        int1 = r;
+        if d==3, int2 = theta; end
+        hist1 = x(:,3);
+        hist2 = psi;
+    else
+        error('bin combination not implemented yet')
     end
 else
     if all(ibins==[1 2])
@@ -87,6 +101,8 @@ else
         if d==3, int2 = phi; end
         hist1 = r;
         hist2 = psi;
+    else
+        error('bin combination not implemented yet')
     end
 end
 
