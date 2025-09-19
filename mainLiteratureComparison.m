@@ -43,6 +43,8 @@ else
             mainLiteratureComparison('3dAnisotropicAcoustic')
             %mainLiteratureComparison('2dAnisotropicElastic') % To be done
             mainLiteratureComparison('3dAnisotropicElastic')
+            mainLiteratureComparison('3dIsotropicAcousticCoordinateSystems')
+            mainLiteratureComparison('3dAnisotropicAcousticCoordinateSystems')
             
             %% 2D Isotropic scattering acoustic (isotropic differential scattering cross-section)
         case '2disotropicacoustic'
@@ -511,6 +513,157 @@ else
             currentYLim = ylim(gca);
             ylim(gca, [1e-5 currentYLim(2)]);
             title(titlecase);
+
+        %% 3D Isotropic scattering acoustic (comparison between cylindrical, spherical, cartesian versions of the code)
+        case '3disotropicacousticcoordinatesystems'
+            titlecase = 'Comparison between different coordinate systems for 3D acoustic case with isotropic scattering';
+            disp(['Testing ' titlecase ' ...']);
+
+            %%%%%%%%%%%%%%%%%%%  Cylindrical %%%%%%%%%%%%%%%%%%%%%%
+            
+            clear geometry material
+            
+            geometry = struct( 'type', 'fullspace', ...
+                               'dimension', 3 , ...
+                               'frame', 'cylindrical' );
+            % Point source
+            source = struct( 'numberParticles', 1e6, ...
+                             'type', 'point', ...         % 'point' (default) or 'plane'
+                             'position', [0 0 0], ...    % always in cartesian frame
+                             'direction', 'uniform',...  % with point source: 'uniform' (default) or 'outgoing'; with plane source: 1='x', 2='y', 3='z'
+                             'lambda', 1e-4 );
+            
+            observation = struct('x', 0:0.1:10, ...
+                                 'y', [-pi pi], ...
+                                 'z', [-1 1], ...
+                                 'directions', [0 pi], ...
+                                 'time', 0:0.05:20 );
+            
+            material = MaterialClass.preset(1);
+            material.timeSteps = 0;
+            
+            tic; obs_cyl = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+            
+            %%%%%%%%%%%%%%%%%%%  Spherical %%%%%%%%%%%%%%%%%%%%%%
+            geometry.frame = 'spherical';
+            
+            observation = struct('x', 0:0.1:10, ...
+                                 'y', [-pi pi], ...
+                                 'z', [-pi/2 pi/2], ...
+                                 'directions', [0 pi], ...
+                                 'time', observation.time );
+            
+            tic; obs_sph = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+            
+            %%%%%%%%%%%%%%%%%%%  Cartesian %%%%%%%%%%%%%%%%%%%%%%
+            
+            geometry.frame = 'cartesian';
+            
+            source.numberParticles = 2e6;
+            
+            observation = struct('x', 0:0.1:10, ...
+                                 'y', [-1 1], ...
+                                 'z', [-1 1], ...
+                                 'directions', [0 pi], ...
+                                 'time', observation.time );
+            
+            tic; obs_cart = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+            
+            %%%%%%%%%%%%%%%%% Analytical %%%%%%%%%%%%%%%%%%%%%
+            
+            EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
+            [EP,Ediff] = Comparison.analyticalPaasschens( material, observation, geometry );
+
+            
+            figure; j=50; hold on;
+            t = obs_sph.t;
+            plot(t, squeeze(obs_sph.energyDensity(j,:,:))/obs_sph.dz);
+            plot(t, squeeze(obs_cyl.energyDensity(j,:,:))/obs_cyl.dx(j)/obs_cyl.dz/2);
+            plot(t, squeeze(obs_cart.energyDensity(j,:,:))/obs_cart.dz);
+            plot(t, EP(j,:),'.-','LineWidth',2); plot(t, Ediff(j,:),'.-');
+            plot(t, EY(j,:),'linewidth',2);
+            set(gca, 'YScale', 'log'); ylim([0.5e-5 1e-1]);
+            legend('spherical','cylindrical','cartesian','Yoshimoto','location','best');
+            xlabel('Time'); ylabel('Energy density'); grid on; box on;
+
+        %% 3D Anisotropic scattering acoustic (comparison between cylindrical, spherical, cartesian versions of the code)
+        case '3danisotropicacousticcoordinatesystems'
+            titlecase = 'Comparison between different coordinate systems for 3D acoustic case with anisotropic scattering';
+            disp(['Testing ' titlecase ' ...']);
+
+            %%%%%%%%%%%%%%%%%%%  Cylindrical %%%%%%%%%%%%%%%%%%%%%%
+            clear geometry material         
+            
+            geometry = struct( 'type', 'fullspace', ...
+                               'dimension', 3 , ...
+                               'frame', 'cylindrical' );
+            
+            source = struct( 'numberParticles', 1e6, ...
+                             'type', 'point', ...         % 'point' (default) or 'plane'
+                             'position', [0 0 0], ...    % always in cartesian frame
+                             'direction', 'uniform',...  % with point source: 'uniform' (default) or 'outgoing'; with plane source: 1='x', 2='y', 3='z'
+                             'lambda', 1e-4 );
+            
+            observation = struct('x', 0:0.1:10, ...
+                                 'y', [-pi pi], ...
+                                 'z', [-1 1], ...
+                                 'directions', [0 pi], ...
+                                 'time', 0:0.05:20 );
+            cv = 10; ell = 0.5;
+            freq = 1; 
+            velo = 01;
+            material = MaterialClass( geometry, ...
+                                      freq, ...
+                                      true, ...          % true for acoustics
+                                      velo, ...             % average wave velocity
+                                      [cv cv]/100, ...     % coefficients of variation of kappa and rho.
+                                      0, ...          % correlation coefficient of kappa/rho
+                                      'Gauss', ...         % autocorrelation function
+                                      ell);              % correlation length
+            material.timeSteps = 0;
+            
+            tic; obs_cyl = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+            
+            %%%%%%%%%%%%%%%%%%%  Spherical %%%%%%%%%%%%%%%%%%%%%%
+            
+            geometry.frame = 'spherical';
+            
+            observation = struct('x', 0:0.1:10, ...
+                                 'y', [-pi pi], ...
+                                 'z', [-pi/2 pi/2], ...
+                                 'directions', [0 pi], ...
+                                 'time', observation.time );
+            
+            tic; obs_sph = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+            
+            %%%%%%%%%%%%%%%%%%%  Cartesian %%%%%%%%%%%%%%%%%%%%%%
+            
+            geometry.frame = 'cartesian';
+            
+            source.numberParticles = 4e6;
+            
+            observation = struct('x', 0:0.1:10, ...
+                                 'y', [-1 1], ...
+                                 'z', [-1 1], ...
+                                 'directions', [0 pi], ...
+                                 'time', observation.time );
+            
+            tic; obs_cart = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+            
+            %%%%%%%%%%%%%%%%% Analytical %%%%%%%%%%%%%%%%%%%%%
+            
+            EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
+            
+            %%%%%%%%%%%%%%%%% Plots %%%%%%%%%%%%%%%%%%%%%%%%%%
+            figure; j=50; hold on;
+            t = obs_sph.t;
+            plot(t, squeeze(obs_sph.energyDensity(j,:,:))/obs_sph.dz);
+            plot(t, squeeze(obs_cyl.energyDensity(j,:,:))/obs_cyl.dx(j)/obs_cyl.dz/2);
+            plot(t, squeeze(obs_cart.energyDensity(j,:,:))/obs_cart.dz);
+            plot(t, EY(j,:),'linewidth',2);
+            set(gca, 'YScale', 'log'); ylim([0.5e-5 1e-1]);
+            legend('spherical','cylindrical','cartesian','Yoshimoto','location','best');
+            xlabel('Time'); ylabel('Energy density'); grid on; box on; 
 
         otherwise
             error('unknown validation case')
