@@ -573,17 +573,27 @@ else
             
             EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
             [EP,Ediff] = Comparison.analyticalPaasschens( material, observation, geometry );
-
             
-            figure; j=50; hold on;
-            t = obs_sph.t;
-            plot(t, squeeze(obs_sph.energyDensity(j,:,:))/obs_sph.dz);
-            plot(t, squeeze(obs_cyl.energyDensity(j,:,:))/obs_cyl.dx(j)/obs_cyl.dz/2);
-            plot(t, squeeze(obs_cart.energyDensity(j,:,:))/obs_cart.dz);
-            plot(t, EP(j,:),'.-','LineWidth',2); plot(t, Ediff(j,:),'.-');
-            plot(t, EY(j,:),'linewidth',2);
-            set(gca, 'YScale', 'log'); ylim([0.5e-5 1e-1]);
-            legend('spherical','cylindrical','cartesian','Yoshimoto','location','best');
+            %%%%%%%%%%%%%%%%% Plots %%%%%%%%%%%%%%%%%%%%%%%%%%
+            figure; j = 50;
+
+            E_sph = squeeze(obs_sph.energyDensity(j,:,:)) ./ obs_sph.dz;
+            
+            % exact cylindrical correction using bin edges:
+            rL = obs_cyl.binX(j); rR = obs_cyl.binX(j+1);
+            int_r2 = obs_cyl.dx(j);                % what the code uses for normalization
+            int_r  = 0.5*(rR^2 - rL^2);            % what cylindrical volume needs
+            E_cyl = squeeze(obs_cyl.energyDensity(j,:,:)) .* ( int_r2 / (int_r * obs_cyl.dz) );
+            
+            E_car = squeeze(obs_cart.energyDensity(j,:,:)) ./ obs_cart.dz;
+
+            plot(obs_sph.t, E_sph); hold on
+            plot(obs_sph.t, E_cyl);
+            plot(obs_sph.t, E_car);
+            plot(obs_sph.t, EY(j,:),'LineWidth',2);
+            plot(obs_sph.t, EP(j,:)); plot(obs_sph.t, Ediff(j,:));
+            set(gca,'YScale','log'); ylim([1e-4 2e-3]);
+            legend('spherical','cylindrical','cartesian','Yoshimoto','Paasschens','Diffusion','location','best');
             xlabel('Time'); ylabel('Energy density'); grid on; box on;
 
         %% 3D Anisotropic scattering acoustic (comparison between cylindrical, spherical, cartesian versions of the code)
@@ -655,15 +665,25 @@ else
             EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
             
             %%%%%%%%%%%%%%%%% Plots %%%%%%%%%%%%%%%%%%%%%%%%%%
-            figure; j=50; hold on;
-            t = obs_sph.t;
-            plot(t, squeeze(obs_sph.energyDensity(j,:,:))/obs_sph.dz);
-            plot(t, squeeze(obs_cyl.energyDensity(j,:,:))/obs_cyl.dx(j)/obs_cyl.dz/2);
-            plot(t, squeeze(obs_cart.energyDensity(j,:,:))/obs_cart.dz);
-            plot(t, EY(j,:),'linewidth',2);
-            set(gca, 'YScale', 'log'); ylim([0.5e-5 1e-1]);
+            figure; j = 50;
+
+            E_sph = squeeze(obs_sph.energyDensity(j,:,:)) ./ obs_sph.dz;
+            
+            % exact cylindrical correction using bin edges:
+            rL = obs_cyl.binX(j); rR = obs_cyl.binX(j+1);
+            int_r2 = obs_cyl.dx(j);                % what the code uses for normalization
+            int_r  = 0.5*(rR^2 - rL^2);            % what cylindrical volume needs
+            E_cyl = squeeze(obs_cyl.energyDensity(j,:,:)) .* ( int_r2 / (int_r * obs_cyl.dz) );
+            
+            E_car = squeeze(obs_cart.energyDensity(j,:,:)) ./ obs_cart.dz;
+
+            plot(obs_sph.t, E_sph); hold on
+            plot(obs_sph.t, E_cyl);
+            plot(obs_sph.t, E_car);
+            plot(obs_sph.t, EY(j,:),'LineWidth',2);
+            set(gca,'YScale','log');
             legend('spherical','cylindrical','cartesian','Yoshimoto','location','best');
-            xlabel('Time'); ylabel('Energy density'); grid on; box on; 
+            xlabel('Time'); ylabel('Energy density'); grid on; box on;
 
         otherwise
             error('unknown validation case')
