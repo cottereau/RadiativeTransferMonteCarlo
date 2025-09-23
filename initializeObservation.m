@@ -69,8 +69,10 @@ Npsi = length(psi);
 dpsi = diff(binPsi);
 
 % energy in a small volume of the domain
-if strcmp(frame,'spherical') || strcmp(frame,'cylindrical')
-    dx = volumeEnergy(d,x,dx);
+if strcmp(frame,'spherical') 
+    dx = volumeEnergySpherical(d,x,dx);
+elseif strcmp(frame,'cylindrical')
+    dx = volumeEnergyCylindrical(x,dx);
 end
 
 % bins for histograms have the following dimensions
@@ -155,7 +157,7 @@ end
 %       int_r( int_th( int_z( int_cospsi ( a(r,th,z,cospsi) dcospsi dth dz r dr ))))
 % total energy in 3D spherical (the direction variable is cos(psi))
 %       int_r( int_th( int_sinphi( int_cospsi ( a(r,th,sinphi,cospsi) dcospsi dth dsinphi r^2 dr ))))
-function dr = volumeEnergy(d,r,d0r)
+function dr = volumeEnergySpherical(d,r,d0r)
 if d==2
     dr = r.*d0r;
     if r(1)==0
@@ -168,4 +170,11 @@ else
     end
 end
 if isscalar(r); dr = r^d/d; end
+end
+function dr = volumeEnergyCylindrical(r,d0r)
+dr = r.*d0r;
+if r(1)==0
+    dr(1) = d0r(1)^2/8;
+end
+if isscalar(r); dr = r^2/2; end
 end
