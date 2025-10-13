@@ -22,9 +22,20 @@ for i1 = 1:Nt
     if isfield(geometry,'bnd')
         for i2 = 1:length(geometry.bnd)
             bnd = geometry.bnd(i2);
-            ind = (P.x(:,bnd.dir)-bnd.val).*(bnd.val-x1(:,bnd.dir))>0;
-            P.x(ind,bnd.dir) = (2*bnd.val)-P.x(ind,bnd.dir);
-            P.dir(ind,bnd.dir) = -P.dir(ind,bnd.dir);
+            % boundaries along cartesian coordinates
+            if bnd<4      
+                ind = (P.x(:,bnd.dir)-bnd.val).*(bnd.val-x1(:,bnd.dir))>0;
+                P.x(ind,bnd.dir) = (2*bnd.val)-P.x(ind,bnd.dir);
+                P.dir(ind,bnd.dir) = -P.dir(ind,bnd.dir);
+            % boundary along cylindrical radius
+            elseif bnd==4
+                [~,r] = cart2pol(P.x(:,1),P.x(:,2));
+                dr = r-bnd.dir;
+                ind = dr>0;
+                n = P.x(ind,:)./r(ind);
+                P.x(ind,:) = P.x(ind,:) - 2*dr(ind).*n;
+                P.dir(ind,:) = P.dir(ind,:) - 2*dot(P.dir(ind,:),n,2).*n;
+            end
         end
     end
 
