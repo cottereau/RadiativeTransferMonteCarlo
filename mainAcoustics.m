@@ -7,6 +7,7 @@
 geometry = struct( 'dimension', 3 , ...   
                    'frame', 'cylindrical' );
 % boundaries with normal 'dir' (1='x', 2='y', 3='z', 4='r_cylindrical') and position 'val'
+% For dir=4, the symmetry axis of the cylinder is by default 'z' 
 geometry.bnd(1) = struct('dir',3,'val',0);
 
 % Point source
