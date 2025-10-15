@@ -22,9 +22,38 @@ for i1 = 1:Nt
     if isfield(geometry,'bnd')
         for i2 = 1:length(geometry.bnd)
             bnd = geometry.bnd(i2);
-            ind = (P.x(:,bnd.dir)-bnd.val).*(bnd.val-x1(:,bnd.dir))>0;
-            P.x(ind,bnd.dir) = (2*bnd.val)-P.x(ind,bnd.dir);
-            P.dir(ind,bnd.dir) = -P.dir(ind,bnd.dir);
+            % boundaries along cartesian coordinates
+            if bnd.dir<4      
+                ind = (P.x(:,bnd.dir)-bnd.val).*(bnd.val-x1(:,bnd.dir))>0;
+                P.x(ind,bnd.dir) = (2*bnd.val)-P.x(ind,bnd.dir);
+                P.dir(ind,bnd.dir) = -P.dir(ind,bnd.dir);
+            % boundary along cylindrical radius
+            elseif bnd.dir==4
+                % distance to z axis
+                radial_coords = P.x(:, 1:2);
+                r = sqrt(sum(radial_coords.^2, 2));
+
+                % which particles have moved outside the cylinder radius
+                overshoot_dist = r - bnd.val;
+                ind = overshoot_dist > 0;
+
+                if any(ind)
+                    pos_outside = P.x(ind, :);
+                    r_outside = r(ind);
+            
+                    % unit normal vector (in x-y plane)
+                    n = zeros(size(pos_outside));
+                    n(:, 1:2) = pos_outside(:, 1:2) ./ r_outside;
+
+                    % update position
+                    P.x(ind, :) = pos_outside - 2 * overshoot_dist(ind) .* n;
+
+                    % update direction
+                    dir_outside = P.dir(ind, :);
+                    dot_prod = sum(dir_outside .* n, 2);
+                    P.dir(ind,:) = dir_outside - 2 * dot_prod .* n;
+                end
+            end
         end
     end
 
