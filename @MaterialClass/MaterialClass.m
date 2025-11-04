@@ -33,8 +33,12 @@ classdef MaterialClass < handle
         Sigma
         Sigmapr
         invcdf
-        D
+        Diffusivity
         meanFreeTime
+        meanFreePath
+        transportMeanFreeTime
+        transportMeanFreePath
+        g
         P2P
         S2S
 
@@ -150,7 +154,7 @@ classdef MaterialClass < handle
 
             % get the power spectral density function
             if isempty(obj.Phi)
-                obj.getSPDF;
+                obj.getPSDF;
             end
 
             switch obj.type
@@ -260,13 +264,13 @@ classdef MaterialClass < handle
 
             error('Not implemented')
         end
-        function getSPDF(obj)
-            %% getSPDF
+        function getPSDF(obj)
+            %% getPSDF
             % Compute the normalized power spectral density function to use
             % it in the differential scattering cross-section
             %
             % Syntax:
-            %   getSPDF (  );
+            %   getPSDF (  );
             %
             % Inputs:
             %
@@ -290,29 +294,24 @@ classdef MaterialClass < handle
             switch obj.d
                 case 2
                     error(['Normalized PSDF kernels for 2D case are to be ' ...
-                        'implemented in future releases of the code'])
+                           'implemented in future releases of the code'])
                 case 3
                     switch obj.SpectralLaw
                         case 'exp'
-                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
                             obj.Exponential(obj.CorrelationLength);
                         case 'power_law'
-                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
                             obj.PowerLaw(obj.CorrelationLength);
                         case 'gaussian'
-                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
                             obj.Gaussian(obj.CorrelationLength);
                         case 'triangular'
-                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
                             obj.Triangular(obj.CorrelationLength);
                         case 'low_pass'
-                            %obj.SpectralParam = struct('Lc',obj.CorrelationLength);
                             obj.LowPass(obj.CorrelationLength);
                         case 'VonKarman'
-                            if ~isfield(obj.SpectralParam,'H') && ~isfield(obj.SpectralParam,'nu')
-                                error('Please add the VonKarman parameters for the PSDF')
+                            if ~isfield(obj.SpectralParam,'nu')
+                                error('Please add the Hurst number for VonKarman PSDF')
                             end
-                            obj.VonKarman(obj.SpectralParam);
+                            obj.VonKarman(obj.CorrelationLength, obj.SpectralParam.nu);
                         case 'monodispersedisk'
                             if ~isfield(obj.SpectralParam,'rho') && ~isfield(obj.SpectralParam,'d')
                                 error('Please add the mono disperse disk parameters for the PSDF')
@@ -342,6 +341,20 @@ classdef MaterialClass < handle
             end
         end
         %% function to evaluate PSDF:
+        % Some notes : 
+        % The correlation functions are normalized in 1D, 2D, 3D as follows
+        % 1D : lc = 2 * integral of R(x)dx from 0 to inf
+        % 2D : lc^2 = 2 * integral of x*R(x)dx from 0 to inf
+        % 3D : lc^3 = 3 * integral of x^2*R(x)dx from 0 to inf
+
+        % The power spectral density functions are calculated via an n-D
+        % Fourier Transform integral, based on the following convention
+        % \Phi(k) = (1/2/pi)^d * integral of exp(-i*k*x)*R(x)dx on R^d
+        % This integral in 1D, 2D and 3D can be simplified as:
+        % 1D : 2/(2*pi) * integral of cos(k*x)*R(x)dx from 0 to inf
+        % 2D : 2*pi//(2*pi)^2 * integral of x*J_0(k*x)*R(x)dx from 0 to inf
+        % 3D : 4*pi/(2*pi)^3 * integral of x^2*sinc(k*x)*R(x)dx from 0 to inf
+
         function out = Exponential(obj,lc)
             %% Exponential
             % Compute the normalized power spectral density function for
@@ -362,9 +375,21 @@ classdef MaterialClass < handle
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'Exp';
 
-            out = @(z) 1./(8*pi^2*(1+z.^2/4).^2);
-            obj.R = @(z) exp(-2*z);
-            obj.Phi = out;
+            if obj.d == 1
+                obj.R = @(z) exp(-2*z);
+                obj.Phi = @(z) 1./(2*pi*(1+(z/2).^2));
+            elseif obj.d == 2
+                obj.R = @(z) exp(-2*sqrt(2)*z);
+                obj.Phi = @(z) 1./(16*pi*(1+(z/(2*sqrt(2))).^2).^(1.5));
+            elseif obj.d == 3
+                obj.R = @(z) exp(-2*6^(1/3)*z);
+                obj.Phi = @(z) 1./(48*pi^2*(1+(z/(2*6^(1/3))).^2).^2);
+            else
+                error('incorrect dimension!')
+            end
+                %out = @(z) 1./(8*pi^2*(1+z.^2/4).^2);
+                %obj.R = @(z) exp(-2*z);
+            out = obj.Phi;
         end
         function out = PowerLaw(obj,lc)
             %% PowerLaw
@@ -385,9 +410,23 @@ classdef MaterialClass < handle
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'PowerLaw';
-            out = @(z) 1./(pi^4)*exp(-2*z/pi);
-            obj.Phi = out;
-            obj.R = @(z) 1./(1+(pi^2*z.^2/4))^2;
+            % out = @(z) 1./(pi^4)*exp(-2*z/pi);
+            % obj.Phi = out;
+            % obj.R = @(z) 1./(1+(pi^2*z.^2/4))^2;
+            if obj.d == 1
+                obj.R = @(z) 1./(1+((2/pi)*z)^2)^2;
+                obj.Phi = @(z) (pi^3/8)*(z+2/pi).*exp(-pi/2*z);
+            elseif obj.d == 2
+                obj.R = @(z) 1./(1+(2*z)^2)^2;
+                obj.Phi = @(z) (pi/8)*z.*besselk(1,z/2);
+            elseif obj.d == 3
+                obj.R = @(z) 1./(1+((6*pi)^(1/3)*z)^2)^2;
+                obj.Phi = @(z) (pi/6)*exp(-z/((6*pi)^(1/3)));
+            else
+                error('incorrect dimension!')
+            end
+
+            out = obj.Phi;
         end
         function out = Gaussian(obj,lc)
             %% Gaussian
@@ -408,9 +447,25 @@ classdef MaterialClass < handle
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'Gauss';
-            out = @(z) 1./(8*pi^3)*exp(-z.^2/4/pi);
-            obj.Phi = out;
-            obj.R = @(z)exp(-pi*z.^2);
+
+            if obj.d == 1
+                obj.R = @(z) exp(-pi*z.^2);
+                obj.Phi = @(z) 1/(2*pi).*exp(-z.^2/4/pi);
+            elseif obj.d == 2
+                obj.R = @(z) exp(-4*z.^2);
+                obj.Phi = @(z) 1./(16*pi)*exp(-z.^2/16);
+            elseif obj.d == 3
+                obj.R = @(z) exp(-(36*pi)^(1/3)*z.^2);
+                obj.Phi = @(z) 1./(48*pi^2)*exp(-z.^2/4/(36*pi)^(2/3));
+            else
+                error('incorrect dimension!')
+            end
+
+            out = obj.Phi;
+
+            % out = @(z) 1./(8*pi^3)*exp(-z.^2/4/pi);
+            % obj.Phi = out;
+            % obj.R = @(z)exp(-pi*z.^2);
         end
         function out = Triangular(obj,lc)
             %% Triangular
@@ -458,7 +513,7 @@ classdef MaterialClass < handle
             obj.Phi = out;
             obj.R = @(z) (3*(sin(3*pi*z/2)-3*pi*z/2.*cos(3*pi*z/2)))./(3*pi*z/2).^3;
         end
-        function out = VonKarman(obj,nu,H)
+        function out = VonKarman(obj,lc,nu)
             %% VonKarman
             % Compute the normalized power spectral density function for
             % Von Karman
@@ -467,8 +522,7 @@ classdef MaterialClass < handle
             %   VonKarman (  );
             %
             % Inputs:
-            %   nu : Hurst number
-            %   H  : ?
+            %   nu : Hurst number 
             %
             % Output:
 
@@ -494,20 +548,42 @@ classdef MaterialClass < handle
             % where $E$ is the Euclidean dimension i.e., $E=3$
             % for the three-dimensional problem.
             %
-            obj.SpectralParam = struct('nu',nu,'H',H);
+            obj.SpectralParam = struct('correlationLength',lc,'nu',nu);
             obj.SpectralLaw = 'VonKarman';
+            obj.CorrelationLength = lc;
 
-            error('Not fully implemented')
-            r = sqrt(x^2/ax^2+y^2/ay^2+z^2/az^2);
-            k=sqrt(kx^2*ax^2+ky^2*ay^2+kz^2*az^2);
-            bessel = besseli(nu,r);
-            C = 4*pi*nu*H^2*r^nu*bessel/bessel(1);
-            S = (4*pi*nu*H^2/bessel(1))*(ax^2+ay^2+az^2)/((1+k^2^(nu+1.5)));
-            out = @(z) 1;
-            obj.Phi = out;
-            obj.R = out;
+            if obj.d == 1
+                obj.R = @(z) @(z) 2^(1-nu)/gamma(nu) * ...
+                    (2*sqrt(pi)*gamma(nu+0.5)/gamma(nu)*z).^nu ...
+                    .* besselk(nu,2*sqrt(pi)*gamma(nu+0.5)/gamma(nu)*z);
+                obj.Phi = @(z) 1 ./ (1 + (z/(2*sqrt(pi)*gamma(nu+0.5)/gamma(nu))).^2).^(nu+0.5);
+            elseif obj.d == 2
+                obj.R = @(z) @(z) 2^(1-nu)/gamma(nu) * ...
+                    (4*sqrt(nu)*z).^nu .* besselk(nu,4*sqrt(nu)*z);
+                obj.Phi = @(z) (pi/4) * 1 ./ (1 + (z/(4*sqrt(nu))).^2).^(nu+0.5);
+            elseif obj.d == 3
+                obj.R = @(z) @(z) 2^(1-nu)/gamma(nu) * ...
+                    ((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3)*z).^nu .* ...
+                    besselk(nu,((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3))*z);
+                obj.Phi = @(z) (pi/46) * 1 ./ (1 + (z/((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3))).^2).^(nu+1.5);
+            else
+                error('incorrect dimension!')
+            end
 
-            obj.CorrelationLength = obj.RalcLc;
+            out = obj.Phi;
+ 
+            % obj.R = @(z) 2^(1-nu)/gamma(nu)* (c*z).^nu .* besselk(nu,c*z);
+            % obj.Phi = out;
+
+            % error('Not fully implemented')
+            % r = sqrt(x^2/ax^2+y^2/ay^2+z^2/az^2);
+            % k=sqrt(kx^2*ax^2+ky^2*ay^2+kz^2*az^2);
+            % bessel = besseli(nu,r);
+            % C = 4*pi*nu*H^2*r^nu*bessel/bessel(1);
+            % S = (4*pi*nu*H^2/bessel(1))*(ax^2+ay^2+az^2)/((1+k^2^(nu+1.5)));
+            % out = @(z) 1;
+            % obj.Phi = out;
+            % obj.R = out;
 
         end
         function out = MonoDisperseDisk(obj, eta, D )
