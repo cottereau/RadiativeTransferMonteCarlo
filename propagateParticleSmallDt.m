@@ -1,9 +1,8 @@
-
 function P = propagateParticleSmallDt(mat,geometry,P,T)
 
 % choice of time sub-step
 T = T-mean(P.t);
-dt = min(0.01*mat.meanFreeTime(1),T); % with 0.01, we miss scattering events with a rate of 1e-5
+dt = min(0.01*min(mat.meanFreeTime(:)),T); % with 0.01, we miss scattering events with a rate of 1e-5
 Nt = ceil(T/dt);
 dt = T/Nt;
 
@@ -59,8 +58,15 @@ for i1 = 1:Nt
     end
 
     % choose particles that are scattered at the end of time step
-    Nscat = poissrnd(dt/mat.meanFreeTime(1),P.N,1);
-    scat = Nscat>0;
+    % Nscat = poissrnd(dt/mat.meanFreeTime(1),P.N,1);
+    % scat = Nscat>0;
+    % Nscat = sum(scat);
+    lambda = zeros(P.N,1);
+    lambda(p) = dt / mat.meanFreeTime(1); 
+    lambda(s) = dt / mat.meanFreeTime(2);
+    
+    Nscat = poissrnd(lambda);
+    scat  = Nscat > 0;
     Nscat = sum(scat);
 
     % draw scattering angle around direction of propagation
