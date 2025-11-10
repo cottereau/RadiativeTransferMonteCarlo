@@ -49,4 +49,4 @@ end
 obs.energyDensity = (1./(d1'*(d2*obs.N))).*double(E);
 
 % energy as a function of [t]
-obs.energy = tensorprod(d1,reshape(tensorprod(d2,obs.energyDensity,2,2),[length(d1) Nt]),2,1);
+obs.energy = squeeze(tensorprod(d1,reshape(tensorprod(d2,obs.energyDensity,2,2),[length(d1) Nt 1+~acoustics]),2,1));
