@@ -14,8 +14,13 @@ function energyDensity = randomWalkYoshimoto_beta(geometry, source, material, ob
 % Note : this code works only for isotropic scatter_indsing
 
 % default: no movie
-if nargin<5
-    movie = 'false';
+% Normalize "movie" to a logical flag
+if nargin < 5, movie = false; end
+movieFlag = false;
+if islogical(movie)
+    movieFlag = movie;
+elseif ischar(movie) || isstring(movie)
+    movieFlag = strcmpi(string(movie), "true");
 end
 
 d = geometry.dimension;
@@ -35,8 +40,6 @@ else
     Sigma = prepareSigmaOne(material.sigma{:},d);
 end
 
-invcdf = scatteringParameters(material.sigma{1},d);
-
 if material.acoustics
     v = material.v;
     mft = 1/Sigma;  % mean free time
@@ -48,6 +51,10 @@ if material.acoustics
     end
 
     energyDensity = zeros(length(r),length(t)); % energy density matrix
+
+    % For subsequent scattering angle samplings
+    invcdf = scatteringParameters(material.sigma{1},d);
+
 else
     vp = material.vp; vs = material.vs;
     Sigmap = sum(Sigma(1,:)); Sigmas = sum(Sigma(2,:));
@@ -67,13 +74,19 @@ else
     energyDensity = zeros(length(r),length(t),2); % energy density matrix
 
     % Set the mode portions at the source : true = P (explosion), false = S
-    if source.polarization == 'P'
-        isPwave = true([Np 1]);
-    elseif source.polarization == 'S'
-        isPwave = false([Np 1]);
+    if strcmpi(source.polarization,'P')
+        isPwave = true(Np,1);
+    elseif strcmpi(source.polarization,'S')
+        isPwave = false(Np,1);
     else
-        error('Source polarization type should be either "P" or "S"')
+        error('Source polarization must be ''P'' or ''S''.');
     end
+
+    % For subsequent scattering angle samplings
+    invcdf_PP = scatteringParameters(material.sigma{1,1}, d);
+    invcdf_PS = scatteringParameters(material.sigma{1,2}, d);
+    invcdf_SP = scatteringParameters(material.sigma{2,1}, d);
+    invcdf_SS = scatteringParameters(material.sigma{2,2}, d);
 end
 
 % Initialize particles (directions)
@@ -92,7 +105,7 @@ if ~isfield(source,'radial') || isempty(source.radial)
 else
     Rmax = source.radial.GridVectors{1}(end);
     invcdfsource = inverseCDF(source.radial,d,Rmax);
-    radius = invcdfsource(rand(N,1));
+    radius = invcdfsource(rand(Np,1));
 end
 
 % Default source position
@@ -122,7 +135,7 @@ elseif d==3
     dV = (4*pi/3)*(binR(2:end).^3 - binR(1:end-1).^3);
 end
 
-if strcmpi(movie,'true')
+if movieFlag
     vidfname = 'wave_propagation.avi';
     videoObj = VideoWriter(vidfname); % Create video writer object
     open(videoObj);
@@ -159,38 +172,70 @@ for timeIdx = 1:length(t)
         % Scattering probabilities for each particle
         scattering_probability = zeros(Np, 1);
         scattering_probability(isPwave)  = Sigmap*dt;  % P-wave scattering probability
-        scattering_probability(~isPwave) = Sigmas*dt; % S-wave scattering probability
+        scattering_probability(~isPwave) = Sigmas*dt;  % S-wave scattering probability
 
+        % Clip to avoid prob>1
+        scattering_probability = min(scattering_probability, 0.999999);
+
+        % Who scatters?
         scatter_inds = rand(Np, 1) < scattering_probability;
         Nscatter = sum(scatter_inds);
 
-        % Update directions for scattered particles
         if Nscatter > 0
-            % Update directions for scattering particles
-            dir(scatter_inds, :) = updateDirections(dir(scatter_inds, :), invcdf, d);
+            % Modes BEFORE scattering
+            wasP = isPwave(scatter_inds);       % Nscatter x 1 (logical)
 
-            % Mode conversion for scattering particles
-            isPwave_scatter = isPwave(scatter_inds);
+            % Decide mode conversion for these particles
             mode_conversion_probability = zeros(Nscatter, 1);
-            mode_conversion_probability(isPwave_scatter) = pPS;
-            mode_conversion_probability(~isPwave_scatter) = pSP;
-            mode_conversion = rand(Nscatter, 1) < mode_conversion_probability;
-            isPwave(scatter_inds) = xor(isPwave_scatter, mode_conversion);
+            mode_conversion_probability(wasP)  = pPS;  % P->S
+            mode_conversion_probability(~wasP) = pSP;  % S->P
+
+            converted = rand(Nscatter, 1) < mode_conversion_probability;  % logical
+
+            % Split into PP, PS, SP, SS (no for loop)
+            PP =  wasP & ~converted;   % P stays P
+            PS =  wasP &  converted;   % P -> S
+            SP = ~wasP &  converted;   % S -> P
+            SS = ~wasP & ~converted;   % S stays S
+
+            idx_scatter = find(scatter_inds);  % global indices of scattered particles
+
+            % Global indices for each channel
+            idx_PP = idx_scatter(PP);
+            idx_PS = idx_scatter(PS);
+            idx_SP = idx_scatter(SP);
+            idx_SS = idx_scatter(SS);
+
+            % Direction updates with the correct angular law
+            if ~isempty(idx_PP)
+                dir(idx_PP,:) = updateDirections(dir(idx_PP,:), invcdf_PP, d);
+            end
+            if ~isempty(idx_PS)
+                dir(idx_PS,:) = updateDirections(dir(idx_PS,:), invcdf_PS, d);
+            end
+            if ~isempty(idx_SP)
+                dir(idx_SP,:) = updateDirections(dir(idx_SP,:), invcdf_SP, d);
+            end
+            if ~isempty(idx_SS)
+                dir(idx_SS,:) = updateDirections(dir(idx_SS,:), invcdf_SS, d);
+            end
+
+            % Update modes AFTER scattering. Conversion toggles P<->S
+            isPwave(scatter_inds) = xor(wasP, converted);
         end
 
         % Calculate distances from initial positions
         distances = sqrt(sum((positions-initialPositions).^2, 2));
 
-        % Compute histogram counts for P- and S-wave particles
-        nP = histcounts(distances(isPwave), binR);  % counts of P-wave particles in each bin
-        nS = histcounts(distances(~isPwave), binR); % counts of S-wave particles in each bin
+        % Histograms
+        nP = histcounts(distances(isPwave),  binR);
+        nS = histcounts(distances(~isPwave), binR);
 
-        % Normalize and update energy density
-        energyDensity(:, timeIdx, 1) = nP(:)/Np./dV(:); % P wave energy density
-        energyDensity(:, timeIdx, 2) = nS(:)/Np./dV(:); % S wave energy density
+        energyDensity(:, timeIdx, 1) = nP(:)/Np./dV(:); % P
+        energyDensity(:, timeIdx, 2) = nS(:)/Np./dV(:); % S
     end
 
-    if strcmpi(movie,'true')
+    if movieFlag
         % Plot particle positions
         clf; hold on; box on;
         if material.acoustics
@@ -230,13 +275,12 @@ end
 
 function invcdf = scatteringParameters(sigma, d)
 Nth = 1e6;
+xth = linspace(0,pi,Nth);
 if d==2
-    xth = linspace(0, 2*pi, Nth);
-    Sigma = integral(sigma, 0, 2*pi);
-    sigmaNorm = @(th) (1/Sigma)*sigma(th);
+    Sigma = 2*integral(sigma,0,pi);
+    sigmaNorm = @(th) (2/Sigma)*sigma(th);
 elseif d==3
-    xth = linspace(0, pi, Nth);
-    Sigma = 2*pi*integral(@(th) sigma(th).*sin(th), 0, pi);
+    Sigma = 2*pi*integral(@(th)sigma(th).*sin(th),0,pi);
     sigmaNorm = @(th) (2*pi/Sigma)*sin(th).*sigma(th);
 end
 pdf = sigmaNorm(xth);
@@ -245,7 +289,6 @@ ind = find(diff(cdf)>1e-12);
 ind = unique([ind ind+1]);
 invcdf = griddedInterpolant(cdf(ind),xth(ind));
 end
-
 
 % compute the cumulative distribution radial function corresponding to a
 % given (positive) function to draw randomly from it
@@ -275,6 +318,8 @@ Nscatter = size(dir_old, 1);
 if d==2
     % Angle of rotation
     delta_theta = invcdf(rand(Nscatter,1)); % sample scattering angles
+    sgn = sign(rand(Nscatter,1)-0.5);       % ±1 with prob=1/2
+    delta_theta = delta_theta .* sgn;       % randomly flip the sign
     % Current directions
     dir_x = dir_old(:,1);
     dir_y = dir_old(:,2);
