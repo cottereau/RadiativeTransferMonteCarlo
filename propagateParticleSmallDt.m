@@ -58,9 +58,10 @@ for i1 = 1:Nt
     end
 
     % choose particles that are scattered at the end of time step
-    % Nscat = poissrnd(dt/mat.meanFreeTime(1),P.N,1);
-    % scat = Nscat>0;
-    % Nscat = sum(scat);
+    if isscalar(mat.meanFreeTime)
+        mat.meanFreeTime = [mat.meanFreeTime; mat.meanFreeTime];
+    end
+
     lambda = zeros(P.N,1);
     lambda(p) = dt / mat.meanFreeTime(1); 
     lambda(s) = dt / mat.meanFreeTime(2);
