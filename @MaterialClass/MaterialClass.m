@@ -10,7 +10,7 @@
 classdef MaterialClass < handle
     properties
         % Required Properties
-        d               int8    = 3;% dimension
+        d               int8    = 3; % dimension
         %mat             struct  = struct.empty % PSDF parameter
         type            char    = 'isotropic'
         acoustics        
@@ -18,17 +18,18 @@ classdef MaterialClass < handle
         v
         vp
         vs
+        rho
         Frequency
         coefficients_of_variation
         correlation_coefficients
 
-        SpectralLaw     char    = '';% PSDF name
+        SpectralLaw     char    = ''; % PSDF name
         SpectralParam   struct  = struct.empty % PSDF parameter
 
-        CorrelationLength       = [];% correlation length
+        CorrelationLength       = []; % correlation length
 
 
-        sigma           cell    = cell.empty; %Differential Scattering Cross-Sections
+        sigma           cell    = cell.empty; % Differential Scattering Cross-Sections
 
         Sigma
         Sigmapr
@@ -42,11 +43,11 @@ classdef MaterialClass < handle
         P2P
         S2S
 
-        Phi                     = []; %power spectral density / function_handle
-        k               double  = [];% wavenumber vector
-        R                       = []; %Correlation / function_handle
-        r               double  = [];% r vector
-        timeSteps               = 0;% time Steps : 0=small 1=large
+        Phi                     = []; % power spectral density / function_handle
+        k               double  = []; % wavenumber vector
+        R                       = []; % Correlation / function_handle
+        r               double  = []; % r vector
+        timeSteps               =  0; % time Steps : 0=small 1=large
 
     end
     properties (SetAccess = private, Hidden = true)
@@ -683,7 +684,7 @@ classdef MaterialClass < handle
                 M(i1) = 1/2/pi^2/r(i1)*trapz( obj.k, h.*m.^2.*obj.k.*sin(obj.k*r(i1)) );
             end
             S2 = 1 - rho*V2 + rho^2*M + eta^2;
-            trapz(r,S2)
+            %trapz(r,S2)
             % computation of the particle autocorrelation function
             R = (S2 -(1-eta)^2) / eta / (1-eta);
 
@@ -858,6 +859,101 @@ classdef MaterialClass < handle
                 obj.vs = 6/sqrt(3);
                 obj.acoustics = false;        
         end
+        end
+        function o = Zoepptirz(mat)
+            %% Zoepptirz
+            % function to calculate reflection and transmission
+            % coefficients for P, SV and SH waves
+            %
+            % Syntax:
+            %   MaterialClass.Zoepptirz ( mat );
+            %
+            % Inputs:
+            %  mat: MaterialClass object or a vector of MaterialClass
+            %  object. 
+            %
+            % Output: The method return the coefficients of transmission
+            % and reflection or only reflection
+
+
+            if isscalar(mat)
+                % assuming solid-fluid interface
+                % the fluid is hard coded as air
+                vpAir = 343; %m/s
+                vsAir = 0; %m/s
+                rhoAir = 1; %kg/m^3
+                
+                % angles
+                j1_deg = linspace(0,90,181);
+                
+                if(mat.acoustics)
+                    error("This dont work for acoustic material")
+                end
+
+                vp1  = mat(1).vp;
+                vs1  = mat(1).vs;
+                rho1 = mat(1).rho;
+
+                vp2  = vpAir;
+                vs2  = vsAir;
+                rho2 = rhoAir;
+
+                if vs2 == 0
+                    out = ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+                else
+                    out = ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+                end
+
+                o.Rsh   = @(z)interp1(j1_deg,out.E_Rsh,z);
+                o.Tsh   = @(z)interp1(j1_deg,out.E_Tsh,z);
+
+                o.Rpp   = @(z)interp1(j1_deg,out.E_Rpp ,z);
+                o.Rpsv  = @(z)interp1(j1_deg,out.E_Rpsv,z);
+                o.Tpp   = @(z)interp1(j1_deg,out.E_Tpp ,z);
+                o.Ppsv  = @(z)interp1(j1_deg,out.E_Ppsv,z);
+
+                o.Rsp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
+                o.Rsvsv = @(z)interp1(j1_deg,out.E_Rsvsv,z);
+                o.Tsp   = @(z)interp1(j1_deg,out.E_Tsp  ,z);
+                o.Tsvsv = @(z)interp1(j1_deg,out.E_Tsvsv,z);
+            else
+                % here we should make a combination of all the material
+                % interfaces and evaluate...
+                error("Not implemented")
+                % angles
+                j1_deg = linspace(0,90,181);
+                
+                if(mat.acoustics)
+                    error("This dont work for acoustic material")
+                end
+
+                vp1  = mat(1).vp;
+                vs1  = mat(1).vs;
+                rho1 = mat(1).rho;
+
+                vp2  = mat(2).vp;
+                vs2  = mat(2).vs;
+                rho2 = mat(2).rho;
+
+                if vs2 == 0
+                    out = ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+                else
+                    out = ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+                end
+
+                o.Rsh   = @(z)interp1(j1_deg,out.E_Rsh,z);
+                o.Tsh   = @(z)interp1(j1_deg,out.E_Tsh,z);
+
+                o.Rpp   = @(z)interp1(j1_deg,out.E_Rpp ,z);
+                o.Rpsv  = @(z)interp1(j1_deg,out.E_Rpsv,z);
+                o.Tpp   = @(z)interp1(j1_deg,out.E_Tpp ,z);
+                o.Ppsv  = @(z)interp1(j1_deg,out.E_Ppsv,z);
+
+                o.Rsp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
+                o.Rsvsv = @(z)interp1(j1_deg,out.E_Rsvsv,z);
+                o.Tsp   = @(z)interp1(j1_deg,out.E_Tsp  ,z);
+                o.Tsvsv = @(z)interp1(j1_deg,out.E_Tsvsv,z);
+            end
         end
     end
 end
