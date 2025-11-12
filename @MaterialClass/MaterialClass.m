@@ -899,9 +899,9 @@ classdef MaterialClass < handle
                 rho2 = rhoAir;
 
                 if vs2 == 0
-                    out = ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+                    out = MaterialClass.ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
                 else
-                    out = ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+                    out = MaterialClass.ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
                 end
 
                 o.Rsh   = @(z)interp1(j1_deg,out.E_Rsh,z);
@@ -912,9 +912,9 @@ classdef MaterialClass < handle
                 o.Tpp   = @(z)interp1(j1_deg,out.E_Tpp ,z);
                 o.Ppsv  = @(z)interp1(j1_deg,out.E_Ppsv,z);
 
-                o.Rsp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
+                o.Rsvp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
                 o.Rsvsv = @(z)interp1(j1_deg,out.E_Rsvsv,z);
-                o.Tsp   = @(z)interp1(j1_deg,out.E_Tsp  ,z);
+                o.Tsvp   = @(z)interp1(j1_deg,out.E_Tsp  ,z);
                 o.Tsvsv = @(z)interp1(j1_deg,out.E_Tsvsv,z);
             else
                 % here we should make a combination of all the material
@@ -936,9 +936,9 @@ classdef MaterialClass < handle
                 rho2 = mat(2).rho;
 
                 if vs2 == 0
-                    out = ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+                    out = MaterialClass.ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
                 else
-                    out = ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+                    out = MaterialClass.ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
                 end
 
                 o.Rsh   = @(z)interp1(j1_deg,out.E_Rsh,z);
@@ -949,11 +949,13 @@ classdef MaterialClass < handle
                 o.Tpp   = @(z)interp1(j1_deg,out.E_Tpp ,z);
                 o.Ppsv  = @(z)interp1(j1_deg,out.E_Ppsv,z);
 
-                o.Rsp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
+                o.Rsvp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
                 o.Rsvsv = @(z)interp1(j1_deg,out.E_Rsvsv,z);
-                o.Tsp   = @(z)interp1(j1_deg,out.E_Tsp  ,z);
+                o.Tsvp   = @(z)interp1(j1_deg,out.E_Tsp  ,z);
                 o.Tsvsv = @(z)interp1(j1_deg,out.E_Tsvsv,z);
             end
         end
+        out = ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
+        out = ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
     end
 end
