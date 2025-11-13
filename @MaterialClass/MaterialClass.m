@@ -860,7 +860,7 @@ classdef MaterialClass < handle
                 obj.acoustics = false;        
         end
         end
-        function o = Zoepptirz(mat)
+        function [o, angles] = Zoepptirz(mat)
             %% Zoepptirz
             % function to calculate reflection and transmission
             % coefficients for P, SV and SH waves
@@ -904,6 +904,7 @@ classdef MaterialClass < handle
                     out = MaterialClass.ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
                 end
 
+                % energy
                 o.Rsh   = @(z)interp1(j1_deg,out.E_Rsh,z);
                 o.Tsh   = @(z)interp1(j1_deg,out.E_Tsh,z);
 
@@ -912,10 +913,29 @@ classdef MaterialClass < handle
                 o.Tpp   = @(z)interp1(j1_deg,out.E_Tpp ,z);
                 o.Ppsv  = @(z)interp1(j1_deg,out.E_Ppsv,z);
 
-                o.Rsvp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
+                o.Rsvp   = @(z)interp1(j1_deg,out.E_Rsp ,z);
                 o.Rsvsv = @(z)interp1(j1_deg,out.E_Rsvsv,z);
-                o.Tsvp   = @(z)interp1(j1_deg,out.E_Tsp  ,z);
+                o.Tsvp   = @(z)interp1(j1_deg,out.E_Tsp ,z);
                 o.Tsvsv = @(z)interp1(j1_deg,out.E_Tsvsv,z);
+
+
+                % angles P
+                angles.Rpp  = @(theta1) asind((sind(theta1) / vp1) * vp1);
+                angles.Rpsv = @(theta1) asind((sind(theta1) / vp1) * vs1);
+                angles.Tpp  = @(theta1) asind((sind(theta1) / vp1) * vp2);
+                angles.Tpsv = @(theta1) asind((sind(theta1) / vp1) * vs2);
+
+                % angles SV
+                angles.Rsvsv = @(theta1) asind(sind(theta1) / vs1 * vs1);
+                angles.Rsvp  = @(theta1) asind(sind(theta1) / vs1 * vp1);
+                angles.Tsvsv = @(theta1) asind(sind(theta1) / vs1 * vs2);
+                angles.Tsvp  = @(theta1) asind(sind(theta1) / vs1 * vp2);
+
+
+                % Incident SH-wave
+                angles.Rsh = @(theta1) asind(sind(theta1) / vs1 * vs1);
+                angles.Tsh = @(theta1) asind(sind(theta1) / vs1 * vs2);
+
             else
                 % here we should make a combination of all the material
                 % interfaces and evaluate...
