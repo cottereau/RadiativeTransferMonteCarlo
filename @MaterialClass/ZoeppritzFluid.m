@@ -231,6 +231,17 @@ out.E_Tsp   = E_Tsp;
 out.E_Rsh   = E_Rsh;
 out.E_Tsh   = E_Tsh;
 
+out.A_Rpp   = Rpp;
+out.A_Rpsv  = Rpsv;
+out.A_Tpp   = Tpp;
+out.A_Tpsv  = Tpsv;
+out.A_Rsvsv = Rsvsv; 
+out.A_Rsp   = Rsp;
+out.A_Tsvsv = Tsvsv; 
+out.A_Tsp   = Tsp;
+out.A_Rsh   = Rsh;
+out.A_Tsh   = Tsh;
+
 if 0
     % --- PLOTS ---
     % (Os plots de amplitude e energia são mantidos como no original)

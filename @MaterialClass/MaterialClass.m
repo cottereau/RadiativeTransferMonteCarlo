@@ -831,6 +831,163 @@ classdef MaterialClass < handle
                 error('Not implemented')
             end
         end
+        %% TRANSMISSION REFLECTION
+        function o = MaterialInterface(obj,P,n,ind)
+            %function to calculate the reflection and transmission
+            % P - structure of particles
+            % n - surface normal
+            % ind - index of particles that are outside the domain
+
+            if isempty(obj.rho)
+                error('Please define the density')
+            end
+
+            %split P and S
+            pind = P.p & ind;
+            sind = ~P.p & ind;
+
+            %get P
+            PartP.dir = P.dir(pind,:); 
+            PartP.perp = P.perp(pind,:); 
+
+            % find the angles of P particles and the normal
+            ddot = dot(PartP.dir,repmat(n,size(PartP.dir,1),1),2)';
+            mag_v1 = vecnorm(PartP.dir');
+            mag_v2 = vecnorm(repmat(n,size(PartP.dir,1),1)');
+            incAngP = acosd(ddot./(mag_v1.*mag_v2));
+            incAngP(incAngP>90) = 180 - incAngP(incAngP>90);
+
+            % split S in SV and SH
+            % to split we must find the plane sh
+            source = [0 0 0];
+            source = repmat(source,size(P.perp(sind,:),1),1);
+            u = P.x(sind,:) - source;
+            plsh = cross(P.dir(sind,:), u);
+            plsh = plsh./vecnorm(plsh')';
+            Spsh = abs(dot(P.perp(sind,:),plsh,2)');
+            %Spsh(abs(Spsh)<eps) = 0;
+
+            %plane sv
+            plsv = cross(P.dir(sind,:), plsh);
+            plsv = plsv./vecnorm(plsv')';
+            Spsv = abs(dot(P.perp(sind,:),plsv,2)');
+            %Spsv(abs(Spsv)<eps) = 0;
+
+            %randon tirar variavel aletoria para decidir
+            SvOrSh = Spsv > Spsh;
+            PerceSV = sum(SvOrSh)/numel(SvOrSh);
+            PerceSH = 1 - PerceSV;
+            
+            %get SV
+            PartSV.dir = P.dir(sind,:); 
+            PartSV.dir = PartSV.dir(SvOrSh,:); 
+            PartSV.perp = P.perp(sind,:); 
+            PartSV.perp = PartSV.perp(SvOrSh,:); 
+
+            % find the angles of P particles and the normal
+            ddot = dot(PartSV.dir,repmat(n,size(PartSV.dir,1),1),2)';
+            mag_v1 = vecnorm(PartSV.dir');
+            mag_v2 = vecnorm(repmat(n,size(PartSV.dir,1),1)');
+            incAngSV = acosd(ddot./(mag_v1.*mag_v2));
+            incAngSV(incAngSV>90) = 180 - incAngSV(incAngSV>90);
+
+            %get SH
+            PartSH.dir = P.dir(sind,:); 
+            PartSH.dir = PartSH.dir(~SvOrSh,:); 
+            PartSH.perp = P.perp(sind,:); 
+            PartSH.perp = PartSH.perp(~SvOrSh,:); 
+
+            % find the angles of P particles and the normal
+            ddot = dot(PartSH.dir,repmat(n,size(PartSH.dir,1),1),2)';
+            mag_v1 = vecnorm(PartSH.dir');
+            mag_v2 = vecnorm(repmat(n,size(PartSH.dir,1),1)');
+            incAngSH = acosd(ddot./(mag_v1.*mag_v2));
+            incAngSH(incAngSH>90) = 180 - incAngSH(incAngSH>90);
+
+            % get angles, energy and amplitudes for inteface
+            [out, angles] = MaterialClass.Zoepptirz(obj);
+            
+            % prepare energy interpolation
+            E.Rsh   = @(z)interp1(out.j1_deg,out.E_Rsh,z);
+            E.Tsh   = @(z)interp1(out.j1_deg,out.E_Tsh,z);
+
+            E.Rpp   = @(z)interp1(out.j1_deg,out.E_Rpp ,z);
+            E.Rpsv  = @(z)interp1(out.j1_deg,out.E_Rpsv,z);
+            E.Tpp   = @(z)interp1(out.j1_deg,out.E_Tpp ,z);
+            E.Tpsv  = @(z)interp1(out.j1_deg,out.E_Tpsv,z);
+
+            E.Rsvp  = @(z)interp1(out.j1_deg,out.E_Rsp ,z);
+            E.Rsvsv = @(z)interp1(out.j1_deg,out.E_Rsvsv,z);
+            E.Tsvp  = @(z)interp1(out.j1_deg,out.E_Tsp ,z);
+            E.Tsvsv = @(z)interp1(out.j1_deg,out.E_Tsvsv,z);
+
+            % prepare amplitude interpolation
+            Amp.Rsh   = @(z)interp1(out.j1_deg,out.A_Rsh,z);
+            Amp.Tsh   = @(z)interp1(out.j1_deg,out.A_Tsh,z);
+
+            Amp.Rpp   = @(z)interp1(out.j1_deg,out.A_Rpp ,z);
+            Amp.Rpsv  = @(z)interp1(out.j1_deg,out.A_Rpsv,z);
+            Amp.Tpp   = @(z)interp1(out.j1_deg,out.A_Tpp ,z);
+            Amp.Tpsv  = @(z)interp1(out.j1_deg,out.A_Tpsv,z);
+
+            Amp.Rsvp  = @(z)interp1(out.j1_deg,out.A_Rsp ,z);
+            Amp.Rsvsv = @(z)interp1(out.j1_deg,out.A_Rsvsv,z);
+            Amp.Tsvp  = @(z)interp1(out.j1_deg,out.A_Tsp ,z);
+            Amp.Tsvsv = @(z)interp1(out.j1_deg,out.A_Tsvsv,z);
+
+
+            warning('It considers perfect reflection in P and S wave!')
+            warning('There is no transmission... ')
+            % get the rando variables for P
+            pp = rand(size(PartP.dir,1), 1);
+            pp = pp <= E.Rpp(incAngP)';
+            ps = ~pp;
+            app = angles.Rpp(incAngP(pp))';
+            apsv = angles.Rpsv(incAngP(ps))';
+            App = Amp.Rpp(incAngP(pp));
+            Apsv = Amp.Rpsv(incAngP(ps));
+
+            % get the rando variables for SV
+            svsv = rand(size(PartSV.dir,1), 1);
+            svsv = svsv <= E.Rsvsv(incAngSV)';
+            svp = ~svsv;
+            asvsv = angles.Rsvsv(incAngSV(svsv))';
+            asvp = angles.Rsvp(incAngSV(svp))';
+            Asvsv = Amp.Rsvsv(incAngSV(svsv));
+            Asvp = Amp.Rsvp(incAngSV(svp));
+
+            % get the rando variables for SH
+            shsh = rand(size(PartSH.dir,1), 1);
+            shsh = shsh <= E.Rsh(incAngSH)';
+            shsh = ones(size(PartSH.dir,1), 1);
+            ashsh = angles.Rsh(incAngSH)';
+            Ashsh = Amp.Rsh(incAngSH);
+            
+            %prepare the output
+            o.pparticle  = pind;
+            o.sparticle  = sind;
+            o.svparticle = SvOrSh;
+            o.shparticle = ~SvOrSh;
+
+            o.pp   = pp;
+            o.ps   = ps;
+            o.svsv = svsv;
+            o.svp  = svp;
+            o.shsh = shsh;
+
+            o.angPP   = app;
+            o.angPSV  = apsv;
+            o.angSVSV = asvsv;
+            o.angSVP  = asvp;
+            o.angSHSH = ashsh;
+
+            o.ampPP   = App;
+            o.ampPSV  = Apsv;
+            o.ampSVSV = Asvsv;
+            o.ampSVP  = Asvp;
+            o.ampSHSH = Ashsh;
+
+        end
         %% OTHER
         function h = heaviside(h)
             h(h>0) = 1;
@@ -860,7 +1017,7 @@ classdef MaterialClass < handle
                 obj.acoustics = false;        
         end
         end
-        function [o, angles] = Zoepptirz(mat)
+        function [out, angles] = Zoepptirz(mat)
             %% Zoepptirz
             % function to calculate reflection and transmission
             % coefficients for P, SV and SH waves
@@ -874,7 +1031,6 @@ classdef MaterialClass < handle
             %
             % Output: The method return the coefficients of transmission
             % and reflection or only reflection
-
 
             if isscalar(mat)
                 % assuming solid-fluid interface
@@ -904,20 +1060,7 @@ classdef MaterialClass < handle
                     out = MaterialClass.ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
                 end
 
-                % energy
-                o.Rsh   = @(z)interp1(j1_deg,out.E_Rsh,z);
-                o.Tsh   = @(z)interp1(j1_deg,out.E_Tsh,z);
-
-                o.Rpp   = @(z)interp1(j1_deg,out.E_Rpp ,z);
-                o.Rpsv  = @(z)interp1(j1_deg,out.E_Rpsv,z);
-                o.Tpp   = @(z)interp1(j1_deg,out.E_Tpp ,z);
-                o.Ppsv  = @(z)interp1(j1_deg,out.E_Ppsv,z);
-
-                o.Rsvp   = @(z)interp1(j1_deg,out.E_Rsp ,z);
-                o.Rsvsv = @(z)interp1(j1_deg,out.E_Rsvsv,z);
-                o.Tsvp   = @(z)interp1(j1_deg,out.E_Tsp ,z);
-                o.Tsvsv = @(z)interp1(j1_deg,out.E_Tsvsv,z);
-
+                out.j1_deg = j1_deg;
 
                 % angles P
                 angles.Rpp  = @(theta1) asind((sind(theta1) / vp1) * vp1);
@@ -930,7 +1073,6 @@ classdef MaterialClass < handle
                 angles.Rsvp  = @(theta1) asind(sind(theta1) / vs1 * vp1);
                 angles.Tsvsv = @(theta1) asind(sind(theta1) / vs1 * vs2);
                 angles.Tsvp  = @(theta1) asind(sind(theta1) / vs1 * vp2);
-
 
                 % Incident SH-wave
                 angles.Rsh = @(theta1) asind(sind(theta1) / vs1 * vs1);
@@ -967,7 +1109,7 @@ classdef MaterialClass < handle
                 o.Rpp   = @(z)interp1(j1_deg,out.E_Rpp ,z);
                 o.Rpsv  = @(z)interp1(j1_deg,out.E_Rpsv,z);
                 o.Tpp   = @(z)interp1(j1_deg,out.E_Tpp ,z);
-                o.Ppsv  = @(z)interp1(j1_deg,out.E_Ppsv,z);
+                o.Tpsv  = @(z)interp1(j1_deg,out.E_Tpsv,z);
 
                 o.Rsvp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
                 o.Rsvsv = @(z)interp1(j1_deg,out.E_Rsvsv,z);
