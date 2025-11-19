@@ -858,20 +858,19 @@ classdef MaterialClass < handle
             incAngP(incAngP>90) = 180 - incAngP(incAngP>90);
 
             % split S in SV and SH
+            %plane sv
+            plsv = cross(P.dir(sind,:),repmat(n,size(P.dir(sind,:),1),1));
+            plsv = plsv./vecnorm(plsv')';
+            Spsv = abs(dot(P.perp(sind,:),plsv,2)');
+            %Spsv(abs(Spsv)<eps) = 0;
+
             % to split we must find the plane sh
-            source = [0 0 0];
-            source = repmat(source,size(P.perp(sind,:),1),1);
-            u = P.x(sind,:) - source;
-            plsh = cross(P.dir(sind,:), u);
+            plsh = cross(P.dir(sind,:), plsv);
             plsh = plsh./vecnorm(plsh')';
             Spsh = abs(dot(P.perp(sind,:),plsh,2)');
             %Spsh(abs(Spsh)<eps) = 0;
 
-            %plane sv
-            plsv = cross(P.dir(sind,:), plsh);
-            plsv = plsv./vecnorm(plsv')';
-            Spsv = abs(dot(P.perp(sind,:),plsv,2)');
-            %Spsv(abs(Spsv)<eps) = 0;
+           
 
             %randon tirar variavel aletoria para decidir
             SvOrSh = Spsv > Spsh;
