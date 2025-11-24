@@ -13,7 +13,7 @@ classdef MaterialClass < handle
         d               int8    = 3; % dimension
         %mat             struct  = struct.empty % PSDF parameter
         type            char    = 'isotropic'
-        acoustics        
+        acoustics
 
         v
         vp
@@ -152,7 +152,6 @@ classdef MaterialClass < handle
             % and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
             % doi: 10.1016/S0165-2125(96)00021-2
 
-
             % get the power spectral density function
             if isempty(obj.Phi)
                 obj.getPSDF;
@@ -198,7 +197,7 @@ classdef MaterialClass < handle
                     obj.sigma = {@(th) (pi/2)*zeta^3*(cos(th).^2*delta_rr^2 + ...
                         2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
                         .*obj.Phi(zeta.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency)};
-                    
+
                 case 0
                     %elastic
                     K = obj.vp/obj.vs;
@@ -295,7 +294,7 @@ classdef MaterialClass < handle
             switch obj.d
                 case 2
                     error(['Normalized PSDF kernels for 2D case are to be ' ...
-                           'implemented in future releases of the code'])
+                        'implemented in future releases of the code'])
                 case 3
                     switch obj.SpectralLaw
                         case 'exp'
@@ -342,7 +341,7 @@ classdef MaterialClass < handle
             end
         end
         %% function to evaluate PSDF:
-        % Some notes : 
+        % Some notes :
         % The correlation functions are normalized in 1D, 2D, 3D as follows
         % 1D : lc = 2 * integral of R(x)dx from 0 to inf
         % 2D : lc^2 = 2 * integral of x*R(x)dx from 0 to inf
@@ -388,8 +387,8 @@ classdef MaterialClass < handle
             else
                 error('incorrect dimension!')
             end
-                %out = @(z) 1./(8*pi^2*(1+z.^2/4).^2);
-                %obj.R = @(z) exp(-2*z);
+            %out = @(z) 1./(8*pi^2*(1+z.^2/4).^2);
+            %obj.R = @(z) exp(-2*z);
             out = obj.Phi;
         end
         function out = PowerLaw(obj,lc)
@@ -523,7 +522,7 @@ classdef MaterialClass < handle
             %   VonKarman (  );
             %
             % Inputs:
-            %   nu : Hurst number 
+            %   nu : Hurst number
             %
             % Output:
 
@@ -572,7 +571,7 @@ classdef MaterialClass < handle
             end
 
             out = obj.Phi;
- 
+
             % obj.R = @(z) 2^(1-nu)/gamma(nu)* (c*z).^nu .* besselk(nu,c*z);
             % obj.Phi = out;
 
@@ -696,7 +695,7 @@ classdef MaterialClass < handle
             for i1 = 1:length(obj.k)
                 phi(i1) = 1/2/pi^2*trapz( r, sinc(r * obj.k(i1)) .* r.^2 .* R );
             end
-           
+
             P=abs(((phi.*conj(phi))));
 
             figure
@@ -738,7 +737,7 @@ classdef MaterialClass < handle
             %
             %https://mathworld.wolfram.com/Wiener-KhinchinTheorem.html
 
-            %convert to gray 
+            %convert to gray
             Im = im2gray(Im);
             %convert to double
             Im=double(Im)/256;
@@ -758,7 +757,7 @@ classdef MaterialClass < handle
             rcor(ind) = [];
             obj.r(ind) = [];
             obj.R = @(z)interp1(obj.r,rcor,z,'makima',0);
-         
+
             dr = 1/mean(diff(obj.r));
             obj.k = linspace(0,dr/50,numel(rcor));
 
@@ -832,161 +831,192 @@ classdef MaterialClass < handle
             end
         end
         %% TRANSMISSION REFLECTION
-        function o = MaterialInterface(obj,P,n,ind)
-            %function to calculate the reflection and transmission
-            % P - structure of particles
-            % n - surface normal
-            % ind - index of particles that are outside the domain
+        function o = MaterialInterface(obj, P, n, ind)
+            % MaterialInterface
+            % Compute reflection (and optionally transmission) of particles
+            % at an interface. This implementation assumes a solid–air
+            % interface, thus pure reflection and no transmission.
+            %
+            % P   - structure of particles (fields: p, dir, perp, ...)
+            % n   - interface normal (1x3)
+            % ind - particles outside the domain (those that hit the boundary)
 
             if isempty(obj.rho)
-                error('Please define the density')
+                error(['Please define the density in MaterialClass before ' ...
+                       'calling MaterialInterface.']);
             end
 
-            %split P and S
-            pind = P.p & ind;
-            sind = ~P.p & ind;
+            % Split P vs S particles at the boundary
+            pIdx =  P.p  & ind;   % incident P-waves
+            sIdx = ~P.p  & ind;   % incident S-waves
 
-            %get P
-            PartP.dir = P.dir(pind,:); 
-            PartP.perp = P.perp(pind,:); 
+            % --- P-WAVES PROCESSING ---
+            partP_dir  = P.dir(pIdx,:);
+            nP = size(partP_dir,1);
 
-            % find the angles of P particles and the normal
-            ddot = dot(PartP.dir,repmat(n,size(PartP.dir,1),1),2)';
-            mag_v1 = vecnorm(PartP.dir');
-            mag_v2 = vecnorm(repmat(n,size(PartP.dir,1),1)');
-            incAngP = acosd(ddot./(mag_v1.*mag_v2));
-            incAngP(incAngP>90) = 180 - incAngP(incAngP>90);
+            if nP > 0
+                nRepP = repmat(n, nP, 1); 
+                dotPn = dot(partP_dir, nRepP, 2);
+                absDotPn = abs(dotPn);
+                absDotPn(absDotPn > 1) = 1;
+                incAngP = acosd(absDotPn); 
+            else
+                incAngP = [];
+            end
 
-            % split S in SV and SH
-            %plane sv
-            plsv = cross(P.dir(sind,:),repmat(n,size(P.dir(sind,:),1),1));
-            plsv = plsv./vecnorm(plsv')';
-            Spsv = abs(dot(P.perp(sind,:),plsv,2)');
-            %Spsv(abs(Spsv)<eps) = 0;
+            % --- S-WAVES PROCESSING (SV/SH SPLIT) ---
+            partS_dir  = P.dir(sIdx,:);
+            partS_perp = P.perp(sIdx,:);
+            nS = size(partS_dir,1);
 
-            % to split we must find the plane sh
-            plsh = cross(P.dir(sind,:), plsv);
-            plsh = plsh./vecnorm(plsh')';
-            Spsh = abs(dot(P.perp(sind,:),plsh,2)');
-            %Spsh(abs(Spsh)<eps) = 0;
+            if nS > 0
+                nRepS = repmat(n, nS, 1);
+                % SH direction: orthogonal to plane of incidence {k, n}
+                eSH = cross(partS_dir, nRepS, 2);
+                norm_eSH = vecnorm(eSH, 2, 2);
+                % Handle near-normal incidence (k || n)
+                nearNormal = norm_eSH < eps;
+                
+                if any(nearNormal)
+                    % Pick arbitrary tangent [1 0 0] projected on plane
+                    nUnit = n(:).';
+                    t = repmat([1 0 0], sum(nearNormal), 1);
+                    t = t - (t * nUnit.') * nUnit; 
+                    eSH(nearNormal,:)    = t;
+                    norm_eSH(nearNormal) = vecnorm(t, 2, 2);
+                end
 
-           
+                eSH = eSH ./ norm_eSH;
 
-            %randon tirar variavel aletoria para decidir
-            SvOrSh = Spsv > Spsh;
-            PerceSV = sum(SvOrSh)/numel(SvOrSh);
-            PerceSH = 1 - PerceSV;
-            
-            %get SV
-            PartSV.dir = P.dir(sind,:); 
-            PartSV.dir = PartSV.dir(SvOrSh,:); 
-            PartSV.perp = P.perp(sind,:); 
-            PartSV.perp = PartSV.perp(SvOrSh,:); 
+                % SV direction: in plane {k,n}, orthogonal to k
+                eSV = cross(eSH, partS_dir, 2);
+                eSV = eSV ./ vecnorm(eSV, 2, 2);
 
-            % find the angles of P particles and the normal
-            ddot = dot(PartSV.dir,repmat(n,size(PartSV.dir,1),1),2)';
-            mag_v1 = vecnorm(PartSV.dir');
-            mag_v2 = vecnorm(repmat(n,size(PartSV.dir,1),1)');
-            incAngSV = acosd(ddot./(mag_v1.*mag_v2));
-            incAngSV(incAngSV>90) = 180 - incAngSV(incAngSV>90);
+                % Project polarization onto SV/SH basis
+                aSV = dot(partS_perp, eSV, 2);
+                aSH = dot(partS_perp, eSH, 2);
 
-            %get SH
-            PartSH.dir = P.dir(sind,:); 
-            PartSH.dir = PartSH.dir(~SvOrSh,:); 
-            PartSH.perp = P.perp(sind,:); 
-            PartSH.perp = PartSH.perp(~SvOrSh,:); 
+                % Energy fractions
+                E_SV = aSV.^2;
+                E_SH = aSH.^2;
+                E_tot = E_SV + E_SH + eps;
 
-            % find the angles of P particles and the normal
-            ddot = dot(PartSH.dir,repmat(n,size(PartSH.dir,1),1),2)';
-            mag_v1 = vecnorm(PartSH.dir');
-            mag_v2 = vecnorm(repmat(n,size(PartSH.dir,1),1)');
-            incAngSH = acosd(ddot./(mag_v1.*mag_v2));
-            incAngSH(incAngSH>90) = 180 - incAngSH(incAngSH>90);
+                % Probability of being SV
+                probSV = E_SV ./ E_tot;
 
-            % get angles, energy and amplitudes for inteface
-            [out, angles] = MaterialClass.Zoepptirz(obj);
-            
-            % prepare energy interpolation
-            E.Rsh   = @(z)interp1(out.j1_deg,out.E_Rsh,z);
-            E.Tsh   = @(z)interp1(out.j1_deg,out.E_Tsh,z);
+                % Monte Carlo decision: SV or SH?
+                isSV = rand(size(probSV)) < probSV; 
+                
+                % Calculate Incidence Angle for S
+                dotSn   = dot(partS_dir, nRepS, 2);
+                absDotSn = abs(dotSn);
+                absDotSn(absDotSn > 1) = 1; % Clamp
+                
+                incAngS = acosd(absDotSn);
+                
+                incAngSV = incAngS(isSV);
+                incAngSH = incAngS(~isSV);
+                
+                % Pointers to global indices
+                partSV_dir = partS_dir(isSV, :); 
+                partSH_dir = partS_dir(~isSV, :); 
+            else
+                isSV = false(0,1);
+                incAngSV = [];
+                incAngSH = [];
+                partSV_dir = [];
+                partSH_dir = [];
+            end
 
-            E.Rpp   = @(z)interp1(out.j1_deg,out.E_Rpp ,z);
-            E.Rpsv  = @(z)interp1(out.j1_deg,out.E_Rpsv,z);
-            E.Tpp   = @(z)interp1(out.j1_deg,out.E_Tpp ,z);
-            E.Tpsv  = @(z)interp1(out.j1_deg,out.E_Tpsv,z);
+            % --- REFLECTION COEFFICIENTS ---
+            % Ideally, call this once and store 'out' in the object properties
+            [out, angles] = MaterialClass.Zoeppritz(obj);
 
-            E.Rsvp  = @(z)interp1(out.j1_deg,out.E_Rsp ,z);
-            E.Rsvsv = @(z)interp1(out.j1_deg,out.E_Rsvsv,z);
-            E.Tsvp  = @(z)interp1(out.j1_deg,out.E_Tsp ,z);
-            E.Tsvsv = @(z)interp1(out.j1_deg,out.E_Tsvsv,z);
+            % Helper for fast lookup
+            lookup = @(data, ang) interp1(out.j1_deg, data, ang, 'linear', 'extrap');
 
-            % prepare amplitude interpolation
-            Amp.Rsh   = @(z)interp1(out.j1_deg,out.A_Rsh,z);
-            Amp.Tsh   = @(z)interp1(out.j1_deg,out.A_Tsh,z);
+            % --- P INCIDENCE ---
+            if nP > 0
+                % Get Energy Coefficient for P -> P reflection
+                Rpp_coeff = lookup(out.E_Rpp, incAngP);
+                
+                p2p  = rand(nP,1) <= Rpp_coeff; % P -> P reflection
+                p2sv = ~p2p;                    % P -> SV reflection
 
-            Amp.Rpp   = @(z)interp1(out.j1_deg,out.A_Rpp ,z);
-            Amp.Rpsv  = @(z)interp1(out.j1_deg,out.A_Rpsv,z);
-            Amp.Tpp   = @(z)interp1(out.j1_deg,out.A_Tpp ,z);
-            Amp.Tpsv  = @(z)interp1(out.j1_deg,out.A_Tpsv,z);
+                % Get Angles (Snell's law is embedded in Zoeppritz output or recomputed)
+                angP2P  = angles.Rpp(incAngP(p2p))';
+                angP2SV = angles.Rpsv(incAngP(p2sv))';
 
-            Amp.Rsvp  = @(z)interp1(out.j1_deg,out.A_Rsp ,z);
-            Amp.Rsvsv = @(z)interp1(out.j1_deg,out.A_Rsvsv,z);
-            Amp.Tsvp  = @(z)interp1(out.j1_deg,out.A_Tsp ,z);
-            Amp.Tsvsv = @(z)interp1(out.j1_deg,out.A_Tsvsv,z);
+                % Get Amplitudes
+                ampP2P  = lookup(out.A_Rpp, incAngP(p2p));
+                ampP2SV = lookup(out.A_Rpsv, incAngP(p2sv));
+            else
+                p2p = []; p2sv = [];
+                angP2P = []; angP2SV = [];
+                ampP2P = []; ampP2SV = [];
+            end
 
+            % --- SV INCIDENCE ---
+            nSV = size(incAngSV, 1);
+            if nSV > 0
+                Rsvsv_coeff = lookup(out.E_Rsvsv, incAngSV);
+                
+                sv2sv = rand(nSV,1) <= Rsvsv_coeff;
+                sv2p  = ~sv2sv;
 
-            warning('It considers perfect reflection in P and S wave!')
-            warning('There is no transmission... ')
-            % get the rando variables for P
-            pp = rand(size(PartP.dir,1), 1);
-            pp = pp <= E.Rpp(incAngP)';
-            ps = ~pp;
-            app = angles.Rpp(incAngP(pp))';
-            apsv = angles.Rpsv(incAngP(ps))';
-            App = Amp.Rpp(incAngP(pp));
-            Apsv = Amp.Rpsv(incAngP(ps));
+                angSV2SV = angles.Rsvsv(incAngSV(sv2sv))';
+                angSV2P  = angles.Rsvp(incAngSV(sv2p))';
+                
+                ampSV2SV = lookup(out.A_Rsvsv, incAngSV(sv2sv));
+                ampSV2P  = lookup(out.A_Rsp, incAngSV(sv2p));
+            else
+                sv2sv = []; sv2p = [];
+                angSV2SV = []; angSV2P = [];
+                ampSV2SV = []; ampSV2P = [];
+            end
 
-            % get the rando variables for SV
-            svsv = rand(size(PartSV.dir,1), 1);
-            svsv = svsv <= E.Rsvsv(incAngSV)';
-            svp = ~svsv;
-            asvsv = angles.Rsvsv(incAngSV(svsv))';
-            asvp = angles.Rsvp(incAngSV(svp))';
-            Asvsv = Amp.Rsvsv(incAngSV(svsv));
-            Asvp = Amp.Rsvp(incAngSV(svp));
+            % --- SH INCIDENCE ---
+            nSH = size(incAngSH, 1);
+            if nSH > 0
+                % Free surface: SH reflects as SH (R=1)
+                sh2sh = true(nSH, 1);
+                
+                angSH2SH = angles.Rsh(incAngSH)';
+                ampSH2SH = lookup(out.A_Rsh, incAngSH);
+            else
+                sh2sh = [];
+                angSH2SH = [];
+                ampSH2SH = [];
+            end
 
-            % get the rando variables for SH
-            shsh = rand(size(PartSH.dir,1), 1);
-            shsh = shsh <= E.Rsh(incAngSH)';
-            shsh = ones(size(PartSH.dir,1), 1);
-            ashsh = angles.Rsh(incAngSH)';
-            Ashsh = Amp.Rsh(incAngSH);
-            
-            %prepare the output
-            o.pparticle  = pind;
-            o.sparticle  = sind;
-            o.svparticle = SvOrSh;
-            o.shparticle = ~SvOrSh;
+            % --- OUTPUT ---
+            o.pparticle  = pIdx;    
+            o.sparticle  = sIdx;    
+            o.svparticle = isSV;
+            o.shparticle = ~isSV;   
 
-            o.pp   = pp;
-            o.ps   = ps;
-            o.svsv = svsv;
-            o.svp  = svp;
-            o.shsh = shsh;
+            o.p2p   = p2p;          
+            o.p2sv  = p2sv;         
 
-            o.angPP   = app;
-            o.angPSV  = apsv;
-            o.angSVSV = asvsv;
-            o.angSVP  = asvp;
-            o.angSHSH = ashsh;
+            o.sv2sv = sv2sv;        
+            o.sv2p  = sv2p;         
 
-            o.ampPP   = App;
-            o.ampPSV  = Apsv;
-            o.ampSVSV = Asvsv;
-            o.ampSVP  = Asvp;
-            o.ampSHSH = Ashsh;
+            o.sh2sh = sh2sh;        
 
+            % Scattering angles (optional, if solver calculates them itself)
+            o.angPP   = angP2P;
+            o.angPSV  = angP2SV;
+            o.angSVSV = angSV2SV;
+            o.angSVP  = angSV2P;
+            o.angSHSH = angSH2SH;
+
+            o.ampPP   = ampP2P;
+            o.ampPSV  = ampP2SV;
+            o.ampSVSV = ampSV2SV;
+            o.ampSVP  = ampSV2P;
+            o.ampSHSH = ampSH2SH;
         end
+
         %% OTHER
         function h = heaviside(h)
             h(h>0) = 1;
@@ -997,36 +1027,36 @@ classdef MaterialClass < handle
     methods(Static)
         function obj = preset(n)
             obj = MaterialClass();
-        switch n
-            case 1
-                obj.sigma{1} = @(th) 1/4/pi*ones(size(th));
-                obj.v = 2;
-                obj.acoustics = true;
-            case 2
-                obj.sigma{1} = @(th) 1/10/pi*ones(size(th));
-                obj.v = 2;
-                obj.acoustics = true;
-            case 3
-                obj.vp = 6;
-                obj.vs = 6/sqrt(3);
-                obj.acoustics = false;
-            case 4
-                obj.vp = 6;
-                obj.vs = 6/sqrt(3);
-                obj.acoustics = false;        
+            switch n
+                case 1
+                    obj.sigma{1} = @(th) 1/4/pi*ones(size(th));
+                    obj.v = 2;
+                    obj.acoustics = true;
+                case 2
+                    obj.sigma{1} = @(th) 1/10/pi*ones(size(th));
+                    obj.v = 2;
+                    obj.acoustics = true;
+                case 3
+                    obj.vp = 6;
+                    obj.vs = 6/sqrt(3);
+                    obj.acoustics = false;
+                case 4
+                    obj.vp = 6;
+                    obj.vs = 6/sqrt(3);
+                    obj.acoustics = false;
+            end
         end
-        end
-        function [out, angles] = Zoepptirz(mat)
-            %% Zoepptirz
+        function [out, angles] = Zoeppritz(mat)
+            %% Zoeppritz
             % function to calculate reflection and transmission
             % coefficients for P, SV and SH waves
             %
             % Syntax:
-            %   MaterialClass.Zoepptirz ( mat );
+            %   MaterialClass.Zoeppritz( mat );
             %
             % Inputs:
             %  mat: MaterialClass object or a vector of MaterialClass
-            %  object. 
+            %  object.
             %
             % Output: The method return the coefficients of transmission
             % and reflection or only reflection
@@ -1034,13 +1064,13 @@ classdef MaterialClass < handle
             if isscalar(mat)
                 % assuming solid-fluid interface
                 % the fluid is hard coded as air
-                vpAir = 343; %m/s
-                vsAir = 0; %m/s
-                rhoAir = 1; %kg/m^3
-                
+                vpAir  = 343; %m/s
+                vsAir  = 0;   %m/s
+                rhoAir = 1;  %kg/m^3
+
                 % angles
                 j1_deg = linspace(0,90,181);
-                
+
                 if(mat.acoustics)
                     error("This dont work for acoustic material")
                 end
@@ -1083,7 +1113,7 @@ classdef MaterialClass < handle
                 error("Not implemented")
                 % angles
                 j1_deg = linspace(0,90,181);
-                
+
                 if(mat.acoustics)
                     error("This dont work for acoustic material")
                 end
