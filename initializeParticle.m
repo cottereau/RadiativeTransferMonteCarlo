@@ -60,6 +60,7 @@ switch source.type
     case 'plane'
         extent = zeros(N,3);
         extent(:,setdiff(1:3,source.direction)) = repmat(source.extent,[N 1]);
+        extent(:,source.direction) = randn(N,1)*source.lambda/2;
         x = source.position + (rand(N,3)-0.5).*extent;
         dir = zeros(N,3);
         dir(:,abs(source.direction)) = sign(source.direction);
