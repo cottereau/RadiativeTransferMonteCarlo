@@ -26,6 +26,7 @@ Tsp = Rpp;
 Tsvsv = Rpp;
 Rsh = Rpp;
 Tsh = Rpp;
+
 E_Rpp = Rpp;
 E_Rpsv = Rpp;
 E_Tpp = Rpp;
@@ -113,7 +114,7 @@ for iang = 1:numel(theta)
     E_Tpp(iang)  = (rho2 * vp2 * real(cphi2_p)) / (rho1 * vp1 * real(cphi1_p)) * abs(Tpp(iang))^2;
     E_Tpsv(iang) = 0; % vs2 = 0
 
-    if iang == 1
+    if theta_rad(iang) == 0
         E_Rpsv(iang) = 0;
     end
 
@@ -182,7 +183,7 @@ for iang = 1:numel(theta)
     E_Tsp(iang)   = (rho2 * vp2 * real(cphi2_sv)) / (rho1 * vs1 * real(cpsi1_sv)) * abs(Tsp(iang))^2;
     E_Tsvsv(iang) = 0; % vs2 = 0
 
-    if iang == 1, E_Rsp(iang) = 0; end
+    if theta_rad(iang) == 0, E_Rsp(iang) = 0; end
 
     E_SV_Total(iang) = E_Rsp(iang) + E_Rsvsv(iang) + E_Tsp(iang) + E_Tsvsv(iang);
 
