@@ -58,15 +58,37 @@ switch source.type
 
     % plane waves
     case 'plane'
-        extent = zeros(N,3);
-        extent(:,setdiff(1:3,source.direction)) = repmat(source.extent,[N 1]);
-        extent(:,source.direction) = randn(N,1)*source.lambda/2;
-        x = source.position + (rand(N,3)-0.5).*extent;
-        dir = zeros(N,3);
-        dir(:,abs(source.direction)) = sign(source.direction);
-        perp = zeros(N,3);
+        % source direction
+        n = source.direction(:)';
+        n = n / norm(n);
+
+        % create an orthonormal basis (u,v) for plane transverse to n
+        % null(n) returns an orthonormal basis for the null space of n
+        uv = null(n); 
+        u = uv(:,1)';
+        v = uv(:,2)';
+        
+        % generate random positions (gaussian)
+        c_long = randn(N,1) * source.lambda/2;
+
+        % transverse dimensions : uniform random values
+        if isscalar(source.extent)
+            L1 = source.extent; L2 = source.extent;
+        else
+            L1 = source.extent(1); L2 = source.extent(2);
+        end
+        c_trans1 = (rand(N,1)-0.5) * L1;
+        c_trans2 = (rand(N,1)-0.5) * L2;
+
+        % get global positions
+        x = source.position + c_long.*n + c_trans1.*u + c_trans2.*v;
+
+        % set directions (constant for all particles)
+        dir = repmat(n,N,1);
+
+        % set perpendicular/polarization vectors
         theta = rand(N,1)*2*pi;
-        perp(:,setdiff(1:3,source.direction)) = [cos(theta) sin(theta)];
+        perp = cos(theta).*u + sin(theta).*v;
 
 end
 
