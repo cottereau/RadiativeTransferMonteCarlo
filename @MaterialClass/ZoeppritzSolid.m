@@ -86,7 +86,7 @@ for iang = 1:numel(theta)
     M(3,3) = rho2*vp2/vp1 * cos(2*psi2_p);
     M(3,4) = rho2*vs2/vp1 * sin(2*psi2_p);
 
-    M(4,1) = rho1*vs1^2/vp1^2 * sin(2*psi1_p); % Corrected to use stress components
+    M(4,1) = rho1*vs1^2/vp1^2 * sin(2*phi1_p); % Corrected to use stress components
     M(4,2) = rho1*vp1/vs1 * cos(2*psi1_p);
     M(4,3) = rho2*vs2^2/vp1^2 * sin(2*psi2_p);
     M(4,4) = -rho2*vs2/vp1 * cos(2*psi2_p);
