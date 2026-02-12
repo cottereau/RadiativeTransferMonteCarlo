@@ -65,3 +65,6 @@ The structure is composed of:
 
 #### Material
 Material can be specified using routine MaterialClass.
+
+## Publication list
+Corrêa, L. D. A., Khazaie, S., Gomez, C., & Cottereau, R. (2026). Quantitative error assessment of radiative transfer approximations of acoustic wave energies in unbounded and bounded random media. Wave Motion, 103715. [DOI](https://doi.org/10.1016/j.wavemoti.2026.103715)
