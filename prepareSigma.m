@@ -9,11 +9,12 @@ if mat.acoustics
     [mat.Sigma,mat.Sigmapr,mat.invcdf] = prepareSigmaOne(mat.sigma{1},d);
 
     % Diffusion coefficient m²/s (Eq. (5.12), Ryzhik et al, 1996)
-    mat.Diffusivity = mat.v^2/(d*(mat.Sigma-mat.Sigmapr));
+    mat.Diffusivity = mat.v^2/(double(d)*(mat.Sigma-mat.Sigmapr));
 
-    mat.meanFreeTime = 1/mat.Sigma; mat.meanFreePath = mat.v * mat.meanFreeTime;
+    mat.meanFreeTime = 1/mat.Sigma; 
+    mat.meanFreePath = mat.v * mat.meanFreeTime;
     
-    mat.transportMeanFreePath = d * mat.Diffusivity / mat.v;
+    mat.transportMeanFreePath = double(d) * mat.Diffusivity / mat.v;
     mat.transportMeanFreeTime = mat.transportMeanFreePath / mat.v;
     
     % anisotropy coefficient (characterizes scattering directionality)
@@ -47,7 +48,7 @@ else
     Dp = mat.vp*tmfp_P/d; 
     Ds = mat.vs*tmfp_S/d;
     % Diffusion coefficient m²/s (Eqs. (5.42) & (5.46), Ryzhik et al, 1996)
-    mat.Diffusivity = (Dp+2*K^3*Ds)/(1+2*K^3);
+    mat.Diffusivity = double((Dp+2*K^3*Ds)/(1+2*K^3));
 
     mat.P2P = mat.Sigma(1,1)/sum(mat.Sigma(1,:),2); 
     mat.S2S = mat.Sigma(2,2)/sum(mat.Sigma(2,:),2);
