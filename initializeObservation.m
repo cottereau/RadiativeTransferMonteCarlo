@@ -77,43 +77,56 @@ end
 
 % bins for histograms have the following dimensions
 ibins = find([Nx Ny Nz Npsi]>1);
-if isscalar(ibins)
+
+% handle single-bin case (total integration) where ibins is empty
+if isempty(ibins)
+    % default to tracking X and Y (single bins) to avoid crash
+    ibins = [1 2];
+elseif isscalar(ibins)
     if ibins~=1
         ibins = [1 ibins];
     else
         ibins = [1 2];
     end
 end
+
 if length(ibins)>2
     error('histograms can only be constructed along two directions')
 end
-if all(ibins==[1 2])
+
+% Use isequal for robust comparison avoiding dimension mismatch errors
+if isequal(ibins, [1 2])
     bins = {binX binY};
     vals = {binPsi binZ};
     d1 = dx;
     d2 = dy;
-elseif all(ibins==[1 3])
+elseif isequal(ibins, [1 3])
     bins = {binX binZ};
     vals = {binY binPsi};
     d1 = dx;
     d2 = dz;
-elseif all(ibins==[1 4])
+elseif isequal(ibins, [1 4])
     bins = {binX binPsi};
     vals = {binY binZ};
     d1 = dx;
     d2 = dpsi;
-elseif all(ibins==[2 4])
+elseif isequal(ibins, [2 4])
     bins = {binY binPsi};
     vals = {binX binZ};
     d1 = dy;
     d2 = dpsi;
-elseif all(ibins==[3 4])
+elseif isequal(ibins, [3 4])
     bins = {binZ binPsi};
     vals = {binX binY};
     d1 = dz;
     d2 = dpsi;
+elseif isequal(ibins, [2 3])
+    bins = {binY binZ};
+    vals = {binX binPsi};
+    d1 = dy;
+    d2 = dz; 
 else
-    error('other combinations of bins to be implemented if need be')
+    error(['Bin combination [' num2str(ibins) '] not implemented yet']);
 end
 
 % initialize matrix of observations
