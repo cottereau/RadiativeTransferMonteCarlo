@@ -32,7 +32,7 @@ observation = struct( 'x', 0:0.1:10, ...
 inds = [20 50 80]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
-obs = radiativeTransferUnbounded( geometry, source, material, observation );
+obs = radiativeTransfer( geometry, source, material, observation );
 Eus = squeeze(obs.energyDensity)/obs.dz;
 
 % running Yoshimoto's Monte Carlo-based approach

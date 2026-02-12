@@ -33,7 +33,7 @@ observation = struct('x', 0:0.1:20, ... % size of bins in space
 inds = [20 50 80]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
-obs = radiativeTransferUnbounded( geometry, source, material, observation );
+obs = radiativeTransfer( geometry, source, material, observation );
 
 Ep = squeeze(obs.energyDensity(:,:,:,1))/obs.dz;
 Es = squeeze(obs.energyDensity(:,:,:,2))/obs.dz;

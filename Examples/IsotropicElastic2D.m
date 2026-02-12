@@ -31,7 +31,7 @@ material.sigma = {@(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmapp, @(th) 
 inds = [20 50 80]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
-obs = radiativeTransferUnbounded( geometry, source, material, observation );
+obs = radiativeTransfer( geometry, source, material, observation );
 
 Ep = squeeze(obs.energyDensity(:,:,:,1));
 Es = squeeze(obs.energyDensity(:,:,:,2));

@@ -34,7 +34,7 @@ Wsp = 0; % S to P wave energy ratio at the source
 inds = [20 50 80]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
-obs = radiativeTransferUnbounded( geometry, source, material, observation );
+obs = radiativeTransfer( geometry, source, material, observation );
 
 Ep = squeeze(obs.energyDensity(:,:,:,1))/obs.dz;
 Es = squeeze(obs.energyDensity(:,:,:,2))/obs.dz;

@@ -28,7 +28,7 @@ observation = struct('x', 0:0.1:10, ...
 material = MaterialClass.preset(1);
 material.timeSteps = 0;
 
-tic; obs_cyl = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+tic; obs_cyl = radiativeTransfer( geometry, source, material, observation ); toc;
 
 %%%%%%%%%%%%%%%%%%%  Spherical %%%%%%%%%%%%%%%%%%%%%%
 geometry.frame = 'spherical';
@@ -39,7 +39,7 @@ observation = struct('x', 0:0.1:10, ...
     'directions', [0 pi], ...
     'time', observation.time );
 
-tic; obs_sph = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+tic; obs_sph = radiativeTransfer( geometry, source, material, observation ); toc;
 
 %%%%%%%%%%%%%%%%%%%  Cartesian %%%%%%%%%%%%%%%%%%%%%%
 
@@ -53,7 +53,7 @@ observation = struct('x', 0:0.1:10, ...
     'directions', [0 pi], ...
     'time', observation.time );
 
-tic; obs_cart = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+tic; obs_cart = radiativeTransfer( geometry, source, material, observation ); toc;
 
 %%%%%%%%%%%%%%%%% Analytical %%%%%%%%%%%%%%%%%%%%%
 

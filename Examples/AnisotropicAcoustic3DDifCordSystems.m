@@ -36,7 +36,7 @@ material = MaterialClass( geometry, ...
     ell);              % correlation length
 material.timeSteps = 0;
 
-tic; obs_cyl = radiativeTransferUnbounded( geometry, source, material, observation ); toc;
+tic; obs_cyl = radiativeTransfer( geometry, source, material, observation ); toc;
 
 %%%%%%%%%%%%%%%%%%%  Spherical %%%%%%%%%%%%%%%%%%%%%%
 

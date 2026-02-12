@@ -34,7 +34,7 @@ material = MaterialClass( geometry, ...
 material.timeSteps = 0;                         % time Steps : 0=small 1=large
 
 % radiative transfer solution - acoustic with boundaries
-obs = radiativeTransferUnbounded( geometry, source, material, observation );
+obs = radiativeTransfer( geometry, source, material, observation );
 
 % plotting output
 plotting = struct( 'equipartition', true, ...

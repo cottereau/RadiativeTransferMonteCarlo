@@ -44,7 +44,7 @@ material = MaterialClass( geometry, ...
                            0.1 );            % correlation length
                           
 % radiative transfer solution - acoustic with boundaries
-obs = radiativeTransferUnbounded( geometry, source, material, observation );
+obs = radiativeTransfer( geometry, source, material, observation );
 
 % plotting output
 sensors = [0 0 0; 
