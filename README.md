@@ -1,70 +1,181 @@
 # Radiative Transfer Monte Carlo
 
-## Introduction
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-This project proposes an approximation of solutions to the radiative transfer equation using the Monte Carlo method. It provides solutions for acoustic waves and elastic waves, both in 2D and 3D, and in bounded and unbounded media. The code is written in MATLAB. It is primarily developed at the Laboratoire de Mécanique et d'Acoustique (LMA) in Marseille, France and Institut de Recherche en Génie Civil et Mécanique (GeM), Nantes University Nantes France.
+Monte Carlo approximation of the radiative transfer equation for acoustic and elastic waves in random media. This project computes wave energy evolution and propagation in complex scattering environments, with applications to seismology, ultrasonics, and wave physics.
 
-- **Contact:** [Régis Cottereau](mailto:cottereau@lma.cnrs-mrs.fr)
-- **Contributors:**  [Régis Cottereau](mailto:cottereau@lma.cnrs-mrs.fr),  [Lucio de Abreu Corrêa](mailto:de-abreu-correa@lma.cnrs-mrs.fr), [Shahram Khazaie](mailto:Shahram.Khazaie@univ-nantes.fr)
+## What It Does
 
-## Installation
+This project solves the radiative transfer equation using Monte Carlo particle tracing methods. It's designed for:
 
-The installation can be done using the `AddRTMCLib.m` script. This function will add the folder containing the Radiative Transfer Monte Carlo repository to the MATLAB path, allowing access to the repository functions from any work folder. 
+- **Acoustic and elastic wave propagation** in 2D and 3D domains
+- **Bounded and unbounded media** with random scattering
+- **Wave energy density evolution** across space, direction, and time
+- **Validated against published results** in the radiative transfer literature
 
-There are two ways to add the library:
+The code supports multiple geometries (Cartesian, spherical, cylindrical) and wave types, making it suitable for seismic wave modeling, ultrasonic testing, and wave physics research.
 
-1. Run `AddRTMCLib(baseFolder)`, where `baseFolder` is the folder path of the repository.
-2. Run `AddRTMCLib` directly from within the repository folder.
+## Why Use This Project
 
-## Literature Comparison and Validation
-The theory of radiative transfer is (in our opinion) well described in the paper:
-- Ryzhik, L., Papanicolaou, G., & Keller, J. B. (1996). Transport equations for elastic and other waves in random media. *Wave Motion*, 24(4), 327-370. [DOI](https://doi.org/10.1016/S0165-2125(96)00021-2)
+- **Validated approach**: Results compared against five key papers in radiative transfer theory
+- **Flexible geometry**: 2D/3D isotropic and anisotropic scatter operators
+- **Efficient computation**: Parallel processing support via MATLAB Parallel Computing Toolbox
+- **Research-ready**: Used in peer-reviewed publications and academic research
 
-The approximations provided by this code can be compared to the results described in the following papers:
+## Quick Start
+
+### Prerequisites
+
+- MATLAB R2016b or later
+- (Optional) MATLAB Parallel Computing Toolbox for faster execution
+
+### Installation
+
+```matlab
+% Option 1: Add to path with full path argument
+AddRTMCLib('/path/to/RadiativeTransferMonteCarlo')
+
+% Option 2: Run from within the repository folder
+cd RadiativeTransferMonteCarlo
+AddRTMCLib
+```
+
+The `AddRTMCLib.m` script adds the repository to your MATLAB path, allowing access to functions from any working directory.
+
+### Basic Example: Acoustic Wave Propagation
+
+See [Examples/mainAcoustics.m](Examples/mainAcoustics.m) for a complete example. Here's the essential workflow:
+
+```matlab
+% Define geometry (3D unbounded domain)
+geometry = struct('dimension', 3, 'frame', 'cylindrical');
+
+% Define initial energy distribution (plane source)
+source = struct('numberParticles', 1e6, ...
+                'type', 'plane', ...
+                'position', [0 0 -2], ...
+                'direction', 3, ...
+                'extent', [10 10], ...
+                'lambda', 0.1);
+
+% Define observation grid and time
+observation = struct('x', -2:.1:2, ...
+                     'y', linspace(-pi,pi,30), ...
+                     'z', [-Inf Inf], ...
+                     'directions', [-Inf Inf], ...
+                     'time', 0:.1:5);
+
+% Create material (isotropic acoustic medium)
+material = MaterialClass(3, 'isotropic', 'acoustic');
+material.rho = 2000;          % density (kg/m³)
+material.v = 2000;            % sound speed (m/s)
+material.Frequency = 100;     % frequency (Hz)
+material.correlation_coefficients = [0.3 0.5 0.3];
+
+% Run simulation
+obs = radiativeTransferUnbounded(geometry, source, material, observation);
+```
+
+## Project Structure
+
+```
+├── Examples/                    # Example scripts and validation cases
+│   ├── mainAcoustics.m         # Acoustic wave examples
+│   ├── mainElastics.m          # Elastic wave examples
+│   └── RunAllTests.m           # Run all validation comparisons
+├── @MaterialClass/             # Material properties and scattering cross-sections
+├── +Comparison/                # Comparison functions against literature
+├── AddRTMCLib.m               # Setup and path configuration
+└── radiativeTransfer.m        # Main solver
+```
+
+## Main Functions
+
+| Function | Purpose |
+|----------|---------|
+| `radiativeTransfer()` | Solver for bounded and unbounded domains |
+| `MaterialClass()` | Material specification and scattering properties |
+| `Examples/RunAllTests` | Run validation against published results |
+
+## Input Data Format
+
+The solver accepts four structured arrays:
+
+### Geometry
+
+- `dimension` (int): 2 or 3
+- `frame` (char, optional): `'spherical'` (default), `'cartesian'`, or `'cylindrical'`
+- `bnd` (struct array, optional): Boundary definitions for bounded domains
+
+### Source
+
+- `numberParticles` (int): Number of Monte Carlo particles
+- `type` (char): `'point'` or `'plane'`
+- `position` (1×3 float): Source location (always Cartesian)
+- `lambda` (float): Gaussian source width (controls wavelength)
+- `direction` (point source: char `'uniform'`/`'outgoing'`; plane source: int ±1/±2/±3)
+- `extent` (plane source only): Source dimensions [Δy, Δz]
+
+### Observation
+
+- `x`, `y`, `z`, `directions` (N×1 vectors): Spatial and angular bins
+- `time` (M×1 vector): Observation times
+
+For spherical coordinates (default): x=radius, y=azimuth [−π, π], z=elevation [−π/2, π/2]
+
+### Material
+
+Created via `MaterialClass()`. Defines medium type (isotropic/anisotropic), wave type (acoustic/elastic), and physical properties:
+
+```matlab
+material = MaterialClass(3, 'isotropic', 'acoustic');
+material.rho = 2000;                    % density
+material.v = 2000;                      % sound speed
+material.Frequency = 100;               % frequency
+material.correlation_coefficients = [0]; % scattering correlation
+```
+
+## Theoretical Background
+
+The code implements the radiative transfer equation approach described in:
+
+- **Ryzhik, Papanicolaou & Keller (1996)**: Foundational theory for elastic/acoustic waves in random media. [DOI](https://doi.org/10.1016/S0165-2125(96)00021-2)
+
+Results are validated against these key papers:
+
 1. J. C. J. Paasschens. Solution of the time-dependent Boltzmann equation, *Phys. Rev. E* 56(1), pp. 1135-1141 (1997). [DOI](https://doi.org/10.1103/PhysRevE.56.1135)
 2. M. Hoshiba. Simulation of multiple-scattered coda wave excitation based on the energy conservation law. *Phys. Earth Planet. Int.* 67, pp. 123-136 (1991). [DOI](https://doi.org/10.1016/0031-9201(91)90066-Q)
 3. H. Nakahara, K. Yoshimoto. Radiative transfer of elastic waves in two-dimensional isotropic scattering media: semi-analytical approach for isotropic source radiation. *Earth Planets Space* 63, pp. 459-468 (2011). [DOI](https://doi.org/10.5047/eps.2011.03.006)
 4. H. Sato. Multiple isotropic scattering model including P-S conversions for the seismogram envelope formation. *Geophys. J. Int* 117, pp. 487-494 (1994). [DOI](https://doi.org/10.1111/j.1365-246X.1994.tb03946.x)
-5. K. Yoshimoto, Monte Carlo simulation of seismogram envelopes in scattering media. *J. Geophys. Res.: Solid Earth* (2000)
+5. K. Yoshimoto, Monte Carlo simulation of seismogram envelopes in scattering media. *J. Geophys. Res.: Solid Earth* (2000). [DOI](https://doi.org/10.1029/1999JB900437)
 
-The function `mainLiteratureComparison(type)` can be used to run the comparison between our code and the literature presented above. The input of the function is a chain of characters in the following list: `all`, `2dIsotropicAcoustic`, `3dIsotropicAcoustic`, `2dAnisotropicAcoustic`, `3dAnisotropicAcoustic`, `2dIsotropicElastic`, `3dIsotropicElastic`, or `3dAnisotropicElastic` .
+### Monte Carlo Method References
 
-## Usage
+The implementation is based on the Monte Carlo method. Additional details on this methodology can be found in:
 
-Two main examples are provided in this repository: `mainAcoustics.m` and `mainElastics.m`. These examples are tailored for solving the acoustic and elastic wave equations, respectively.
+- **C. Gomez & O. Pinaud (2018).** Monte Carlo methods for radiative transfer with singular kernels. *SIAM J. Sci. Comp.*, 40(3), pp. A1714-A1741. [DOI](https://doi.org/10.1137/17M1134755)
+- **B. Lapeyre, E. Pardoux & R. Sentis.** Introduction to Monte-Carlo Methods for Transport and Diffusion Equations.
+- **L. Margerin, M. Campillo & B.A. van Tiggelen (2000).** Monte Carlo simulation of multiple scattering of elastic waves. *J. Geophys. Res.*, 105(B4), pp. 7873-7892. [DOI](https://doi.org/10.1029/1999JB900296)
 
-The main routine is `radiativeTransferUnbounded`. It computes an approximation of the radiative transfer solution using the specified input parameters and returns the results in a structured array (named `obs` below).
+## Publications
 
-Usage: `obs = radiativeTransferUnbounded( geometry, source, material, observation );`
+- **Corrêa, L. D. A., Khazaie, S., Gomez, C., & Cottereau, R. (2026).** Quantitative error assessment of radiative transfer approximations of acoustic wave energies in unbounded and bounded random media. *Wave Motion*, 103715. [DOI](https://doi.org/10.1016/j.wavemoti.2026.103715)
 
-### Input Data
+## Support & Documentation
 
-Here is the format for the four structured arrays used as input: `source`, `material`, `observation`, `geometry`:
+- **API Documentation**: Detailed input/output specifications are embedded in function headers.
+- **Examples**: See [Examples/](Examples/) directory for complete workflows
+- **Validation**: Run [Examples/RunAllTests.m](Examples/RunAllTests.m) to reproduce published results
 
-#### Geometry
-  - `dimension` (integer 2 or 3): dimensionality of the propagation space.
-  - `frame` (chain of characters `spherical` (default) or `cartesian`): frame in which coordinates are expressed on output.
-  - `bnd` (structured array(s)): description of the boundaries through their normal (field `dir`, with values 1=`x`, 2=`y`, 3=`z`) and position (indicated by field `pos`).
+## Contributing & Support
 
-#### Source
-Source is actually an initial distribution of the energy in phase-space. The shape is controlled by the fields below:
-- `numberParticles` (integer): number of particles used to discretized the initial distribution of the energy
-- `type` (chain of characters `plane` or `point`): energy is initially located around a plane or a point
-- `position` (1x3 float vector): central position around which the initial energy is distributed
-- `lambda` (scalar float): standard deviation of the Gaussian source. This controls the wavelength/wavenumber simulated, and is related to frequency.
-- `direction` (with point source, chain of characters `outgoing` or `uniform` ): initial energy radiates away from the center position or randomly
-- `radial` (with point source, function handle): describes the initial distribution in space (and overrules `lambda`)
-- `direction` (with plane source, signed integer): initial direction of the energy 1=+x, 2=+y, 3=+z, -1=-x, -2=-y, -3=-z 
-- `extent` (with plane source, 1x2 float vector): dimensions of the plane perpendicular to `direction` over which particles are initially sampled 
+For questions, bug reports, or contributions:
 
-#### Observations
-The energy density is in general a function of position (3 variables), wavevector (2 unknowns, because norm is related to the fixed frequency) and time. For simplicity, the wavevector is assumed to only depend on the angle between the propagation direction and the position vector. The choice in this code has been to model the energy density as a 4-dimensional (3 dimensions for positions and one angle for direction) distribution evaluated at discrete times. To accelerate evaluation, the user can only consider two dimensions among the four (`x`, `y`, `z`, `directions`), while the other two are automatically integrated upon. The output energy density is therefore a 3-dimensional matrix (last dimension represents time).
-The structure is composed of:
-- `x`, `y`, `z`, `directions` (Nx1 vectors): bins for space and propagation direction. In spherical coordinates (geometry.frame=`spherical`), `x`, `y`, `z` respresent respectively radius, azimuth (between -pi and pi) and elevation (between -pi/2 and pi/2). At least two of these must be 2x1 vectors to indicate over which values integration should be performed. The other two vectors should be Nx1 vectors (N>=2) indicating the boundaries of the bins over which distributions should be monitored.
-- `time` (Mx1 vector): times at which distributions should be monitored.
+- **Lead Maintainer:** [Régis Cottereau](mailto:cottereau@lma.cnrs-mrs.fr) — Laboratoire de Mécanique et d'Acoustique (LMA), CNRS, Marseille
+- **Contributors:** 
+  - [Lucio de Abreu Corrêa](mailto:de-abreu-correa@lma.cnrs-mrs.fr) — LMA, CNRS
+  - [Shahram Khazaie](mailto:Shahram.Khazaie@univ-nantes.fr) — Institut GeM, Nantes University
 
-#### Material
-Material can be specified using routine MaterialClass.
+## License
 
-## Publication list
-Corrêa, L. D. A., Khazaie, S., Gomez, C., & Cottereau, R. (2026). Quantitative error assessment of radiative transfer approximations of acoustic wave energies in unbounded and bounded random media. Wave Motion, 103715. [DOI](https://doi.org/10.1016/j.wavemoti.2026.103715)
+This project is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE) for details.

@@ -45,7 +45,7 @@ cd(fileparts(mfilename('fullpath')))
 
 tags = {'Elastic','Acoustic','2D','3D','Material','All'};
 tic
-results = runtests({'NonRegTestClass'},'Tag',tags{4});
+results = runtests({'NonRegTestClass'},'Tag',tags{end});
 table(results)
 close all
 time = toc;
