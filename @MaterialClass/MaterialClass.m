@@ -34,12 +34,12 @@ classdef MaterialClass < handle
         Sigma
         Sigmapr
         invcdf
-        Diffusivity
-        meanFreeTime
-        meanFreePath
-        transportMeanFreeTime
-        transportMeanFreePath
-        g
+        Diffusivity             double = [];
+        meanFreeTime            double = [];
+        meanFreePath            double = [];
+        transportMeanFreeTime   double = [];
+        transportMeanFreePath   double = [];
+        g                       double = [];
         P2P
         S2S
 
@@ -52,7 +52,7 @@ classdef MaterialClass < handle
     end
     properties (SetAccess = private, Hidden = true)
         Type_def = {'isotropic'}; %the anisotropic should be implemented
-        SpectralLaw_def = {'exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersedisk','monodisperseelipse','polydispersedisk','polydisperseelipse','image'};
+        SpectralLaw_def = {'exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersesphere','image','Imported'};
     end
     methods
         function obj = MaterialClass(geometry,freq,acoustics, ...
@@ -265,7 +265,6 @@ classdef MaterialClass < handle
             error('Not implemented')
         end
         function getPSDF(obj)
-            %% getPSDF
             % Compute the normalized power spectral density function to use
             % it in the differential scattering cross-section
             %
@@ -292,6 +291,9 @@ classdef MaterialClass < handle
 
             % warning: these are for 3D: formulas should depend on dimensionality
             switch obj.d
+                case 1
+                    error(['Normalized PSDF kernels for 2D case are to be ' ...
+                        'implemented in future releases of the code'])
                 case 2
                     error(['Normalized PSDF kernels for 2D case are to be ' ...
                         'implemented in future releases of the code'])
@@ -312,26 +314,11 @@ classdef MaterialClass < handle
                                 error('Please add the Hurst number for VonKarman PSDF')
                             end
                             obj.VonKarman(obj.CorrelationLength, obj.SpectralParam.nu);
-                        case 'monodispersedisk'
-                            if ~isfield(obj.SpectralParam,'rho') && ~isfield(obj.SpectralParam,'d')
+                        case 'monodispersesphere'
+                            if ~isfield(obj.SpectralParam,'rhoS') && ~isfield(obj.SpectralParam,'Diam')
                                 error('Please add the mono disperse disk parameters for the PSDF')
                             end
-                            obj.MonoDisperseDisk(obj.SpectralParam);
-                        case 'monodisperseelipse'
-                            if ~isfield(obj.SpectralParam,'rho') && ~isfield(obj.SpectralParam,'a') && ~isfield(obj.SpectralParam,'b')
-                                error('Please add the mono disperse disk parameters for the PSDF')
-                            end
-                            obj.MonoDisperseElipse(obj.SpectralParam);
-                        case 'polydispersedisk'
-                            if ~isfield(obj.SpectralParam,'rho')
-                                error('not defined yet')
-                            end
-                            obj.PolyDisperseDisk(obj.SpectralParam);
-                        case 'polydisperseelipse'
-                            if ~isfield(obj.SpectralParam,'rho')
-                                error('not defined yet')
-                            end
-                            obj.PolyDisperseElipse(obj.SpectralParam);
+                            obj.MonoDisperseSphere(obj.SpectralParam.rhoS,obj.SpectralParam.Diam);
                         case 'image'
                             if ~isfield(obj.SpectralParam,'ImagePath') && ~isfield(obj.SpectralParam,'dx') &&~isfield(obj.SpectralParam,'dy')
                                 error('not defined yet')
@@ -339,22 +326,22 @@ classdef MaterialClass < handle
                             obj.GetPSDFromImage(obj.SpectralParam);
                     end
             end
+
+            % function to evaluate PSDF:
+            % Some notes :
+            % The correlation functions are normalized in 1D, 2D, 3D as follows
+            % 1D : lc = 2 * integral of R(x)dx from 0 to inf
+            % 2D : lc^2 = 2 * integral of x*R(x)dx from 0 to inf
+            % 3D : lc^3 = 3 * integral of x^2*R(x)dx from 0 to inf
+
+            % The power spectral density functions are calculated via an n-D
+            % Fourier Transform integral, based on the following convention
+            % \Phi(k) = (1/2/pi)^d * integral of exp(-i*k*x)*R(x)dx on R^d
+            % This integral in 1D, 2D and 3D can be simplified as:
+            % 1D : 2/(2*pi) * integral of cos(k*x)*R(x)dx from 0 to inf
+            % 2D : 2*pi//(2*pi)^2 * integral of x*J_0(k*x)*R(x)dx from 0 to inf
+            % 3D : 4*pi/(2*pi)^3 * integral of x^2*sinc(k*x)*R(x)dx from 0 to inf
         end
-        %% function to evaluate PSDF:
-        % Some notes :
-        % The correlation functions are normalized in 1D, 2D, 3D as follows
-        % 1D : lc = 2 * integral of R(x)dx from 0 to inf
-        % 2D : lc^2 = 2 * integral of x*R(x)dx from 0 to inf
-        % 3D : lc^3 = 3 * integral of x^2*R(x)dx from 0 to inf
-
-        % The power spectral density functions are calculated via an n-D
-        % Fourier Transform integral, based on the following convention
-        % \Phi(k) = (1/2/pi)^d * integral of exp(-i*k*x)*R(x)dx on R^d
-        % This integral in 1D, 2D and 3D can be simplified as:
-        % 1D : 2/(2*pi) * integral of cos(k*x)*R(x)dx from 0 to inf
-        % 2D : 2*pi//(2*pi)^2 * integral of x*J_0(k*x)*R(x)dx from 0 to inf
-        % 3D : 4*pi/(2*pi)^3 * integral of x^2*sinc(k*x)*R(x)dx from 0 to inf
-
         function out = Exponential(obj,lc)
             %% Exponential
             % Compute the normalized power spectral density function for
@@ -586,7 +573,7 @@ classdef MaterialClass < handle
             % obj.R = out;
 
         end
-        function out = MonoDisperseDisk(obj, eta, D )
+        function out = MonoDisperseSphere(obj, eta, D )
             %% MonoDisperseDisk
             % Compute the normalized power spectral density function for
             % mono disperse disk
@@ -608,30 +595,30 @@ classdef MaterialClass < handle
             dim = 3;
 
             % discretization in Fourier space
-            obj.k = linspace(0,4/D,4094);
+            obj.k = linspace(0,6/D,4094);
             % discretization in space
-            r = linspace(0,10*D,4096);
+            raux = linspace(0,5*D,4096);
 
             % number density of spheres
-            rho = 3*eta/(4*pi);
+            rhoS = 3*eta/(4*pi);
             % Verlet Weiss correction
             %eta = eta - (eta^2)/16;
             %D = (6*eta/pi/rho)^(1/3)
 
             % normalization of the radii
-            r = 2*r/D;
+            raux = 2*raux/D;
 
             % Union volume of two spheres of unit radius
             switch dim
                 case 1
-                    V2 = 4*ones( size(r) );
-                    V2( r<2 ) = 2+r(r<2);
+                    V2 = 4*ones( size(raux) );
+                    V2( raux<2 ) = 2+raux(raux<2);
                 case 2
                     % V2 = 2*pi*ones( size(r) );
                     error('not implemented yet')
                 case 3
-                    V2 = 8*pi/3*ones( size(r) );
-                    V2( r<2 ) = 4*pi/3*(1+3/4*r(r<2)-r(r<2).^3/16);
+                    V2 = 8*pi/3*ones( size(raux) );
+                    V2( raux<2 ) = 4*pi/3*(1+3/4*raux(raux<2)-raux(raux<2).^3/16);
             end
             % Fourier transform of the direct correlation function
             % using the Percus-Yevick approximation
@@ -659,7 +646,7 @@ classdef MaterialClass < handle
 
             % Fourier transform of the total correlation function
             % using the Ornstein-Zernike relation
-            h = c./(1-rho*c);
+            h = c./(1-rhoS*c);
             % h = c1./(1-rho*c1);
             % Fourier transform of the Heaviside function
             switch dim
@@ -674,33 +661,41 @@ classdef MaterialClass < handle
                     m(1) = 4*pi/3;
             end
             % computation of 2-point matrix probability function
-            M = zeros( size(r) );
+            M = zeros( size(raux) );
             if (dim==1)||(dim==2)
                 error('not implemented yet')
             end
-            M(1) = -(eta/rho)^2;
-            for i1 = 2:length(r)
-                M(i1) = 1/2/pi^2/r(i1)*trapz( obj.k, h.*m.^2.*obj.k.*sin(obj.k*r(i1)) );
+            M(1) = -(eta/rhoS)^2;
+            for i1 = 2:length(raux)
+                M(i1) = 1/2/pi^2/raux(i1)*trapz( obj.k, h.*m.^2.*obj.k.*sin(obj.k*raux(i1)) );
             end
-            S2 = 1 - rho*V2 + rho^2*M + eta^2;
+            S2 = 1 - rhoS*V2 + rhoS^2*M + eta^2;
             %trapz(r,S2)
             % computation of the particle autocorrelation function
-            R = (S2 -(1-eta)^2) / eta / (1-eta);
+            Racf = (S2 -(1-eta)^2) / eta / (1-eta);
+            raux = D*raux/2;
+            right_window_length = 200;
+            hann_win = hann(2 * right_window_length);
+            Racf(end-right_window_length+1:end) = Racf(end-right_window_length+1:end) .* hann_win(right_window_length+1:end)';
 
-            obj.R = @(z)interp1(r,R,z,'makima',0);
+            obj.R = @(z)interp1(raux,Racf,z,'makima',0);
             LL = 2*integral(obj.R,0,inf);
             obj.CorrelationLength = LL;
-            %obj.k = obj.k*LL;
+            raux = raux/LL;
+            obj.R = @(z)interp1(raux,Racf,z,'makima',0);
+            dk = 1/mean(diff(raux));
+            %obj.k = linspace(0,dk,numel(raux));
+            obj.k = obj.k*obj.CorrelationLength;
             phi = zeros(1,length(obj.k));
             for i1 = 1:length(obj.k)
-                phi(i1) = 1/2/pi^2*trapz( r, sinc(r * obj.k(i1)) .* r.^2 .* R );
+                phi(i1) = 1/2/pi^2*trapz( raux, sinc(raux * obj.k(i1)) .* raux.^2 .* Racf );
             end
 
-            P=abs(((phi.*conj(phi))));
+            P=abs(phi.*conj(phi));
 
             figure
             subplot(2,1,1)
-            plot(r/LL,R)
+            plot(raux,Racf)
             subplot(2,1,2)
             plot(obj.k,P)
 
@@ -811,7 +806,37 @@ classdef MaterialClass < handle
                 box on
                 set(gca,'FontSize',14)
             else
-                error('Not implemented')
+                subplot(2,2,1)
+                plot(z,obj.sigma{1,1}(z),'LineWidth',2)
+                xlabel('Angle [rad]')
+                ylabel('P2P [-]')
+                grid on
+                box on
+                set(gca,'FontSize',14)
+
+                subplot(2,2,2)
+                plot(z,obj.sigma{1,2}(z),'LineWidth',2)
+                xlabel('Angle [rad]')
+                ylabel('P2S [-]')
+                grid on
+                box on
+                set(gca,'FontSize',14) 
+
+                subplot(2,2,3)
+                plot(z,obj.sigma{2,1}(z),'LineWidth',2)
+                xlabel('Angle [rad]')
+                ylabel('S2P [-]')
+                grid on
+                box on
+                set(gca,'FontSize',14)
+
+                subplot(2,2,4)
+                plot(z,obj.sigma{2,2}(z),'LineWidth',2)
+                xlabel('Angle [rad]')
+                ylabel('S2S [-]')
+                grid on
+                box on
+                set(gca,'FontSize',14) 
             end
         end
         function h = plotpolarsigma(obj,h)
@@ -827,7 +852,40 @@ classdef MaterialClass < handle
                 box on
                 set(gca,'FontSize',14)
             else
-                error('Not implemented')
+                subplot(2,2,1)
+                polarplot(z,obj.sigma{1,1}(z),'LineWidth',2)
+                title('P2P [-]')
+                grid on
+                box on
+                set(gca,'FontSize',14)
+
+                subplot(2,2,2)
+                polarplot(z,obj.sigma{1,2}(z),'LineWidth',2)
+                title('P2S [-]')
+                grid on
+                box on
+                set(gca,'FontSize',14) 
+
+                subplot(2,2,3)
+                polarplot(z,obj.sigma{2,1}(z),'LineWidth',2)
+                title('S2P [-]')
+                grid on
+                box on
+                set(gca,'FontSize',14)
+
+                subplot(2,2,4)
+                polarplot(z,obj.sigma{2,2}(z),'LineWidth',2)
+                title('S2S [-]')
+                grid on
+                box on
+                set(gca,'FontSize',14) 
+
+                
+                %xlabel('Angle [rad]')
+                title('Differential Scattering Cross-Sections')
+                grid on
+                box on
+                set(gca,'FontSize',14)
             end
         end
         %% TRANSMISSION REFLECTION
