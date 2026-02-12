@@ -90,7 +90,7 @@ for i1=1:Nt
     title(ax1,['Total Energy Density, time t = ' num2str(obs.t(i1)) 's'])
     if ~obs.acoustics
         ax2 = subplot(n,1,2,'replace');
-        surf( ax1, x, z, val(:,:,i1,2)' );
+        surf( ax2, x, z, val(:,:,i1,2)' );
         view(2); shading flat; box on;
         cb2 = colorbar; clim(ax2,[0 cmax(2)]);
         cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:));

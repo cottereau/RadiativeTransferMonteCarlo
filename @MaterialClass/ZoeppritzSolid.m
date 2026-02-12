@@ -86,7 +86,7 @@ for iang = 1:numel(theta)
     M(3,3) = rho2*vp2/vp1 * cos(2*psi2_p);
     M(3,4) = rho2*vs2/vp1 * sin(2*psi2_p);
 
-    M(4,1) = rho1*vs1^2/vp1^2 * sin(2*psi1_p); % Corrected to use stress components
+    M(4,1) = rho1*vs1^2/vp1^2 * sin(2*phi1_p); % Corrected to use stress components
     M(4,2) = rho1*vp1/vs1 * cos(2*psi1_p);
     M(4,3) = rho2*vs2^2/vp1^2 * sin(2*psi2_p);
     M(4,4) = -rho2*vs2/vp1 * cos(2*psi2_p);
@@ -156,7 +156,7 @@ for iang = 1:numel(theta)
     E_Tpp(iang)  = (rho2 * vp2 * real(cphi2_p)) / (rho1 * vp1 * real(cphi1_p)) * abs(Tpp(iang))^2;
     E_Tpsv(iang) = (rho2 * vs2 * real(cpsi2_p)) / (rho1 * vp1 * real(cphi1_p)) * abs(Tpsv(iang))^2;
 
-    if iang == 1
+    if theta_rad(iang) == 0
         E_Rpsv(iang) = 0;
     end
 
@@ -424,7 +424,7 @@ for iang = 1:numel(theta)
     E_Tsvsv(iang) = (rho2 * vs2 * real(cpsi2_sv)) / (rho1 * vs1 * real(cpsi1_sv)) * abs(Tsvsv(iang))^2;
 
     % Evitar NaN em iang=1 (0/0)
-    if iang == 1, E_Rsp(iang) = 0; end
+    if theta_rad(iang) == 0, E_Rsp(iang) = 0; end
 
     E_SV_Total(iang) = E_Rsp(iang) + E_Rsvsv(iang) + E_Tsp(iang) + E_Tsvsv(iang);
 

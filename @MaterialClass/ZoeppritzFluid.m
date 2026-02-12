@@ -26,6 +26,7 @@ Tsp = Rpp;
 Tsvsv = Rpp;
 Rsh = Rpp;
 Tsh = Rpp;
+
 E_Rpp = Rpp;
 E_Rpsv = Rpp;
 E_Tpp = Rpp;
@@ -75,7 +76,7 @@ for iang = 1:numel(theta)
     M(3,3) = (rho2*vp2/(rho1*vp1))*cos(2*psi2_p); % cos(2*psi2_p) = 1
     M(3,4) = (rho2*vs2/(rho1*vp1))*sin(2*psi2_p); % 0
 
-    M(4,1) = sin(2*psi1_p);
+    M(4,1) = sin(2*phi1_p);
     M(4,2) = vp1/vs1 * cos(2*psi1_p); % Usando a correção de M(4,2) do prompt
     M(4,3) = (rho2*vp1*vs2*vs2/(rho1*vp2*vs1*vs1))*sin(2*phi2_p); % 0
     M(4,4) = -((rho2*vp1*vs2)/(rho1*vs1*vs1))*cos(2*psi2_p); % 0
@@ -113,7 +114,7 @@ for iang = 1:numel(theta)
     E_Tpp(iang)  = (rho2 * vp2 * real(cphi2_p)) / (rho1 * vp1 * real(cphi1_p)) * abs(Tpp(iang))^2;
     E_Tpsv(iang) = 0; % vs2 = 0
 
-    if iang == 1
+    if theta_rad(iang) == 0
         E_Rpsv(iang) = 0;
     end
 
@@ -182,7 +183,7 @@ for iang = 1:numel(theta)
     E_Tsp(iang)   = (rho2 * vp2 * real(cphi2_sv)) / (rho1 * vs1 * real(cpsi1_sv)) * abs(Tsp(iang))^2;
     E_Tsvsv(iang) = 0; % vs2 = 0
 
-    if iang == 1, E_Rsp(iang) = 0; end
+    if theta_rad(iang) == 0, E_Rsp(iang) = 0; end
 
     E_SV_Total(iang) = E_Rsp(iang) + E_Rsvsv(iang) + E_Tsp(iang) + E_Tsvsv(iang);
 
