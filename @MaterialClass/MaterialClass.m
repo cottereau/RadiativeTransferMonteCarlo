@@ -773,8 +773,10 @@ classdef MaterialClass < handle
             %obj.CorrelationLength = Lc;
         end
         %% plot
-        function PlotPSD(obj)
-            figure
+        function h = PlotPSD(obj,h)
+            if ~exist('h','var')
+                h = figure;
+            end
             if isempty(obj.k)
                 obj.k = linspace(0,10,1024);
             end
@@ -785,8 +787,10 @@ classdef MaterialClass < handle
             box on
             set(gca,'FontSize',14)
         end
-        function PlotCorrelation(obj)
-            figure
+        function h = PlotCorrelation(obj,h)
+            if ~exist('h','var')
+                h = figure;
+            end
             x = linspace(0,10,2048);
             plot(x,obj.R(x),'LineWidth',2)
             xlabel('Normalized lag distance [-]')
@@ -795,8 +799,10 @@ classdef MaterialClass < handle
             box on
             set(gca,'FontSize',14)
         end
-        function plotsigma(obj)
-            figure
+        function h = plotsigma(obj,h)
+            if ~exist('h','var')
+                h = figure;
+            end
             z = linspace(0,2*pi,2*2048);
             if obj.acoustics
                 plot(z,obj.sigma{1}(z),'LineWidth',2)
