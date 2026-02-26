@@ -173,21 +173,21 @@ end
 function dr = volumeEnergySpherical(d,r,d0r)
 if d==2
     dr = r.*d0r;
-    if r(1)==0
+    if ~isempty(r) && r(1)==0
         dr(1) = d0r(1)^2/8;
     end
 else
     dr = r.^2.*d0r + d0r.^3/12;
-    if r(1)==0
+    if ~isempty(r) && r(1)==0
         dr(1) = d0r(1)^3/24;
     end
 end
-if isscalar(r); dr = r^d/d; end
+% if isscalar(r); dr = r^d/d; end
 end
 function dr = volumeEnergyCylindrical(r,d0r)
 dr = r.*d0r;
-if r(1)==0
+if ~isempty(r) && r(1)==0
     dr(1) = d0r(1)^2/8;
 end
-if isscalar(r); dr = r^2/2; end
+% if isscalar(r); dr = r^2/2; end
 end
