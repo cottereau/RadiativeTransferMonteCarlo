@@ -1,8 +1,8 @@
 close all
-clear all
+clearvars
 clc
 
-error('To be done')
+error('To be done: 2D elastic differential scattering cross-sections to be investigated')
 
 titlecase = '2D elastic case with anisotropic scattering';
 disp(['Testing ' titlecase ' ...']);

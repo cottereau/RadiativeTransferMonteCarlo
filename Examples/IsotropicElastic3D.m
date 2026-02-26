@@ -1,5 +1,5 @@
 close all
-clear all
+clearvars
 clc
 
 titlecase = '3D elastic case with isotropic scattering';
@@ -8,17 +8,17 @@ disp(['Testing ' titlecase ' ...']);
 geometry = struct( 'dimension', 3 );
 
 source = struct( 'numberParticles', 1e6, ...
-    'position', [0 0 0], ...
-    'polarization', 'P', ...
-    'lambda', 0.002 );
+                 'position', [0 0 0], ...
+                 'polarization', 'P', ...
+                 'lambda', 0.002 );
 
 material = MaterialClass.preset(3);
 
 observation = struct('x', 0:0.1:20, ... % size of bins in space
-    'y', [-pi pi], ...
-    'z', [-pi/2 pi/2], ...
-    'directions', [0 pi], ...
-    'time', 0:0.01:10 );
+                     'y', [-pi pi], ...
+                     'z', [-pi/2 pi/2], ...
+                     'directions', [0 pi], ...
+                     'time', 0:0.01:10 );
 
 d = geometry.dimension;
 vp = material.vp; vs = material.vs;
@@ -26,7 +26,7 @@ K = vp/vs;
 Sigmapp = 0.2*vp; Sigmaps = 0.2*vp; Sigmap = Sigmapp + Sigmaps;
 Sigmasp = Sigmaps/((d-1)*K^d); Sigmass = Sigmap -Sigmasp;
 
-material.sigma = {@(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmapp, @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmaps; ...
+material.sigma = {@(th) 1/(2*pi^(d/2)   /gamma(d/2))*ones(size(th))*Sigmapp, @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmaps; ...
     @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmasp, @(th) 1/(2*pi^(d/2)/gamma(d/2))*ones(size(th))*Sigmass};
 
 Wsp = 0; % S to P wave energy ratio at the source
@@ -36,12 +36,12 @@ inds = [20 50 80]; % index of the desired observation points
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( geometry, source, material, observation );
 
-Ep = squeeze(obs.energyDensity(:,:,:,1))/obs.dz;
-Es = squeeze(obs.energyDensity(:,:,:,2))/obs.dz;
+Ep = squeeze(obs.energyDensity(:,:,:,1));
+Es = squeeze(obs.energyDensity(:,:,:,2));
 Etotus = Ep + Es;
 
 % running Yoshimoto's Monte Carlo-based approach
-EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
+EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation );
 EtotY = sum(EY,3);
 
 % computing semi-analytical solution (Nakahara 2011, Sato 1994)

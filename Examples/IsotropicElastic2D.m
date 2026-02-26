@@ -1,5 +1,5 @@
 close all
-clear all
+clearvars
 clc
 
 titlecase = '2D elastic case with isotropic scattering';
@@ -8,16 +8,16 @@ disp(['Testing ' titlecase ' ...']);
 geometry = struct( 'dimension', 2 );
 
 source = struct( 'numberParticles', 1e6, ...
-    'position', [0 0], ...
-    'polarization', 'P', ...
-    'lambda', 0.002 );
+                 'position', [0 0], ...
+                 'polarization', 'P', ...
+                 'lambda', 0.002 );
 
 material = MaterialClass.preset(3);
 
 observation = struct('x', 0:0.1:20, ... % size of bins in space
-    'y', [-pi pi], ...
-    'directions', [0 pi], ...
-    'time', 0:0.01:10 );
+                     'y', [-pi pi], ...
+                     'directions', [0 pi], ...
+                     'time', 0:0.01:10 );
 
 d = geometry.dimension;
 vp = material.vp; vs = material.vs;
@@ -37,7 +37,7 @@ Ep = squeeze(obs.energyDensity(:,:,:,1));
 Es = squeeze(obs.energyDensity(:,:,:,2));
 
 % running Yoshimoto's Monte Carlo-based approach
-EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
+EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation );
 %EtotY = sum(EY,3);
 
 % computing semi-analytical solution (Nakahara 2011, Sato 1994)

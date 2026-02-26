@@ -1,5 +1,5 @@
 close all
-clear all
+clearvars
 clc
 
 titlecase = '3D acoustic case with isotropic scattering';
@@ -9,29 +9,29 @@ disp(['Testing ' titlecase ' ...']);
 geometry = struct( 'dimension', 3 );
 
 source = struct( 'numberParticles', 1e6, ...
-    'position', [0 0 0], ...
-    'lambda', 2e-4 );
+                 'position', [0 0 0], ...
+                 'lambda', 2e-4 );
 
 material = MaterialClass.preset(1);
 
 observation = struct( 'x', 0:0.1:10, ...
-    'y', [-pi pi], ...
-    'z', [-pi/2 pi/2], ...
-    'directions', [0 pi], ...
-    'time', 0:0.05:20, ...   % observation times
-    'Ndir', 10 );             % number of bins for directions
+                      'y', [-pi pi], ...
+                      'z', [-pi/2 pi/2], ...
+                      'directions', [0 pi], ...
+                      'time', 0:0.05:20);
 
 inds = [20 50 80]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( geometry, source, material, observation );
-Eus = squeeze(obs.energyDensity)/obs.dz;
+
+Eus = squeeze(obs.energyDensity);
 
 % running Yoshimoto's Monte Carlo-based approach
-EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
+EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation );
 
 % computing Paasschens solution
-[EP,Ediff] = Comparison.analyticalPaasschens( material, observation, geometry );
+[EP, Ediff] = Comparison.analyticalPaasschens( material, observation, geometry );
 
 % comparison
 figure; hold on; grid on; box on;

@@ -1,5 +1,5 @@
 close all
-clear all
+clearvars
 clc
 
 titlecase = '2D acoustic case with anisotropic scattering';
@@ -9,26 +9,27 @@ disp(['Testing ' titlecase ' ...']);
 geometry = struct( 'dimension', 2 );
 
 source = struct( 'numberParticles', 1e6, ...
-    'position', [0 0], ...
-    'lambda', 2e-4);
+                 'position', [0 0], ...
+                 'lambda', 2e-4);
 
 material = MaterialClass.preset(1);
-% forward scattering regime
+% forward scattering regime (the user can change this)
 material.sigma = {@(th) 1/4/pi*(1+4*cos(th).^4)};
 
 observation = struct( 'x', 0:0.03:9, ...
-    'y', [-pi pi], ...
-    'directions', [0 pi], ...
-    'time', 0:0.02:20 );
+                      'y', [-pi pi], ...
+                      'directions', [0 pi], ...
+                      'time', 0:0.02:20 );
 
 inds = [60 150 240]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( geometry, source, material, observation );
+
 Eus = squeeze(obs.energyDensity);
 
 % running Yoshimoto's Monte Carlo-based approach
-EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
+EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation );
 
 % visual comparison
 figure; hold on; grid on; box on;

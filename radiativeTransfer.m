@@ -142,5 +142,32 @@ end
 % energy density as a function of [x1 x2 t]
 obs.energyDensity = (1./(d1'*(d2*obs.N))).*double(E);
 
+% correc the normalizations to get an energy density
+if obs.d == 3
+    if isequal(ibins, [1 2])
+        obs.energyDensity = obs.energyDensity / obs.dz;
+    elseif isequal(ibins, [1 3])
+        obs.energyDensity = obs.energyDensity / obs.dy;
+    elseif isequal(ibins, [1 4])
+        obs.energyDensity = obs.energyDensity .* obs.dpsi / (obs.dy*obs.dz);
+    elseif isequal(ibins, [2 4])
+        obs.energyDensity = obs.energyDensity .* obs.dpsi / (obs.dx*obs.dz);
+    elseif isequal(ibins, [3 4])
+        obs.energyDensity = obs.energyDensity .* obs.dpsi / (obs.dx*obs.dy);
+    elseif isequal(ibins, [2 3])
+        obs.energyDensity = obs.energyDensity / obs.dx;
+    else
+        error('Unsupported bin combination in 3D');
+    end
+else
+    if isequal(ibins, [1 4])
+        obs.energyDensity = obs.energyDensity .* obs.dpsi / obs.dy;
+    elseif isequal(ibins, [2 4])
+        obs.energyDensity = obs.energyDensity .* obs.dpsi / obs.dx;
+    elseif ~isequal(ibins, [1 2])
+        error('Unsupported bin combination in 2D');
+    end
+end
+
 % energy as a function of [t]
 obs.energy = squeeze(tensorprod(d1,reshape(tensorprod(d2,obs.energyDensity,2,2),[length(d1) Nt 1+~acoustics]),2,1));

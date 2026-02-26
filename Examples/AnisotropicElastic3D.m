@@ -1,5 +1,5 @@
 close all
-clear all
+clearvars
 clc
 
 titlecase = '3D elastic case with anisotropic scattering';
@@ -8,9 +8,9 @@ disp(['Testing ' titlecase ' ...']);
 geometry = struct( 'dimension', 3 );
 
 source = struct( 'numberParticles', 1e6, ...
-    'position', [0 0 0], ...
-    'polarization', 'P', ...
-    'lambda', 0.002 );
+                 'position', [0 0 0], ...
+                 'polarization', 'P', ...
+                 'lambda', 0.002 );
 
 % The following setup favors a stochastic scattering regime
 freq = 10; % in Hz
@@ -25,22 +25,22 @@ material = MaterialClass( geometry, ...
 material = prepareSigma( material, geometry.dimension );
 
 observation = struct('x', 0:0.1:20, ... % size of bins in space
-    'y', [-pi pi], ...
-    'z', [-pi/2 pi/2], ...
-    'directions', [0 pi], ...
-    'time', 0:0.01:10 );
+                     'y', [-pi pi], ...
+                     'z', [-pi/2 pi/2], ...
+                     'directions', [0 pi], ...
+                     'time', 0:0.01:10 );
 
 inds = [20 50 80]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( geometry, source, material, observation );
 
-Ep = squeeze(obs.energyDensity(:,:,:,1))/obs.dz;
-Es = squeeze(obs.energyDensity(:,:,:,2))/obs.dz;
+Ep = squeeze(obs.energyDensity(:,:,:,1));
+Es = squeeze(obs.energyDensity(:,:,:,2));
 Etotus = Ep + Es;
 
 % running Yoshimoto's Monte Carlo-based approach
-EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation, false );
+EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
 EtotY = sum(EY,3);
 
 % comparison of P energy densities
