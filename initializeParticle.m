@@ -68,6 +68,9 @@ switch source.type
         n = source.direction(:)';
         n = n / norm(n);
 
+        % generate random positions (gaussian)
+        c_long = randn(N,1) * source.lambda/2;
+
         % create an orthonormal basis (u,v) for plane transverse to n
         % null(n) returns an orthonormal basis for the null space of n
         uv = null(n);
@@ -77,6 +80,7 @@ switch source.type
         switch lower(source.aperture)
 
             case 'rectangle'
+
                 % rectangular aperture (current behavior)
                 if isscalar(source.extent)
                     L1 = source.extent;
@@ -93,6 +97,7 @@ switch source.type
                 x = source.position + c_long.*n + c_trans1.*u + c_trans2.*v;
 
             case 'circle'
+
                 % circular aperture, uniform over a disk of radius R
                 if ~isscalar(source.extent)
                     error('For source.aperture = ''circle'', source.extent must be a scalar radius.');
