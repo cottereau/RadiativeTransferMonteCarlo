@@ -67,7 +67,7 @@ tic; obs_cart = radiativeTransfer( geometry, source, material, observation ); to
 
 %%%%%%%%%%%%%%%%% Analytical %%%%%%%%%%%%%%%%%%%%%
 
-EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation );
+EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation );
 
 %%%%%%%%%%%%%%%%% Plots %%%%%%%%%%%%%%%%%%%%%%%%%%
 figure; hold on;

@@ -2,7 +2,7 @@ close all
 clearvars
 clc
 
-error('To be done: 2D elastic differential scattering cross-sections to be investigated')
+warning('To be done: 2D elastic differential scattering cross-sections to be investigated')
 
 titlecase = '2D elastic case with anisotropic scattering';
 disp(['Testing ' titlecase ' ...']);
@@ -25,7 +25,7 @@ material = MaterialClass( geometry, ...
     [0.1 0. 0.], ...      % defines the correlation coefficient between (lambda,mu), (lambda,rho), and (mu,rho), respectively
     'exp', ...            % defines the autocorrelation function
     10);                 % defines the correlation length
-material = prepareSigma( material, geometry.dimension );
+material = MaterialClass.prepareSigma( material, geometry.dimension );
 
 observation = struct('x', 0:0.1:20, ... % size of bins in space
     'y', [-pi pi], ...
