@@ -78,6 +78,8 @@ classdef NonRegTestClass < matlab.unittest.TestCase
         end
     end
     methods (Test,TestTags = {'All','Material'})
-
+        function MaterialClass(testCase)
+            MaterialClassExample
+        end
     end
 end
