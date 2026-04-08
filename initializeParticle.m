@@ -20,7 +20,7 @@ switch source.type
         % angle follows a uniform law. If radial option is used, a
         % user-defined function (of the radius) is used instead.
         if ~isfield(source,'radial') || isempty(source.radial)
-            r = abs(randn(N,1)*source.lambda/2);
+            r = abs(randn(N,1)*source.lambda);
         else
             Rmax = source.radial.GridVectors{1}(end);
             invcdfsource = inverseCDF(source.radial,d,Rmax);
