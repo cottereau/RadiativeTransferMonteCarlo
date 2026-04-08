@@ -76,6 +76,9 @@ n = 1+~obs.acoustics;
 if isempty(cmax)
     cmax = squeeze(max(max(obs.energyDensity,[],1),[],2));
     cmax = cmax(ceil(obs.Nt/2),:);
+    if cmax == 0
+        cmax = max(obs.energyDensity(:));
+    end
 end
 
 % plot total energy - loop on time
