@@ -21,7 +21,7 @@ material = MaterialClass( geometry, ...
     freq, ...
     false, ...            % true for acoustics
     [6 6/sqrt(3)], ...    % defines the velocity of pressure waves and the shear waves
-    [0.8 0.8 0.], ...     % defines the coefficients of variation of lambda, mu (Lamé coefficients) and rho (density), respectively.
+    [0.2 0.2 0.], ...     % defines the coefficients of variation of lambda, mu (Lamé coefficients) and rho (density), respectively.
     [0.1 0. 0.], ...      % defines the correlation coefficient between (lambda,mu), (lambda,rho), and (mu,rho), respectively
     'exp', ...            % defines the autocorrelation function
     10);                 % defines the correlation length
@@ -41,7 +41,7 @@ Ep = squeeze(obs.energyDensity(:,:,:,1));
 Es = squeeze(obs.energyDensity(:,:,:,2));
 
 % running Yoshimoto's Monte Carlo-based approach
-EY = Comparison.randomWalkYoshimoto_beta( geometry, source, material, observation, false );
+EY = Comparison.randomWalkYoshimoto( geometry, source, material, observation, false );
 
 % comparison of P energy densities
 figure; hold on; grid on; box on;
