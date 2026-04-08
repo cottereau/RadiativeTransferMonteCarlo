@@ -20,7 +20,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
     initializeObservation( geometry, acoustics, observation, Np*Npk );
 
 % prepare scattering cross sections
-material = prepareSigma( material, d );
+material = MaterialClass.prepareSigma( material, d );
 
 % Pre-calculate properties of E so workers know what to allocate
 szE = size(E);
@@ -38,6 +38,13 @@ if hasParallelToolbox
     % This sends 'material' and 'geometry' to workers ONLY ONCE.
     cMaterial = parallel.pool.Constant(material);
     cGeometry = parallel.pool.Constant(geometry);
+
+    % Progress tracking via DataQueue
+    parNp        = Np;
+    parDone      = 0;
+    parTstart    = tic;
+    parQueue     = parallel.pool.DataQueue;
+    afterEach(parQueue, @updateParProgress_);
 
     % loop on packages of particles
     parfor ip = 1:Np
@@ -71,6 +78,9 @@ if hasParallelToolbox
 
         % Add the worker's local result to the main variable
         E = E + E_local;
+
+        % Signal completion of this packet to the progress tracker
+        send(parQueue, true);
 
     end
 
@@ -171,3 +181,19 @@ end
 
 % energy as a function of [t]
 obs.energy = squeeze(tensorprod(d1,reshape(tensorprod(d2,obs.energyDensity,2,2),[length(d1) Nt 1+~acoustics]),2,1));
+
+    % -----------------------------------------------------------------
+    % Nested function: called by afterEach on the DataQueue.
+    % Shares parNp, parDone, parTstart with the parent workspace.
+    function updateParProgress_( ~ )
+        parDone  = parDone + 1;
+        elapsed  = toc(parTstart);
+        printEvery = max(1, floor(parNp / 20)); % ~5 % steps
+        if parDone == 1 || mod(parDone, printEvery) == 0 || parDone == parNp
+            eta = elapsed / parDone * (parNp - parDone);
+            fprintf('  Packet %d/%d (%.0f%%) | Elapsed: %.1fs | ETA: %.1fs (%.1fmin)\n', ...
+                parDone, parNp, parDone/parNp*100, elapsed, eta, eta/60);
+        end
+    end
+
+end % radiativeTransfer
