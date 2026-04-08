@@ -1,5 +1,6 @@
 close all
 clearvars
+clear classes
 clc
 
 titlecase = '2D acoustic case with anisotropic scattering';

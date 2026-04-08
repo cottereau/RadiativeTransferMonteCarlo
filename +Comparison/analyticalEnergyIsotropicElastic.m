@@ -25,7 +25,7 @@ d = geometry.dimension;
 vp = material.vp; vs = material.vs; K = vp/vs;
 t = observation.time;
 
-material = prepareSigma(material,d);
+material = MaterialClass.prepareSigma(material,d);
 Sigma = material.Sigma;
 
 Sigmapp = Sigma(1,1); Sigmaps = Sigma(1,2);

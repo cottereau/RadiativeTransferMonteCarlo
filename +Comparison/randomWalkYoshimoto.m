@@ -1,4 +1,4 @@
-function energyDensity = randomWalkYoshimoto_beta(geometry, source, material, observation, movie)
+function energyDensity = randomWalkYoshimoto(geometry, source, material, observation, movie)
 % This function computes energy densities of acoustic/elastic waves assuming
 % isotropic scatter_indsing based on a random walk introduced in:
 % K. Yoshimoto, Monte Carlo simulation of seismogram envelopes in

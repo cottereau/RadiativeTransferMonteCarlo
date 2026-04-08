@@ -62,7 +62,7 @@ if ~isempty(I_err)
     results(I_err(index))
 end
 %% To Re RUN only the failed tests saved in the file 'RunAllResults.mat'
-if 0
+if 1
     %%
     clear all
     close all
