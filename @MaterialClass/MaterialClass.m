@@ -175,23 +175,56 @@ classdef MaterialClass < handle
             % of the wave equation for isotropic PSDF
             %
             % Syntax:
-            %   newobj = calcSigmaIsotropic (  );
+            %   newobj = calcSigmaIsotropic( );
             %
             % Inputs:
             %
             % Output:
-
-            % The formulas are based on
-            % L. Rhyzik, G. Papanicolaou, J. B. Keller. Transport equations for elastic
-            % and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
-            % doi: 10.1016/S0165-2125(96)00021-2
-            %it works only for 3D cases
+            % The 3D formulas are based on:
+            %   L. Ryzhik, G. Papanicolaou, J. B. Keller. Transport equations for elastic
+            %   and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
+            %   doi: 10.1016/S0165-2125(96)00021-2
+            %
+            % The 2D formulas are based on:
+            %   H. Sato, M. C. Fehler, T. Maeda. Seismic Wave Propagation and Scattering
+            %   in the Heterogeneous Earth, 2nd edition. Springer, 2012.
+            %   (Chapter 4, Born approximation for wave scattering in random media)
+            %   See also: R. S. Wu and K. Aki. Scattering characteristics of elastic waves
+            %   by an elastic heterogeneity. Geophysics 50(4), pp. 582-595, 1985.
+            %   doi: 10.1190/1.1441934
 
             switch obj.acoustics
                 case 1
                     switch obj.d
-                        case {1,2}
-                            error('\sigma for 1D and 2D not implemented')
+                        case 1
+                            error('\sigma for 1D not implemented')
+                        case 2
+                            % 2D ACOUSTICS
+                            % In 2D the differential scattering cross section has units of
+                            % length (not area), and the solid angle is replaced by dtheta.
+                            % Leading prefactor is (pi/4)*zeta^2 instead of (pi/2)*zeta^3.
+                            % Reference: Sato, Fehler & Maeda (2012), Ch. 4
+                            %
+                            %   sigma(th) = (pi/4) * zeta^2 * omega
+                            %               * (cos(th)^2 * delta_rr^2
+                            %                  + 2*cos(th)*rho_kr*delta_kk*delta_rr
+                            %                  + delta_kk^2)
+                            %               * Phi(zeta * sqrt(2*(1-cos(th))))
+                            %
+                            % This is the 2D analogue of Ryzhik et al. (1996) Eq. (1.3).
+                            % Note: Phi is the 2D isotropic PSDF evaluated at the
+                            % scalar wavenumber |k' - k| = k*sqrt(2*(1-cos(th))).
+
+                            zeta = (2*pi*obj.Frequency)/obj.v * obj.CorrelationLength;
+                            delta_kk = obj.coefficients_of_variation(1); % CV of compressibility
+                            delta_rr = obj.coefficients_of_variation(2); % CV of density
+                            rho_kr   = obj.correlation_coefficients;     % corr. of kappa and rho
+
+                            obj.sigma = {@(th) (pi/4)*zeta^2 * ...
+                                (cos(th).^2*delta_rr^2 + ...
+                                2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
+                                .*obj.Phi(zeta.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency)};
+
                         case 3
                             % acoustics
                             zeta = (2*pi*obj.Frequency)/obj.v*obj.CorrelationLength;
@@ -206,8 +239,81 @@ classdef MaterialClass < handle
                     end
                 case 0
                     switch obj.d
-                        case {1,2}
-                            error('\sigma for 1D and 2D not implemented')
+                        case 1
+                            error('\sigma for 1D not implemented')
+                        case 2
+                            % 2D ELASTICS
+                            % In 2D the prefactor changes from (pi/2)*zeta^3 -> (pi/4)*zeta^2,
+                            % and similarly for S-wave terms.
+                            % Reference: Sato, Fehler & Maeda (2012), Ch. 4;
+                            %            Wu & Aki (1985), Geophysics 50(4).
+                            %
+                            % All angular radiation-pattern numerators are identical to the
+                            % 3D case (they come from the polarisation/geometry of the
+                            % incident and scattered modes); only the dimensional prefactor
+                            % and the PSDF normalisation change.
+
+                            K      = obj.vp / obj.vs;
+                            zetaP  = (2*pi*obj.Frequency) / obj.vp * obj.CorrelationLength;
+                            zetaS  = K * zetaP;
+
+                            delta_ll = obj.coefficients_of_variation(1); % CV of lambda
+                            delta_mm = obj.coefficients_of_variation(2); % CV of mu
+                            delta_rr = obj.coefficients_of_variation(3); % CV of density
+                            rho_lm   = obj.correlation_coefficients(1);  % corr. lambda-mu
+                            rho_lr   = obj.correlation_coefficients(2);  % corr. lambda-density
+                            rho_mr   = obj.correlation_coefficients(3);  % corr. mu-density
+
+                            % --- P -> P ---
+                            % 2D analogue of [Ryzhik et al. 1996, Eq. (1.3)] and
+                            % [Sato et al. 2012, Ch. 4 / Wu & Aki 1985]
+                            sigmaPP = @(th) (pi/4)*zetaP^2 * ...
+                                ( (1-2/K^2)^2*delta_ll^2 ...
+                                + 4*(1/K^2 - 2/K^4)*rho_lm*delta_ll*delta_mm.*cos(th).^2 ...
+                                + (4/K^4)*delta_mm^2.*cos(th).^4 ...
+                                + delta_rr^2.*cos(th).^2 ...
+                                + 2*(1-2/K^2)*rho_lr*delta_ll*delta_rr.*cos(th) ...
+                                + (4/K^2)*rho_mr*delta_mm*delta_rr.*cos(th).^3 ) ...
+                                .*obj.Phi(zetaP.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency);
+
+                            % --- P -> S ---
+                            % 2D analogue of [Sato et al. 2012, Ch. 4; Ryzhik et al. Eqs.(4.56),(1.20),(1.22)]
+                            sigmaPS = @(th) (pi/4)*K*zetaP^2 * ...
+                                ( K^2*delta_rr^2 ...
+                                + 4*delta_mm^2.*cos(th).^2 ...
+                                + 4*K*rho_mr*delta_mm*delta_rr.*cos(th) ) ...
+                                .*(1-cos(th).^2) ...
+                                .*obj.Phi(zetaP.*sqrt(1+K^2-2*K*cos(th))) * (2*pi*obj.Frequency);
+
+                            % --- S -> P ---
+                            % 2D analogue of [Sato et al. 2012, Ch. 4; Ryzhik et al. Eqs.(4.56),(1.20),(1.21)]
+                            sigmaSP = @(th) (pi/8/K^3)*zetaS^2 * ...
+                                ( delta_rr^2 ...
+                                + (4/K^2)*delta_mm^2.*cos(th).^2 ...
+                                + (4/K)*rho_mr*delta_mm*delta_rr.*cos(th) ) ...
+                                .*(1-cos(th).^2) ...
+                                .*obj.Phi(zetaS.*sqrt(1+1/K^2-2/K*cos(th))) * (2*pi*obj.Frequency);
+
+                            % --- S -> S ---
+                            % 2D analogue of [Ryzhik et al., Eq. (4.54); Sato et al. 2012, Ch. 4]
+                            % In 2D, SH and SV are decoupled; the combined SS term below
+                            % corresponds to the in-plane (SV-SV) scattering coefficient.
+                            sigmaSS_TT = @(th) (pi/8)*zetaS^2*delta_rr^2 ...
+                                .*(1+cos(th).^2) ...
+                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency);
+
+                            sigmaSS_GG = @(th) (pi/8)*zetaS^2*delta_mm^2 ...
+                                .*(4*cos(th).^4 - 3*cos(th).^2 + 1) ...
+                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency);
+
+                            sigmaSS_GT = @(th) (pi/8)*zetaS^2*rho_mr*delta_mm*delta_rr ...
+                                .*(4*cos(th).^3) ...
+                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency);
+
+                            sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
+
+                            obj.sigma = {sigmaPP, sigmaPS; ...
+                                sigmaSP, sigmaSS};
                         case 3
                             %elastic
                             K = obj.vp/obj.vs;
