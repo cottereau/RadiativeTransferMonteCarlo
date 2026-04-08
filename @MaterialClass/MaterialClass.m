@@ -52,7 +52,7 @@ classdef MaterialClass < handle
     end
     properties (SetAccess = private, Hidden = true)
         Type_def = {'isotropic'}; %the anisotropic should be implemented
-        SpectralLaw_def = {'exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersesphere','image','Imported'};
+        SpectralLaw_def = {'','exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersesphere','image','Imported'};
     end
     methods
         function obj = MaterialClass(geometry,freq,acoustics, ...
@@ -504,7 +504,7 @@ classdef MaterialClass < handle
             % scattering properties
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
-            obj.SpectralLaw = 'PowerLaw';
+            obj.SpectralLaw = 'power_law';
             % out = @(z) 1./(pi^4)*exp(-2*z/pi);
             % obj.Phi = out;
             % obj.R = @(z) 1./(1+(pi^2*z.^2/4))^2;
@@ -603,7 +603,7 @@ classdef MaterialClass < handle
             % scattering properties
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
-            obj.SpectralLaw = 'LowPass';
+            obj.SpectralLaw = 'low_pass';
             out = @(z) (2/9/pi^4)*obj.heaviside(3*pi/2-z);
             obj.Phi = out;
             obj.R = @(z) (3*(sin(3*pi*z/2)-3*pi*z/2.*cos(3*pi*z/2)))./(3*pi*z/2).^3;
@@ -1661,14 +1661,14 @@ classdef MaterialClass < handle
             o.ampSVP  = ampSV2P;
             o.ampSHSH = ampSH2SH;
         end
+    end
+    methods(Static)
         %% OTHER
         function h = heaviside(h)
             h(h>0) = 1;
             h(h==0) = 1/2;
             h(h<0) = 0;
         end
-    end
-    methods(Static)
         function obj = preset(n)
             obj = MaterialClass();
             switch n
