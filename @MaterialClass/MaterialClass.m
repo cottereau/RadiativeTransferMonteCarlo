@@ -515,7 +515,7 @@ classdef MaterialClass < handle
                 obj.R = @(z) 1./(1+(2*z)^2)^2;
                 obj.Phi = @(z) (pi/8)*z.*besselk(1,z/2);
             elseif obj.d == 3
-                obj.R = @(z) 1./(1+((6*pi)^(1/3)*z)^2)^2;
+                obj.R = @(z) 1./(1+((6*pi)^(1/3)*z).^2).^2;
                 obj.Phi = @(z) (pi/6)*exp(-z/((6*pi)^(1/3)));
             else
                 error('incorrect dimension!')
@@ -648,16 +648,16 @@ classdef MaterialClass < handle
             obj.CorrelationLength = lc;
 
             if obj.d == 1
-                obj.R = @(z) @(z) 2^(1-nu)/gamma(nu) * ...
+                obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
                     (2*sqrt(pi)*gamma(nu+0.5)/gamma(nu)*z).^nu ...
                     .* besselk(nu,2*sqrt(pi)*gamma(nu+0.5)/gamma(nu)*z);
                 obj.Phi = @(z) 1 ./ (1 + (z/(2*sqrt(pi)*gamma(nu+0.5)/gamma(nu))).^2).^(nu+0.5);
             elseif obj.d == 2
-                obj.R = @(z) @(z) 2^(1-nu)/gamma(nu) * ...
+                obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
                     (4*sqrt(nu)*z).^nu .* besselk(nu,4*sqrt(nu)*z);
                 obj.Phi = @(z) (pi/4) * 1 ./ (1 + (z/(4*sqrt(nu))).^2).^(nu+0.5);
             elseif obj.d == 3
-                obj.R = @(z) @(z) 2^(1-nu)/gamma(nu) * ...
+                obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
                     ((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3)*z).^nu .* ...
                     besselk(nu,((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3))*z);
                 obj.Phi = @(z) (pi/46) * 1 ./ (1 + (z/((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3))).^2).^(nu+1.5);
@@ -802,6 +802,16 @@ classdef MaterialClass < handle
                     chi_r   = hankel_inv(chi_hat);
                     S2_r    = max(0, min(1, eta^2 + chi_r));
 
+                    Racf = S2_r - S2_r(end);
+                    Racf = Racf./Racf(1);
+
+                    obj.R = @(z) interp1(r_py, Racf, z, 'makima', 0);
+                    obj.CalcLc;
+                    raux_norm = r_py / obj.CorrelationLength;
+                    obj.R = @(z) interp1(raux_norm, Racf, z, 'makima', 0);
+
+                    obj.CalcPhi;
+                    
                     % Equation of state printout
                     [~, idx_c] = min(abs(r_py - D));
                     g_contact  = g_r(idx_c);
@@ -1042,13 +1052,12 @@ classdef MaterialClass < handle
             % --- correlation length (3D definition: lc^3 = 3*int r^2 R dr) ---
             % Use the simpler integral form: Lc = 2 * int_0^inf R(r) dr
             R_interp = @(z) interp1(r_phys, Racf, z, 'makima', 0);
-            Lc = 2 * integral(R_interp, 0, r_phys(end));
+            Lc = obj.CalcLc;
             if Lc <= 0
                 warning('MaterialClass:GetPSDFromImage', ...
                     'Correlation length came out non-positive (%.4g). Check image.', Lc);
                 Lc = r_phys(end) / 10;
             end
-            obj.CorrelationLength = Lc;
 
             % normalise r by Lc
             r_norm = r_phys / Lc;
@@ -1205,9 +1214,13 @@ classdef MaterialClass < handle
             % For isotropic correlation functions in d dimensions.
             
             % Use a logarithmic grid for integration to capture decay
-            r = logspace(-4, 3, 4096);  % covers range from very small to large
+            if(isempty(obj.r))
+                r = logspace(-4, 3, 4096); 
+            else
+                r = obj.r;
+            end
             R_vals = obj.R(r);
-            
+
             if obj.d == 1
                 % Lc = 2 * int_0^inf R(r) dr
                 Lc = 2 * trapz(r, R_vals);
@@ -1222,6 +1235,7 @@ classdef MaterialClass < handle
             else
                 error('MaterialClass:InvalidDimension', 'Dimension must be 1, 2, or 3');
             end
+            obj.CorrelationLength = Lc;
         end
         function out = CalcPhi(obj)
             %% CalcPhi
@@ -2057,7 +2071,7 @@ classdef MaterialClass < handle
                 mat.meanFreePath = mat.v * mat.meanFreeTime;
 
                 mat.transportMeanFreePath = double(d) * mat.Diffusivity / mat.v;
-                mat.transportMeanFreeTime = mat.transportMeanFreeTime;
+                mat.transportMeanFreeTime = mat.transportMeanFreePath/mat.v;
 
                 % anisotropy coefficient (characterizes scattering directionality)
                 mat.g = 1 - mat.meanFreePath/mat.transportMeanFreePath;
