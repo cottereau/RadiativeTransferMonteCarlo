@@ -116,4 +116,26 @@ matMD2.getPSDF %it builds the power spectral density function
 matMD2.PlotCorrelation;
 matMD2.PlotPSD;
 matMD2 = matMD2.prepareSigma(matMD2,matMD2.d);
-%% 'Imported'
+%% create ''sphere'' sample
+
+D = 1;
+phi = 0.3;
+L = [50 20 10];
+centersSphere = MaterialClass.CreateSphereComposite(L,D,phi);
+MaterialClass.plot_map(centersSphere, D, L);
+
+D = 1;
+phi = 0.2;
+L = [100 50];
+centersDisk = MaterialClass.CreateSphereComposite(L,D,phi);
+MaterialClass.plot_map(centersDisk, D, L);
+
+D = 1;
+phi = 0.35;
+L = 100;
+centersRod = MaterialClass.CreateSphereComposite(L,D,phi);
+MaterialClass.plot_map(centersRod, D, L);
+
+
+
+%% create a voxelization 

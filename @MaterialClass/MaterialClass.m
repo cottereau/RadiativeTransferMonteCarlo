@@ -811,7 +811,7 @@ classdef MaterialClass < handle
                     obj.R = @(z) interp1(raux_norm, Racf, z, 'makima', 0);
 
                     obj.CalcPhi;
-                    
+
                     % Equation of state printout
                     [~, idx_c] = min(abs(r_py - D));
                     g_contact  = g_r(idx_c);
@@ -1806,13 +1806,11 @@ classdef MaterialClass < handle
         end
         out = ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
         out = ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
-        function Microestrutura = VoxelizeDomain(coordinates, D, L, resolucao)
+        function Microstruture = VoxelizeDomain(coordinates, D, L, resolucao)
             %% VoxelizeDomain
             % Discretise a periodic 3D domain into a binary voxel grid and
             % paint spheres centred at the given coordinates.
             %
-            % This is a direct MATLAB translation of voxelize_domain() from
-            % Center2S2func.py, keeping the same periodic-boundary logic.
             %
             % Syntax:
             %   Microestrutura = MaterialClass.VoxelizeDomain(coordinates, D, L, resolucao)
@@ -1843,7 +1841,7 @@ classdef MaterialClass < handle
             nz = ceil(L(3) / resolucao);
 
             % initialise as matrix phase (false)
-            Microestrutura = false(nx, ny, nz);
+            Microstruture = false(nx, ny, nz);
 
             R = D / 2;   % sphere radius
 
@@ -1897,7 +1895,7 @@ classdef MaterialClass < handle
 
                 % linear indices for assignment
                 lin_idx = sub2ind([nx ny nz], IX(mask), IY(mask), IZ(mask));
-                Microestrutura(lin_idx) = true;
+                Microstruture(lin_idx) = true;
             end
 
             fprintf('Voxelizacao concluida.\n');
@@ -2127,6 +2125,111 @@ classdef MaterialClass < handle
             ind = find(diff(cdf)>1e-8);
             ind = unique([ind ind+1]);
             invcdf = griddedInterpolant(cdf(ind),xth(ind));
+        end
+        function centers = CreateSphereComposite(L,D,phi)
+            %cria um composito de matriz m (prop1) e inclusao i (prop2)
+            %usando o metodo Random Sequential 
+
+            %L is the size can be 2D or 3D
+            % D is the diameter
+            % phi is the volume fraction
+
+            dim = numel(L);
+
+            switch dim
+                case 1
+                    [centers, ~] = MaterialClass.rod_packing_ls(L,D,phi);
+                case 2
+                    [centers, ~] = MaterialClass.disk_packing_ls(L,D,phi);
+                case 3
+                    [centers, ~] = MaterialClass.sphere_packing_ls(L,D,phi);
+            end
+        end
+        [centers, nobj] = rod_packing_ls(L,D,phi);
+        [centers, nobj] = disk_packing_ls(L,D,phi);
+        [centers, nobj] = sphere_packing_ls(L,D,phi);
+        function plot_map(centers, DD, L)
+            %% plot_map  Visualise a packing produced by the *_packing_ls routines.
+            %
+            % Syntax:
+            %   MaterialClass.plot_map(centers, n, DD, L)
+            %
+            % Inputs:
+            %   centers  – n-by-d array of object centres (d = 1, 2, or 3)
+            %   DD       – object diameter (or length for 1-D)
+            %   L        – box size: scalar (1-D), 1x2 (2-D), or 1x3 (3-D)
+
+            dim = size(centers, 2);
+            n = size(centers,1);
+            switch dim
+                case 1
+                    figure('Name', '1D Rod Packing', 'Color', 'w');
+                    hold on;
+                    ylim([0 2]);
+                    xlim([0 L]);
+                    title(sprintf('1D Hard Rod Packing — N=%d, D=%.4g, L=%.4g, \\phi=%.4f', ...
+                        n, DD, L, n*DD/L));
+                    for i = 1:n
+                        x = centers(i);
+                        rectangle('Position', [x-DD/2, 0.8, DD, 0.4], ...
+                            'FaceColor', [0.3 0.6 1.0], 'EdgeColor', [0.1 0.3 0.7], 'LineWidth', 1.5);
+                        if x - DD/2 < 0
+                            rectangle('Position', [x-DD/2+L, 0.8, DD-(x-DD/2+L-L), 0.4], ...
+                                'FaceColor', [0.3 0.6 1.0], 'EdgeColor', [0.1 0.3 0.7]);
+                        end
+                        if x + DD/2 > L
+                            rectangle('Position', [0, 0.8, x+DD/2-L, 0.4], ...
+                                'FaceColor', [0.3 0.6 1.0], 'EdgeColor', [0.1 0.3 0.7]);
+                        end
+                    end
+                    line([0 L], [0.7 0.7], 'Color', 'k', 'LineWidth', 2);
+                    xlabel('Position');
+                    set(gca, 'YTick', []);
+                    hold off;
+
+                case 2
+                    figure('Name', 'Disk Packing', 'Color', 'w');
+                    hold on; axis equal;
+                    xlim([0 L(1)]); ylim([0 L(2)]);
+                    xlabel('x'); ylabel('y');
+                    phi = n * pi * (DD/2)^2 / (L(1)*L(2));
+                    title(sprintf('Disk Packing — N=%d, D=%.4g, Box=%.2g x %.2g, \\phi=%.4f', ...
+                        n, DD, L(1), L(2), phi));
+                    theta = linspace(0, 2*pi, 60);
+                    r  = DD / 2;
+                    cx = r * cos(theta);
+                    cy = r * sin(theta);
+                    for i = 1:n
+                        fill(centers(i,1)+cx, centers(i,2)+cy, [0.3 0.6 1.0], ...
+                            'EdgeColor', [0.1 0.3 0.7], 'LineWidth', 0.4, 'FaceAlpha', 0.7);
+                    end
+                    rectangle('Position', [0, 0, L(1), L(2)], 'EdgeColor', 'k', 'LineWidth', 1.5);
+                    hold off;
+
+                case 3
+                    figure('Name', 'Sphere Packing', 'Color', 'w');
+                    hold on; axis equal; grid on;
+                    xlim([0 L(1)]); ylim([0 L(2)]); zlim([0 L(3)]);
+                    xlabel('x'); ylabel('y'); zlabel('z');
+                    phi = n * (4/3)*pi*(DD/2)^3 / (L(1)*L(2)*L(3));
+                    title(sprintf('Sphere Packing — N=%d, D=%.4g, \\phi=%.4f', n, DD, phi));
+                    marker_size = (DD / max(L))*100;
+                    scatter3(centers(1:n,1), centers(1:n,2), centers(1:n,3), ...
+                        marker_size, [0.3 0.6 1.0], 'filled', ...
+                        'MarkerEdgeColor', [0.1 0.3 0.7], 'MarkerFaceAlpha', 0.7);
+                    corners = [0 0 0; L(1) 0 0; L(1) L(2) 0; 0 L(2) 0; ...
+                               0 0 L(3); L(1) 0 L(3); L(1) L(2) L(3); 0 L(2) L(3)];
+                    edges = [1 2; 2 3; 3 4; 4 1; 5 6; 6 7; 7 8; 8 5; 1 5; 2 6; 3 7; 4 8];
+                    for e = 1:size(edges, 1)
+                        line(corners(edges(e,:),1)', corners(edges(e,:),2)', corners(edges(e,:),3)', ...
+                            'Color', 'k', 'LineWidth', 1.5);
+                    end
+                    view(3);
+                    hold off;
+
+                otherwise
+                    error('plot_map: centers must have 1, 2, or 3 columns.');
+            end
         end
     end
 end
