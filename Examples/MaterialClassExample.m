@@ -2,6 +2,7 @@ close all
 clear variables
 clc
 % power_law 2D error
+% Von Karman model error
 
 %% define an acoustics material
 d = 3;
@@ -135,7 +136,35 @@ phi = 0.35;
 L = 100;
 centersRod = MaterialClass.CreateSphereComposite(L,D,phi);
 MaterialClass.plot_map(centersRod, D, L);
+%% create a voxelization
 
+resolution = 0.5;
 
+% 3D — spheres  (L = [50 20 10], D = 1)
+M3D = MaterialClass.VoxelizeDomain(centersSphere, 1, [50 20 10], resolution);
+fprintf('3D phi_vox = %.4f\n', mean(M3D(:)));
 
-%% create a voxelization 
+% 2D — disks  (L = [100 50], D = 1)
+M2D = MaterialClass.VoxelizeDomain(centersDisk, 1, [100 50], resolution);
+fprintf('2D phi_vox = %.4f\n', mean(M2D(:)));
+
+% 1D — rods  (L = 100, D = 1)
+M1D = MaterialClass.VoxelizeDomain(centersRod, 1, 100, resolution);
+fprintf('1D phi_vox = %.4f\n', mean(M1D(:)));
+
+%% GetPSDFromImage: correlation function and PSDF from voxelized microstructures
+
+% 3D — spheres
+mat3D = MaterialClass();
+mat3D.d = 3;
+mat3D.GetPSDFromImage(M3D, resolution);
+
+% 2D — disks
+mat2D = MaterialClass();
+mat2D.d = 2;
+mat2D.GetPSDFromImage(M2D, resolution);
+
+% 1D — rods
+mat1D = MaterialClass();
+mat1D.d = 1;
+mat1D.GetPSDFromImage(M1D, resolution);

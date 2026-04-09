@@ -953,7 +953,7 @@ classdef MaterialClass < handle
             end
         end
         %% function to evaluate PSDF: an image
-        function out = GetPSDFromImage(obj, Im, dx, dy, dz)
+        function out = GetPSDFromImage(obj, Im, dx)
             %% GetPSDFromImage
             % Compute the normalised power spectral density function from a
             % 2D grayscale image or a 3D binary volume (logical/uint8/double).
@@ -1016,14 +1016,89 @@ classdef MaterialClass < handle
                 I = double(I > 0.5);
             end
 
-            % domain size in physical units
+            % =========================================================
+            % 1-D branch: vector input
+            % =========================================================
+            if isvector(I)
+                I       = I(:);
+                N       = numel(I);
+                phi_vol = mean(I);
+
+                % S2 via FFT (Wiener-Khinchin), periodic domain
+                F      = fft(I);
+                S2_raw = real(ifft(F .* conj(F))) / N;
+                S2_raw = fftshift(S2_raw);          % r=0 at centre
+
+                % take non-negative-r half
+                half      = floor(N/2);
+                S2_radial = S2_raw(half+1 : end);
+                r_axis    = (0 : numel(S2_radial)-1)' * dx;
+
+                % clip to L/2
+                keep      = r_axis <= N*dx/2;
+                r_axis    = r_axis(keep);
+                S2_radial = S2_radial(keep);
+
+                % normalised ACF
+                denom = phi_vol * (1 - phi_vol);
+                if denom < 1e-12
+                    warning('MaterialClass:GetPSDFromImage', ...
+                        'Volume fraction is %.4f — image may be degenerate.', phi_vol);
+                    denom = 1;
+                end
+                Racf   = (S2_radial - phi_vol^2) / denom;
+                r_phys = r_axis;
+
+                % Hann window
+                right_win = min(200, floor(numel(Racf)/4));
+                win = hann(2*right_win);
+                Racf(end-right_win+1:end) = ...
+                    Racf(end-right_win+1:end) .* win(right_win+1:end);
+
+                % correlation length: Lc = 2 * int_0^inf R(r) dr  (1D definition)
+                Lc = 2 * trapz(r_phys, max(Racf, 0));
+                if Lc <= 0
+                    warning('MaterialClass:GetPSDFromImage', ...
+                        'Correlation length came out non-positive (%.4g). Check image.', Lc);
+                    Lc = r_phys(end) / 10;
+                end
+                obj.CorrelationLength = Lc;
+
+                r_norm = r_phys / Lc;
+                obj.r  = r_norm;
+                obj.R  = @(z) interp1(r_norm, Racf, z, 'makima', 0);
+
+                % 1D PSDF: Phi(k) = (1/pi) * int_0^inf R(r) cos(k*r) dr
+                Nk_psd    = 512;
+                k_max_psd = min(pi / mean(diff(r_norm)), 6.0);
+                obj.k     = linspace(0, k_max_psd, Nk_psd);
+                psd_vals  = zeros(1, Nk_psd);
+                for ik = 1:Nk_psd
+                    psd_vals(ik) = (1/pi) * trapz(r_norm, Racf .* cos(obj.k(ik) .* r_norm));
+                end
+                psd_vals = max(psd_vals, 0);
+                obj.Phi  = @(z) interp1(obj.k, psd_vals, z, 'makima', 0);
+                out      = obj.Phi;
+
+                r_plot  = r_norm(r_norm <= 6);
+                S2_plot = S2_radial(r_norm <= 6);
+                R_plot  = Racf(r_norm <= 6);
+                MaterialClass.psd_summary_figure('1D', phi_vol, Lc, ...
+                    r_plot, S2_plot, R_plot, obj.k, psd_vals, phi_vol);
+                return;
+            end
+
+            % =========================================================
+            % 2-D / 3-D branch
+            % =========================================================
             [nx, ny, nz] = size(I);
             if nz == 1
-                % 2D image: treat as single-voxel-thick volume
-                L = [nx*dx, ny*dy, dz];
+                % 2D image — set L so that min(L) = min physical dimension,
+                % not a single voxel (which would limit max_r to half a pixel)
+                L         = [nx*dx, ny*dy, min(nx*dx, ny*dy)];
                 resolucao = min([dx dy]);
             else
-                L = [nx*dx, ny*dy, nz*dz];
+                L         = [nx*dx, ny*dy, nz*dz];
                 resolucao = min([dx dy dz]);
             end
 
@@ -1032,97 +1107,79 @@ classdef MaterialClass < handle
                 MaterialClass.CalcS2Correlation(I, resolucao, L);
 
             % --- normalised autocorrelation R(r) = [S2(r)-phi^2]/[phi*(1-phi)] ---
-            % Avoid division by zero for degenerate (all-0 or all-1) images
             denom = phi_vol * (1 - phi_vol);
             if denom < 1e-12
                 warning('MaterialClass:GetPSDFromImage', ...
                     'Volume fraction is %.4f — image may be degenerate.', phi_vol);
                 denom = 1;
             end
-            Racf = (S2_radial - phi_vol^2) / denom;
-            Racf = Racf(:);          % ensure column vector
-            r_phys = r_axis(:);     % physical radial axis [same unit as dx]
+            Racf   = (S2_radial - phi_vol^2) / denom;
+            Racf   = Racf(:);
+            r_phys = r_axis(:);
 
-            % Apply Hann window to suppress tail oscillations
+            % Hann window
             right_win = min(200, floor(numel(Racf)/4));
             win = hann(2*right_win);
             Racf(end-right_win+1:end) = ...
                 Racf(end-right_win+1:end) .* win(right_win+1:end);
 
-            % --- correlation length (3D definition: lc^3 = 3*int r^2 R dr) ---
-            % Use the simpler integral form: Lc = 2 * int_0^inf R(r) dr
-            R_interp = @(z) interp1(r_phys, Racf, z, 'makima', 0);
+            % correlation length — set obj.r/obj.R in physical units first so
+            % CalcLc can integrate using the correct dimension formula (obj.d)
+            obj.r = r_phys;
+            obj.R = @(z) interp1(r_phys, Racf, z, 'makima', 0);
             Lc = obj.CalcLc;
             if Lc <= 0
                 warning('MaterialClass:GetPSDFromImage', ...
                     'Correlation length came out non-positive (%.4g). Check image.', Lc);
                 Lc = r_phys(end) / 10;
             end
+            obj.CorrelationLength = Lc;
 
-            % normalise r by Lc
+            % re-normalise r by Lc
             r_norm = r_phys / Lc;
             obj.r  = r_norm;
             obj.R  = @(z) interp1(r_norm, Racf, z, 'makima', 0);
 
-            % --- 3D PSDF via Fourier-Bessel (sinc) quadrature ---
-            %   Phi(k) = 4*pi/(2*pi)^3 * int_0^inf r^2 sinc(k*r) R(r) dr
-            %   with r and k both normalised by Lc
-            Nk_psd = 512;
-            k_max_psd = pi / mean(diff(r_norm));  % Nyquist in normalised units
-            k_max_psd = min(k_max_psd, 6.0);       % cap at 6/Lc (physically meaningful)
-            obj.k = linspace(0, k_max_psd, Nk_psd);
+            % PSDF via Fourier-Bessel quadrature
+            %   2D: Phi(k) = 1/(2*pi) * int_0^inf r*J0(k*r)*R(r) dr
+            %   3D: Phi(k) = 4*pi/(2*pi)^3 * int_0^inf r^2*sinc(k*r)*R(r) dr
+            Nk_psd    = 512;
+            k_max_psd = min(pi / mean(diff(r_norm)), 6.0);
+            obj.k     = linspace(0, k_max_psd, Nk_psd);
+            psd_vals  = zeros(1, Nk_psd);
 
-            psd_vals = zeros(1, Nk_psd);
-            for ik = 1:Nk_psd
-                if obj.k(ik) < 1e-8
-                    integrand = r_norm.^2 .* Racf;
-                else
+            if nz == 1
+                % 2D Hankel transform
+                for ik = 1:Nk_psd
                     kr = obj.k(ik) * r_norm;
-                    j0 = sin(kr) ./ kr;
-                    j0(kr < 1e-12) = 1;
-                    integrand = r_norm.^2 .* Racf .* j0;
+                    J0 = besselj(0, kr);
+                    psd_vals(ik) = (1/(2*pi)) * trapz(r_norm, r_norm .* Racf .* J0);
                 end
-                psd_vals(ik) = (4*pi / (2*pi)^3) * trapz(r_norm, integrand);
+            else
+                % 3D spherical Fourier-Bessel (sinc) transform
+                for ik = 1:Nk_psd
+                    if obj.k(ik) < 1e-8
+                        integrand = r_norm.^2 .* Racf;
+                    else
+                        kr = obj.k(ik) * r_norm;
+                        j0 = sin(kr) ./ kr;
+                        j0(kr < 1e-12) = 1;
+                        integrand = r_norm.^2 .* Racf .* j0;
+                    end
+                    psd_vals(ik) = (4*pi / (2*pi)^3) * trapz(r_norm, integrand);
+                end
             end
-            psd_vals = max(psd_vals, 0);   % enforce non-negativity
+            psd_vals = max(psd_vals, 0);
 
             obj.Phi = @(z) interp1(obj.k, psd_vals, z, 'makima', 0);
-            out = obj.Phi;
+            out     = obj.Phi;
 
-            % --- summary figure: S2(r), R(r), PSDF ---
             r_plot  = r_norm(r_norm <= 6);
             S2_plot = S2_radial(r_norm <= 6);
             R_plot  = Racf(r_norm <= 6);
-
-            fig = figure('Name','GetPSDFromImage — Microstructure Descriptors', ...
-                'Color','w', 'Position',[120 80 1200 400]);
-            tl = tiledlayout(1, 3, 'TileSpacing','compact', 'Padding','compact');
-            title(tl, sprintf('Image PSDF  (\\phi = %.4f,  L_c = %.4g)', phi_vol, Lc), ...
-                'FontSize', 13, 'FontWeight', 'bold');
-
-            nexttile;
-            plot(r_plot, S2_plot, 'm-', 'LineWidth', 1.8);
-            hold on;
-            yline(phi_vol^2, 'k--', 'LineWidth', 0.8, 'Label', '\phi^2', ...
-                'LabelVerticalAlignment','bottom');
-            yline(phi_vol,   'k:',  'LineWidth', 0.8, 'Label', '\phi');
-            xlabel('r / L_c');  ylabel('S_2(r)');
-            title('Two-Point Correlation S_2(r)');
-            xlim([0 max(r_plot)]);  grid on;  box on;
-
-            nexttile;
-            plot(r_plot, R_plot, 'b-', 'LineWidth', 1.8);
-            hold on;
-            yline(0, 'k--', 'LineWidth', 0.8);
-            xlabel('r / L_c');  ylabel('R(r)');
-            title('Normalised Autocorrelation R(r)');
-            xlim([0 max(r_plot)]);  grid on;  box on;
-
-            nexttile;
-            plot(obj.k, psd_vals, 'r-', 'LineWidth', 1.8);
-            xlabel('k \cdot L_c');  ylabel('\Phi(k)');
-            title('Power Spectral Density \Phi(k)');
-            xlim([0 min(6, obj.k(end))]);  grid on;  box on;
+            dim_label = sprintf('%dD', 2 + (nz > 1));
+            MaterialClass.psd_summary_figure(dim_label, phi_vol, Lc, ...
+                r_plot, S2_plot, R_plot, obj.k, psd_vals, phi_vol);
         end
         function out = ImportPSDF(obj, Cin, rin)
             %% ImportPSDF
@@ -1806,96 +1863,124 @@ classdef MaterialClass < handle
         end
         out = ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
         out = ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
-        function Microstruture = VoxelizeDomain(coordinates, D, L, resolucao)
+        function Microstruture = VoxelizeDomain(coordinates, D, L, resolution)
             %% VoxelizeDomain
-            % Discretise a periodic 3D domain into a binary voxel grid and
-            % paint spheres centred at the given coordinates.
-            %
+            % Discretise a periodic domain into a binary pixel/voxel grid and
+            % paint rods (1D), disks (2D), or spheres (3D) at the given centres.
             %
             % Syntax:
-            %   Microestrutura = MaterialClass.VoxelizeDomain(coordinates, D, L, resolucao)
+            %   M = MaterialClass.VoxelizeDomain(coordinates, D, L, resolution)
             %
             % Inputs:
-            %   coordinates : (N x 3) array of sphere centre positions [x y z]
-            %                 in the same units as D and L.
-            %   D           : sphere diameter.
-            %   L           : 1x3 domain size  [Lx  Ly  Lz].
-            %   resolucao   : voxel edge length (isotropic).
+            %   coordinates : N x d  array of object centres  (d = 1, 2, or 3)
+            %   D           : object diameter (scalar)
+            %   L           : domain size — scalar (1D), 1x2 (2D), or 1x3 (3D)
+            %   resolution  : pixel/voxel edge length (isotropic)
             %
             % Output:
-            %   Microestrutura : logical array of size [nx ny nz].
-            %                    true  = solid (sphere) phase.
-            %                    false = matrix phase.
+            %   Microstruture : logical array
+            %                   1D → nx x 1
+            %                   2D → nx x ny
+            %                   3D → nx x ny x nz
+            %                   true = solid phase, false = matrix phase
             %
-            % Example:
-            %   % 200 random spheres, D=4, box 100x100x100, voxel=1
-            %   ctrs = rand(200,3) .* [100 100 100];
-            %   M = MaterialClass.VoxelizeDomain(ctrs, 4, [100 100 100], 1);
-            %   phi_vox = mean(M(:))   % should be close to 200*pi/6*4^3/1e6
+            % Examples:
+            %   % 1D rods
+            %   c1 = rand(50,1) * 1;
+            %   M1 = MaterialClass.VoxelizeDomain(c1, 0.05, 1, 0.002);
+            %
+            %   % 2D disks
+            %   c2 = rand(100,2) .* [1 1];
+            %   M2 = MaterialClass.VoxelizeDomain(c2, 0.05, [1 1], 0.002);
+            %
+            %   % 3D spheres
+            %   c3 = rand(200,3) .* [100 100 100];
+            %   M3 = MaterialClass.VoxelizeDomain(c3, 4, [100 100 100], 1);
 
-            fprintf('Voxelizando o dominio...\n');
+            dim = size(coordinates, 2);
+            R   = D / 2;
+            n_obj = size(coordinates, 1);
+            report_step = max(1, floor(n_obj / 10));
 
-            % domain discretisation
-            nx = ceil(L(1) / resolucao);
-            ny = ceil(L(2) / resolucao);
-            nz = ceil(L(3) / resolucao);
+            fprintf('Voxelizando o dominio (%dD)...\n', dim);
 
-            % initialise as matrix phase (false)
-            Microstruture = false(nx, ny, nz);
+            switch dim
+                % ---------------------------------------------------------
+                case 1
+                    nx = ceil(L / resolution);
+                    xv = linspace(0, L, nx);
+                    Microstruture = false(nx, 1);
 
-            R = D / 2;   % sphere radius
+                    for i = 1:n_obj
+                        if n_obj > 100 && mod(i, report_step) == 0
+                            fprintf('  Progresso: %.1f%%\n', 100*i/n_obj);
+                        end
+                        cx = coordinates(i);
+                        ix = mod(find(abs(xv - cx) <= R) - 1, nx) + 1;
+                        if isempty(ix), continue; end
+                        ddx = abs(xv(ix) - cx);
+                        ddx = ddx - (ddx > L/2) * L;
+                        Microstruture(ix(abs(ddx) <= R)) = true;
+                    end
 
-            % voxel-centre coordinate vectors
-            xv = linspace(0, L(1), nx);
-            yv = linspace(0, L(2), ny);
-            zv = linspace(0, L(3), nz);
+                % ---------------------------------------------------------
+                case 2
+                    nx = ceil(L(1) / resolution);
+                    ny = ceil(L(2) / resolution);
+                    xv = linspace(0, L(1), nx);
+                    yv = linspace(0, L(2), ny);
+                    Microstruture = false(nx, ny);
 
-            n_spheres = size(coordinates, 1);
-            report_step = max(1, floor(n_spheres / 10));
+                    for i = 1:n_obj
+                        if n_obj > 100 && mod(i, report_step) == 0
+                            fprintf('  Progresso: %.1f%%\n', 100*i/n_obj);
+                        end
+                        cx = coordinates(i,1);
+                        cy = coordinates(i,2);
+                        ix = mod(find(abs(xv - cx) <= R) - 1, nx) + 1;
+                        iy = mod(find(abs(yv - cy) <= R) - 1, ny) + 1;
+                        if isempty(ix) || isempty(iy), continue; end
+                        [IX, IY] = ndgrid(ix, iy);
+                        ddx = abs(xv(IX) - cx);   ddx = ddx - (ddx > L(1)/2) * L(1);
+                        ddy = abs(yv(IY) - cy);   ddy = ddy - (ddy > L(2)/2) * L(2);
+                        mask = ddx.^2 + ddy.^2 <= R^2;
+                        lin_idx = sub2ind([nx ny], IX(mask), IY(mask));
+                        Microstruture(lin_idx) = true;
+                    end
 
-            for i = 1:n_spheres
-                % progress report every ~10 %
-                if n_spheres > 100 && mod(i, report_step) == 0
-                    fprintf('  Progresso: %.1f%%\n', 100*i/n_spheres);
-                end
+                % ---------------------------------------------------------
+                case 3
+                    nx = ceil(L(1) / resolution);
+                    ny = ceil(L(2) / resolution);
+                    nz = ceil(L(3) / resolution);
+                    xv = linspace(0, L(1), nx);
+                    yv = linspace(0, L(2), ny);
+                    zv = linspace(0, L(3), nz);
+                    Microstruture = false(nx, ny, nz);
 
-                cx = coordinates(i,1);
-                cy = coordinates(i,2);
-                cz = coordinates(i,3);
+                    for i = 1:n_obj
+                        if n_obj > 100 && mod(i, report_step) == 0
+                            fprintf('  Progresso: %.1f%%\n', 100*i/n_obj);
+                        end
+                        cx = coordinates(i,1);
+                        cy = coordinates(i,2);
+                        cz = coordinates(i,3);
+                        ix = mod(find(abs(xv - cx) <= R) - 1, nx) + 1;
+                        iy = mod(find(abs(yv - cy) <= R) - 1, ny) + 1;
+                        iz = mod(find(abs(zv - cz) <= R) - 1, nz) + 1;
+                        if isempty(ix) || isempty(iy) || isempty(iz), continue; end
+                        [IX, IY, IZ] = ndgrid(ix, iy, iz);
+                        ddx = abs(xv(IX) - cx);   ddx = ddx - (ddx > L(1)/2) * L(1);
+                        ddy = abs(yv(IY) - cy);   ddy = ddy - (ddy > L(2)/2) * L(2);
+                        ddz = abs(zv(IZ) - cz);   ddz = ddz - (ddz > L(3)/2) * L(3);
+                        mask = ddx.^2 + ddy.^2 + ddz.^2 <= R^2;
+                        lin_idx = sub2ind([nx ny nz], IX(mask), IY(mask), IZ(mask));
+                        Microstruture(lin_idx) = true;
+                    end
 
-                % indices within bounding box (flat distance <= R)
-                ix = find(abs(xv - cx) <= R);
-                iy = find(abs(yv - cy) <= R);
-                iz = find(abs(zv - cz) <= R);
-
-                % wrap for periodic boundaries (1-based indexing)
-                ix = mod(ix - 1, nx) + 1;
-                iy = mod(iy - 1, ny) + 1;
-                iz = mod(iz - 1, nz) + 1;
-
-                if isempty(ix) || isempty(iy) || isempty(iz)
-                    continue;
-                end
-
-                % 3D meshgrid of candidate voxel indices
-                [IX, IY, IZ] = ndgrid(ix, iy, iz);
-
-                % physical coordinates of candidate voxels
-                Xc = xv(IX);
-                Yc = yv(IY);
-                Zc = zv(IZ);
-
-                % signed distances with periodic correction
-                ddx = abs(Xc - cx);   ddx = ddx - (ddx > L(1)/2) * L(1);
-                ddy = abs(Yc - cy);   ddy = ddy - (ddy > L(2)/2) * L(2);
-                ddz = abs(Zc - cz);   ddz = ddz - (ddz > L(3)/2) * L(3);
-
-                % sphere mask
-                mask = ddx.^2 + ddy.^2 + ddz.^2 <= R^2;
-
-                % linear indices for assignment
-                lin_idx = sub2ind([nx ny nz], IX(mask), IY(mask), IZ(mask));
-                Microstruture(lin_idx) = true;
+                % ---------------------------------------------------------
+                otherwise
+                    error('VoxelizeDomain: coordinates must have 1, 2, or 3 columns.');
             end
 
             fprintf('Voxelizacao concluida.\n');
@@ -2148,11 +2233,43 @@ classdef MaterialClass < handle
         [centers, nobj] = rod_packing_ls(L,D,phi);
         [centers, nobj] = disk_packing_ls(L,D,phi);
         [centers, nobj] = sphere_packing_ls(L,D,phi);
+
+        function psd_summary_figure(dim_label, phi_vol, Lc, r_plot, S2_plot, R_plot, k_vec, psd_vals, phi)
+            figure('Name', sprintf('GetPSDFromImage — %s Microstructure', dim_label), ...
+                'Color', 'w', 'Position', [120 80 1200 400]);
+            tl = tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+            title(tl, sprintf('%s Image PSDF  (\\phi = %.4f,  L_c = %.4g)', ...
+                dim_label, phi_vol, Lc), 'FontSize', 13, 'FontWeight', 'bold');
+
+            nexttile;
+            plot(r_plot, S2_plot, 'm-', 'LineWidth', 1.8);
+            hold on;
+            yline(phi^2, 'k--', 'LineWidth', 0.8, 'Label', '\phi^2', ...
+                'LabelVerticalAlignment', 'bottom');
+            yline(phi, 'k:', 'LineWidth', 0.8, 'Label', '\phi');
+            xlabel('r / L_c');  ylabel('S_2(r)');
+            title('Two-Point Correlation S_2(r)');
+            xlim([0 max(r_plot)]);  grid on;  box on;
+
+            nexttile;
+            plot(r_plot, R_plot, 'b-', 'LineWidth', 1.8);
+            hold on;
+            yline(0, 'k--', 'LineWidth', 0.8);
+            xlabel('r / L_c');  ylabel('R(r)');
+            title('Normalised Autocorrelation R(r)');
+            xlim([0 max(r_plot)]);  grid on;  box on;
+
+            nexttile;
+            plot(k_vec, psd_vals, 'r-', 'LineWidth', 1.8);
+            xlabel('k \cdot L_c');  ylabel('\Phi(k)');
+            title('Power Spectral Density \Phi(k)');
+            xlim([0 min(6, k_vec(end))]);  grid on;  box on;
+        end
         function plot_map(centers, DD, L)
             %% plot_map  Visualise a packing produced by the *_packing_ls routines.
             %
             % Syntax:
-            %   MaterialClass.plot_map(centers, n, DD, L)
+            %   MaterialClass.plot_map(centers, DD, L)
             %
             % Inputs:
             %   centers  – n-by-d array of object centres (d = 1, 2, or 3)
