@@ -2348,5 +2348,7 @@ classdef MaterialClass < handle
                     error('plot_map: centers must have 1, 2, or 3 columns.');
             end
         end
+        [med_lam, std_lam, med_mu, std_mu, med_rho, std_rho] = convert_vvr_para_lmr(med_vp, std_vp, med_vs, std_vs, med_rho_in, std_rho_in);
+        [med_lam, std_lam, med_mu, std_mu, med_rho, std_rho] = convert_kmr_para_lmr(med_k, std_k, med_mu_in, std_mu_in, med_rho_in, std_rho_in)
     end
 end
