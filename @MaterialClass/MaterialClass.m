@@ -69,8 +69,8 @@ classdef MaterialClass < handle
             %     d   : dimension of the problem
 
             if nargin ~=0
-                if geometry.dimension~=3
-                    warning(['Total scattering cross-sections for 2D case are to be ' ...
+                if geometry.dimension==1
+                    warning(['Total scattering cross-sections for 1D case are to be ' ...
                         'implemented in future releases of the code'])
                 end
 
@@ -651,150 +651,102 @@ classdef MaterialClass < handle
                 obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
                     (2*sqrt(pi)*gamma(nu+0.5)/gamma(nu)*z).^nu ...
                     .* besselk(nu,2*sqrt(pi)*gamma(nu+0.5)/gamma(nu)*z);
-                obj.Phi = @(z) 1 ./ (1 + (z/(2*sqrt(pi)*gamma(nu+0.5)/gamma(nu))).^2).^(nu+0.5);
+                obj.Phi = @(z) 1 ./ (1 + (z./(2*sqrt(pi)*gamma(nu+0.5)/gamma(nu))).^2).^(nu+0.5);
             elseif obj.d == 2
                 obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
                     (4*sqrt(nu)*z).^nu .* besselk(nu,4*sqrt(nu)*z);
-                obj.Phi = @(z) (pi/4) * 1 ./ (1 + (z/(4*sqrt(nu))).^2).^(nu+0.5);
+                obj.Phi = @(z) (pi/4) * 1 ./ (1 + (z./(4*sqrt(nu))).^2).^(nu+0.5);
             elseif obj.d == 3
                 obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
                     ((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3)*z).^nu .* ...
                     besselk(nu,((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3))*z);
-                obj.Phi = @(z) (pi/46) * 1 ./ (1 + (z/((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3))).^2).^(nu+1.5);
+                obj.Phi = @(z) (pi/46) * 1 ./ (1 + (z./((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu)).^(1/3))).^2).^(nu+1.5);
             else
                 error('incorrect dimension!')
             end
 
             out = obj.Phi;
 
-            % obj.R = @(z) 2^(1-nu)/gamma(nu)* (c*z).^nu .* besselk(nu,c*z);
-            % obj.Phi = out;
-
-            % error('Not fully implemented')
-            % r = sqrt(x^2/ax^2+y^2/ay^2+z^2/az^2);
-            % k=sqrt(kx^2*ax^2+ky^2*ay^2+kz^2*az^2);
-            % bessel = besseli(nu,r);
-            % C = 4*pi*nu*H^2*r^nu*bessel/bessel(1);
-            % S = (4*pi*nu*H^2/bessel(1))*(ax^2+ay^2+az^2)/((1+k^2^(nu+1.5)));
-            % out = @(z) 1;
-            % obj.Phi = out;
-            % obj.R = out;
-
         end
         function out = MonoDisperseSphere(obj, eta, D)
             %% MonoDisperseSphere
-            % Compute the normalized power spectral density function for a
-            % monodisperse hard-sphere suspension (3D) and, additionally,
-            % solve the 2D Ornstein-Zernike equation with the Percus-Yevick
-            % closure for an equivalent hard-disk system to obtain the full
-            % set of microstructural descriptors:
-            %   g(r)   - pair correlation function (radial distribution function)
-            %   S(k)   - static structure factor
-            %   S2(r)  - two-point probability function
-            %   chi(r) - autocovariance  chi(r) = S2(r) - phi^2
+            % Compute the normalised power spectral density function for a
+            % monodisperse hard-body suspension using Percus-Yevick theory.
             %
-            % The 3D part follows:
-            %   Torquato S. and Stell G. (1985). Microstructure of two-phase
-            %   random media. V. The n-point matrix probability functions for
-            %   impenetrable spheres, J. Chem. Phys., 82(2), pp. 980-987.
+            % The pair correlation function g(r) and static structure factor S(k)
+            % are computed by MaterialClass.HardBodyPY for d = 1, 2, or 3.
+            % The two-point probability S2(r) and PSDF Phi(k) are then derived
+            % from g(r)/S(k) following the Torquato spectral route.
             %
-            % The 2D OZ+PY part mirrors PY2D_disk.m:
-            %   Adda-Bedia, Katzav & Vella, J. Chem. Phys. 128, 184508 (2008)
+            % References:
+            %   Torquato & Stell (1985) J. Chem. Phys. 82(2), 980-987  [3D]
+            %   Adda-Bedia, Katzav & Vella (2008) J. Chem. Phys. 128, 184508  [2D]
             %   Torquato, Random Heterogeneous Materials, Springer (2002)
             %
             % Syntax:
             %   out = MonoDisperseSphere(obj, eta, D)
             %
             % Inputs:
-            %   eta : packing fraction (area fraction in 2D / volume fraction in 3D)
-            %   D   : sphere/disk diameter (same units as desired length scale)
+            %   eta : packing fraction (length/area/volume fraction for d=1/2/3)
+            %   D   : object diameter (same units as desired length scale)
             %
             % Output:
-            %   out : function handle for the PSDF  Phi(k)  (3D, normalized)
-            %
-            % Side effects:
-            %   obj.R, obj.Phi, obj.k, obj.CorrelationLength are set (3D part).
-            %   A 2x2 figure panel is produced with g(r), S(k), S2(r), chi(r)
-            %   computed from the 2D PY solver (analogous to PY2D_disk/plot_results).
+            %   out : function handle for the PSDF  Phi(k)  (normalised)
 
-            % =================================================================
-            % PART 1 — 3D monodisperse sphere PSDF  (original implementation)
-            % =================================================================
+            d = double(obj.d);
+            [g_r, S_k, r_grid, k_grid] = MaterialClass.HardBodyPY(eta, D, d);
 
-            switch obj.d
+            switch d
                 case 1
-                    error('Power spectral density for monodisperse sphere not supported in 1D')
+                    % ---- 1D hard rods ----------------------------------------
+                    fprintf('\n--- 1D PY OZ solver (MonoDisperseSphere) ---\n');
+                    fprintf('    phi = %.4f,  D = %.6g\n', eta, D);
+
+                    rho_1D = eta / D;
+                    dk     = k_grid(2) - k_grid(1);
+
+                    % Indicator FT for a rod of length D:  m_hat(k) = 2 sin(kD/2)/k
+                    kD2       = k_grid * (D/2);
+                    m_hat     = zeros(size(k_grid));
+                    idx0      = kD2 < 1e-8;
+                    m_hat(idx0)  = D;
+                    m_hat(~idx0) = 2 * sin(kD2(~idx0)) ./ k_grid(~idx0);
+
+                    % chi_hat = rho |m_hat|^2 S(k)  (Torquato–Lu spectral route)
+                    chi_hat = rho_1D * m_hat.^2 .* S_k;
+                    chi_r   = MaterialClass.cosine_inv_1D(chi_hat, k_grid, r_grid, dk);
+                    S2_r    = max(0, min(1, eta^2 + chi_r));
+
+                    Racf = S2_r - S2_r(end);
+                    Racf = Racf ./ Racf(1);
+
+                    obj.r = r_grid;
+                    obj.R = @(z) interp1(r_grid, Racf, z, 'makima', 0);
+                    obj.CalcLc;
+                    r_norm = r_grid / obj.CorrelationLength;
+                    obj.R  = @(z) interp1(r_norm, Racf, z, 'makima', 0);
+                    obj.CalcPhi;
+
+                    [~, idx_c] = min(abs(r_grid - D));
+                    fprintf('    g(D+) = %.6f\n', g_r(idx_c));
+                    fprintf('    S(k->0) = %.6f  =>  Z_comp ~ %.6f\n', S_k(1), 1/S_k(1));
+                    out = obj.Phi;
+
                 case 2
-                    % =================================================================
-                    % PART 2 — 2D Percus-Yevick OZ solver  (from PY2D_disk.m)
-                    %          Produces g(r), S(k), S2(r), chi(r) for the equivalent
-                    %          hard-disk system and plots all four panels.
-                    % =================================================================
+                    % ---- 2D hard disks ---------------------------------------
                     fprintf('\n--- 2D PY OZ solver (MonoDisperseSphere) ---\n');
                     fprintf('    phi = %.4f,  D = %.6g\n', eta, D);
 
-                    % --- Grid parameters ---
-                    Nr      = 4096;
-                    r_max   = 20.0 * D;
-                    dr      = r_max / Nr;
-                    r_py    = ((1:Nr) - 0.5)' * dr;   % cell-centred, avoids r = 0
+                    rho_2D    = eta / (pi*(D/2)^2);
+                    Nk_py     = length(k_grid);
+                    dk_py     = k_grid(2) - k_grid(1);
+                    hankel_inv = @(f) MaterialClass.hankel0_inv(f, k_grid, r_grid, dk_py);
 
-                    dk_py   = pi / r_max;
-                    k_max   = pi / dr;
-                    Nk_py   = floor(k_max / dk_py);
-                    k_py    = ((1:Nk_py) - 0.5)' * dk_py;
-
-                    % --- Picard iteration parameters ---
-                    rho_2D   = eta / (pi*(D/2)^2);   % 2D number density
-                    inside   = r_py < D;
-                    outside  = ~inside;
-                    max_iter = 5000;
-                    tol      = 1e-12;
-                    alpha    = 0.4;
-
-                    % Hankel transform helpers (defined as nested functions below)
-                    hankel_fwd = @(f) MaterialClass.hankel0_fwd(f, r_py, k_py, dr);
-                    hankel_inv = @(f) MaterialClass.hankel0_inv(f, k_py, r_py, dk_py);
-
-                    % Initial guess
-                    gamma_r = zeros(Nr, 1);
-                    c_r     = zeros(Nr, 1);
-                    c_r(inside) = -1.0;
-
-                    converged = false;
-                    for iter = 1:max_iter
-                        c_k         = hankel_fwd(c_r);
-                        h_k         = c_k ./ (1.0 - rho_2D * c_k);
-                        h_r         = hankel_inv(h_k);
-                        gamma_r_new = h_r - c_r;
-                        err         = max(abs(gamma_r_new - gamma_r));
-                        gamma_r     = (1 - alpha)*gamma_r + alpha*gamma_r_new;
-                        c_r(inside)  = -1.0 - gamma_r(inside);
-                        c_r(outside) =  0.0;
-                        if err < tol
-                            fprintf('    PY converged at iter %d, err = %.3e\n', iter, err);
-                            converged = true;
-                            break;
-                        end
-                    end
-                    if ~converged
-                        fprintf('    WARNING: PY did not fully converge (err=%.3e).\n', err);
-                    end
-
-                    % Final correlation functions
-                    c_k  = hankel_fwd(c_r);
-                    h_k  = c_k ./ (1.0 - rho_2D * c_k);
-                    h_r  = hankel_inv(h_k);
-                    g_r  = 1.0 + h_r;
-                    g_r(inside) = 0.0;              % enforce hard core
-                    S_k  = 1.0 + rho_2D * h_k;     % static structure factor
-
-                    % Two-point probability function S2(r) via spectral density route
-                    % (Torquato & Lu approach):  chi_hat(k) = rho * |m_hat(k)|^2 * S(k)
-                    R_disk  = D / 2;
-                    kR      = k_py * R_disk;
-                    m_hat   = zeros(Nk_py, 1);
-                    idx0    = kR < 1e-8;
+                    % Two-point probability via Torquato–Lu spectral route
+                    R_disk = D / 2;
+                    kR     = k_grid * R_disk;
+                    m_hat  = zeros(Nk_py, 1);
+                    idx0   = kR < 1e-8;
                     m_hat(idx0)  = pi * R_disk^2;
                     m_hat(~idx0) = 2*pi*R_disk^2 * besselj(1, kR(~idx0)) ./ kR(~idx0);
 
@@ -803,145 +755,62 @@ classdef MaterialClass < handle
                     S2_r    = max(0, min(1, eta^2 + chi_r));
 
                     Racf = S2_r - S2_r(end);
-                    Racf = Racf./Racf(1);
+                    Racf = Racf ./ Racf(1);
 
-                    obj.R = @(z) interp1(r_py, Racf, z, 'makima', 0);
+                    obj.r = r_grid;
+                    obj.R = @(z) interp1(r_grid, Racf, z, 'makima', 0);
                     obj.CalcLc;
-                    raux_norm = r_py / obj.CorrelationLength;
-                    obj.R = @(z) interp1(raux_norm, Racf, z, 'makima', 0);
-
+                    r_norm = r_grid / obj.CorrelationLength;
+                    obj.r  = r_norm;
+                    obj.R  = @(z) interp1(r_norm, Racf, z, 'makima', 0);
                     obj.CalcPhi;
 
-                    % Equation of state printout
-                    [~, idx_c] = min(abs(r_py - D));
-                    g_contact  = g_r(idx_c);
-                    Z_virial   = 1 + (rho_2D/2) * pi * D^2 * g_contact;
-                    fprintf('    g(D+) = %.6f,  Z_virial = %.6f\n', g_contact, Z_virial);
-                    fprintf('    S(k->0) = %.6f  =>  Z_comp ~ %.6f\n', S_k(1), 1/S_k(1));
+                    out = obj.Phi;
 
-                    % --- 2x2 figure: same layout as plot_results in PY2D_disk.m ---
-                    r_norm_py  = r_py  / D;
-                    k_norm_py  = k_py  * D;
-                    r_plot_max = 6.0;
-                    k_plot_max = 20.0;
-                    idx_r      = r_norm_py <= r_plot_max;
-                    idx_k      = k_norm_py <= k_plot_max;
-
-                    fig = figure('Name','PY 2D Hard Disks — MonoDisperseSphere', ...
-                        'Color','w', 'Position',[100 80 1200 900]);
-                    tl = tiledlayout(2, 2, 'TileSpacing','compact', 'Padding','compact');
-                    title(tl, sprintf('2D Percus-Yevick — Hard Disks  (\\phi = %.2f,  D = %.4g)', ...
-                        eta, D), 'FontSize', 14, 'FontWeight','bold');
-
-                    % g(r)
-                    nexttile;
-                    plot(r_norm_py(idx_r), g_r(idx_r), 'b-', 'LineWidth', 1.8);
-                    hold on;
-                    yline(1, 'k--', 'LineWidth', 0.8);
-                    xline(1, 'r:', 'D', 'LineWidth', 0.8, 'LabelVerticalAlignment','bottom');
-                    xlabel('r / D');  ylabel('g(r)');
-                    title('Pair Correlation Function g(r)');
-                    xlim([0 r_plot_max]);
-                    ylim([0 max(g_r(idx_r))*1.05 + 0.1]);
-                    grid on;  box on;
-
-                    % S(k)
-                    nexttile;
-                    plot(k_norm_py(idx_k), S_k(idx_k), 'r-', 'LineWidth', 1.8);
-                    hold on;
-                    yline(1, 'k--', 'LineWidth', 0.8);
-                    xlabel('k D');  ylabel('S(k)');
-                    title('Static Structure Factor S(k)');
-                    xlim([0 k_plot_max]);
-                    ylim([0 max(S_k(idx_k))*1.05 + 0.1]);
-                    grid on;  box on;
-
-                    % S2(r)
-                    nexttile;
-                    plot(r_norm_py(idx_r), S2_r(idx_r), 'm-', 'LineWidth', 1.8);
-                    hold on;
-                    yline(eta^2, 'k--', 'LineWidth', 0.8, 'Label','\phi^2', ...
-                        'LabelVerticalAlignment','bottom');
-                    yline(eta,   'k:',  'LineWidth', 0.8, 'Label','\phi');
-                    xline(1, 'r:', 'D', 'LineWidth', 0.8, 'LabelVerticalAlignment','bottom');
-                    xlabel('r / D');  ylabel('S_2(r)');
-                    title('Two-Point Correlation S_2(r)');
-                    xlim([0 r_plot_max]);
-                    ylim([0 eta + 0.05]);
-                    grid on;  box on;
-
-                    % chi(r)
-                    nexttile;
-                    plot(r_norm_py(idx_r), chi_r(idx_r), 'g-', 'LineWidth', 1.8);
-                    hold on;
-                    yline(0, 'k--', 'LineWidth', 0.8);
-                    xline(1, 'r:', 'D', 'LineWidth', 0.8, 'LabelVerticalAlignment','bottom');
-                    xlabel('r / D');  ylabel('\chi(r) = S_2(r) - \phi^2');
-                    title('Autocovariance \chi(r)');
-                    xlim([0 r_plot_max]);
-                    grid on;  box on;
                 case 3
-                    % discretization in Fourier space (k normalised to sphere radius = D/2 = 1)
-                    obj.k = linspace(0, 6/D, 4094);
-                    % discretization in real space
-                    raux = linspace(0, 5*D, 4096);
+                    % ---- 3D hard spheres (Torquato & Stell 1985) -------------
+                    % k_grid stores k_norm = k_phys*(D/2), ranges 0 to 3
+                    rhoS   = 3*eta / (4*pi);
+                    h3D    = (S_k - 1) / rhoS;   % total correlation in k_norm space
 
-                    % number density of spheres  rhoS = phi / V_sphere
-                    rhoS = 3*eta / (4*pi);   % with radius normalised to 1 (r_norm = 2r/D)
+                    % Sphere indicator FT  m_hat(k_norm)
+                    m3D = 4*pi * ((sin(k_grid)./k_grid - cos(k_grid)) ./ k_grid.^2);
+                    m3D(k_grid < 1e-8) = 4*pi/3;
 
-                    % normalise radii to sphere radius = 1
-                    raux = 2*raux / D;
+                    % r in normalised units  r_norm = 2*r_phys/D
+                    raux   = r_grid * (2/D);
 
-                    % Union volume of two unit-radius spheres at separation r (normalised)
+                    % Union volume of two unit-radius spheres at separation r_norm
                     V2 = 8*pi/3 * ones(size(raux));
                     V2(raux < 2) = 4*pi/3 * (1 + 3/4*raux(raux<2) - raux(raux<2).^3/16);
 
-                    % PY direct correlation function c(k) — analytic solution for 3D hard spheres
-                    l1 = (1 + 2*eta)^2 / (1 - eta)^4;
-                    l2 = -(1 + eta/2)^2 / (1 - eta)^4;
-
-                    c = -4*pi ./ (obj.k.^3) .* ( ...
-                        l1*(sin(2*obj.k) - 2*obj.k.*cos(2*obj.k)) + ...
-                        3*eta*l2./obj.k .* (4*obj.k.*sin(2*obj.k) + (2 - 4*obj.k.^2).*cos(2*obj.k) - 2) + ...
-                        eta*l1./(2*obj.k.^3) .* ((6*obj.k.^2 - 3 - 2*obj.k.^4).*cos(2*obj.k) + ...
-                        (4*obj.k.^3 - 6*obj.k).*sin(2*obj.k) + 3) );
-                    c(1) = -8*pi/3 * ((4 + eta)*l1 + 18*eta*l2);
-
-                    % OZ relation: h_hat = c_hat / (1 - rhoS*c_hat)
-                    h3D = c ./ (1 - rhoS*c);
-
-                    % Fourier transform of the sphere indicator function m_hat(k)
-                    m3D = 4*pi * ((sin(obj.k)./obj.k - cos(obj.k)) ./ obj.k.^2);
-                    m3D(1) = 4*pi/3;
-
-                    % 2-point matrix probability function M(r) via inverse sine transform
-                    M = zeros(size(raux));
+                    % M(r) via inverse 3D sine transform
+                    M    = zeros(size(raux));
                     M(1) = -(eta/rhoS)^2;
                     for i1 = 2:length(raux)
-                        M(i1) = 1/2/pi^2/raux(i1) * trapz(obj.k, h3D.*m3D.^2.*obj.k.*sin(obj.k*raux(i1)));
+                        M(i1) = 1/2/pi^2/raux(i1) * ...
+                            trapz(k_grid, h3D.*m3D.^2.*k_grid.*sin(k_grid.*raux(i1)));
                     end
 
                     S2_3D = 1 - rhoS*V2 + rhoS^2*M + eta^2;
+                    Racf  = (S2_3D - (1-eta)^2) / eta / (1-eta);
 
-                    % Particle autocorrelation (normalised)
-                    Racf = (S2_3D - (1-eta)^2) / eta / (1-eta);
-
-                    % Convert back to physical units and apply Hann window at tail
-                    raux = D*raux/2;
+                    % Apply Hann taper at the tail and convert r back to physical units
                     right_window_length = 200;
                     hann_win = hann(2*right_window_length);
                     Racf(end-right_window_length+1:end) = ...
-                        Racf(end-right_window_length+1:end) .* hann_win(right_window_length+1:end)';
+                        Racf(end-right_window_length+1:end) .* hann_win(right_window_length+1:end);
 
-                    % Correlation length (3D definition: lc^3 = 3 * int r^2 R(r) dr)
-                    obj.R = @(z) interp1(raux, Racf, z, 'makima', 0);
-                    LL = 2*integral(obj.R, 0, inf);
-                    obj.CorrelationLength = LL;
-                    raux_norm = raux / LL;
+                    obj.r = r_grid;
+                    obj.R = @(z) interp1(r_grid, Racf, z, 'makima', 0);
+                    obj.CalcLc;
+                    LL    = obj.CorrelationLength;
+                    raux_norm = r_grid / LL;
+                    obj.r = raux_norm;
                     obj.R = @(z) interp1(raux_norm, Racf, z, 'makima', 0);
 
                     % PSDF via 3D Fourier-Bessel transform
-                    obj.k = obj.k * obj.CorrelationLength;
+                    obj.k = k_grid * obj.CorrelationLength;
                     phi_k = zeros(1, length(obj.k));
                     for i1 = 1:length(obj.k)
                         phi_k(i1) = 1/2/pi^2 * trapz(raux_norm, ...
@@ -1320,7 +1189,7 @@ classdef MaterialClass < handle
             R_vals = obj.R(r);
             
             % Wavenumber grid
-            k = logspace(-3, 2, 512);  % wavenumber grid
+            k = logspace(-3, 3, 4096);  % wavenumber grid
             PSD = zeros(size(k));
             
             if obj.d == 1
@@ -1435,6 +1304,8 @@ classdef MaterialClass < handle
             plot(obj.k,obj.Phi(obj.k),'LineWidth',2)
             xlabel('Normalized wavenumer [-]')
             ylabel('Power Spectral Density [-]')
+            saux = sprintf("PSD model:%s, dimension:%d",obj.SpectralLaw,obj.d);
+            title(saux)
             grid on
             box on
             set(gca,'FontSize',14)
@@ -1449,6 +1320,8 @@ classdef MaterialClass < handle
             ylabel('Correlation [-]')
             grid on
             box on
+            saux = sprintf("Correlation model:%s, dimension:%d",obj.SpectralLaw,obj.d);
+            title(saux)
             set(gca,'FontSize',14)
         end
         function h = plotsigma(obj,h)
@@ -1463,6 +1336,8 @@ classdef MaterialClass < handle
                 ylabel('Differential Scattering Cross-Sections [-]')
                 grid on
                 box on
+                saux = sprintf("Model:%s, dimension:%d",obj.SpectralLaw,obj.d);
+                title(saux)
                 set(gca,'FontSize',14)
             else
                 subplot(2,2,1)
@@ -1500,6 +1375,8 @@ classdef MaterialClass < handle
                 grid on
                 box on
                 set(gca,'FontSize',14)
+                saux = sprintf("Model:%s, dimension:%d",obj.SpectralLaw,obj.d);
+                sgtitle(saux)
             end
         end
         function h = plotpolarsigma(obj,h)
@@ -2129,6 +2006,226 @@ classdef MaterialClass < handle
                 f_r(i0:i1) = J0 * fw;
             end
         end
+        function [g_r, S_k, r_grid, k_grid] = HardBodyPY(eta, D, d)
+            %% HardBodyPY
+            % Pair correlation function g(r) and static structure factor S(k)
+            % for monodisperse hard bodies in d dimensions via the Percus-Yevick
+            % (PY) Ornstein-Zernike (OZ) integral equation.
+            %
+            %   d = 1 : Hard rods     — 1D OZ+PY Picard iteration, cosine transforms
+            %   d = 2 : Hard disks    — 2D OZ+PY Picard iteration, Hankel-0 transforms
+            %   d = 3 : Hard spheres  — analytic 3D PY c(k), sine transform for g(r)
+            %
+            % Syntax:
+            %   [g_r, S_k, r_grid, k_grid] = MaterialClass.HardBodyPY(eta, D, d)
+            %
+            % Inputs:
+            %   eta    – packing fraction (length / area / volume fraction)
+            %   D      – object diameter (or rod length for d=1)
+            %   d      – spatial dimension (1, 2, or 3)
+            %
+            % Outputs:
+            %   g_r    – pair correlation function values on r_grid
+            %   S_k    – static structure factor values on k_grid
+            %   r_grid – physical r values (same units as D)
+            %   k_grid – wavenumber values; physical (1/D) for d=1,2;
+            %            k_norm = k_phys*(D/2) for d=3 (matches MonoDisperseSphere)
+
+            switch d
+                case 1
+                    % ---- 1D hard rods: Picard iteration with cosine transforms ----
+                    Nr    = 4096;
+                    r_max = 20.0 * D;
+                    dr    = r_max / Nr;
+                    r_grid = ((1:Nr) - 0.5)' * dr;
+
+                    dk = pi / r_max;
+                    Nk = floor((pi / dr) / dk);
+                    k_grid = ((1:Nk) - 0.5)' * dk;
+
+                    rho_1D  = eta / D;
+                    inside  = r_grid < D;
+                    outside = ~inside;
+                    alpha   = 0.4;
+                    tol     = 1e-12;
+
+                    cos_fwd = @(f) MaterialClass.cosine_fwd_1D(f, r_grid, k_grid, dr);
+                    cos_inv = @(f) MaterialClass.cosine_inv_1D(f, k_grid, r_grid, dk);
+
+                    gamma_r = zeros(Nr, 1);
+                    c_r = zeros(Nr, 1);
+                    c_r(inside) = -1.0;
+
+                    converged = false;
+                    for iter = 1:5000
+                        c_hat = cos_fwd(c_r);
+                        h_hat = c_hat ./ (1.0 - rho_1D * c_hat);
+                        h_r   = cos_inv(h_hat);
+                        gamma_r_new = h_r - c_r;
+                        err = max(abs(gamma_r_new - gamma_r));
+                        gamma_r = (1 - alpha)*gamma_r + alpha*gamma_r_new;
+                        c_r(inside)  = -1.0 - gamma_r(inside);
+                        c_r(outside) = 0.0;
+                        if err < tol
+                            fprintf('    1D PY converged at iter %d, err = %.3e\n', iter, err);
+                            converged = true;  break;
+                        end
+                    end
+                    if ~converged
+                        fprintf('    WARNING: 1D PY did not converge (err=%.3e).\n', err);
+                    end
+
+                    c_hat = cos_fwd(c_r);
+                    h_hat = c_hat ./ (1.0 - rho_1D * c_hat);
+                    h_r   = cos_inv(h_hat);
+                    g_r   = 1.0 + h_r;
+                    g_r(inside) = 0.0;
+                    S_k   = 1.0 + rho_1D * h_hat;
+
+                case 2
+                    % ---- 2D hard disks: Picard iteration with Hankel-0 transforms ----
+                    Nr    = 4096;
+                    r_max = 20.0 * D;
+                    dr    = r_max / Nr;
+                    r_grid = ((1:Nr) - 0.5)' * dr;
+
+                    dk = pi / r_max;
+                    Nk = floor((pi / dr) / dk);
+                    k_grid = ((1:Nk) - 0.5)' * dk;
+
+                    rho_2D  = eta / (pi*(D/2)^2);
+                    inside  = r_grid < D;
+                    outside = ~inside;
+                    alpha   = 0.4;
+                    tol     = 1e-12;
+
+                    h_fwd = @(f) MaterialClass.hankel0_fwd(f, r_grid, k_grid, dr);
+                    h_inv = @(f) MaterialClass.hankel0_inv(f, k_grid, r_grid, dk);
+
+                    gamma_r = zeros(Nr, 1);
+                    c_r = zeros(Nr, 1);
+                    c_r(inside) = -1.0;
+
+                    converged = false;
+                    for iter = 1:5000
+                        c_k = h_fwd(c_r);
+                        h_k = c_k ./ (1.0 - rho_2D * c_k);
+                        h_r = h_inv(h_k);
+                        gamma_r_new = h_r - c_r;
+                        err = max(abs(gamma_r_new - gamma_r));
+                        gamma_r = (1 - alpha)*gamma_r + alpha*gamma_r_new;
+                        c_r(inside)  = -1.0 - gamma_r(inside);
+                        c_r(outside) = 0.0;
+                        if err < tol
+                            fprintf('    2D PY converged at iter %d, err = %.3e\n', iter, err);
+                            converged = true;  break;
+                        end
+                    end
+                    if ~converged
+                        fprintf('    WARNING: 2D PY did not converge (err=%.3e).\n', err);
+                    end
+
+                    c_k = h_fwd(c_r);
+                    h_k = c_k ./ (1.0 - rho_2D * c_k);
+                    h_r = h_inv(h_k);
+                    g_r = 1.0 + h_r;
+                    g_r(inside) = 0.0;
+                    S_k = 1.0 + rho_2D * h_k;
+
+                case 3
+                    % ---- 3D hard spheres: analytic PY c(k) + sine transform for g(r) ----
+                    % k_grid stores k_norm = k_phys*(D/2), range 0 to ~3
+                    % r_grid stores physical r, range 0 to 5*D
+                    k_grid = (linspace(0, 6/D, 4094))';
+                    r_grid = (linspace(0, 5*D,  4096))';
+
+                    k_norm = k_grid * (D/2);   % dimensionless k_norm = k_phys*(D/2)
+                    r_norm = r_grid * (2/D);    % dimensionless r_norm = r_phys/(D/2)
+
+                    rhoS = 3*eta / (4*pi);
+                    l1   = (1 + 2*eta)^2 / (1 - eta)^4;
+                    l2   = -(1 + eta/2)^2 / (1 - eta)^4;
+
+                    % Analytic PY direct correlation c_hat(k_norm)
+                    c_hat = -4*pi ./ (k_norm.^3) .* ( ...
+                        l1*(sin(2*k_norm) - 2*k_norm.*cos(2*k_norm)) + ...
+                        3*eta*l2./k_norm .* (4*k_norm.*sin(2*k_norm) + (2 - 4*k_norm.^2).*cos(2*k_norm) - 2) + ...
+                        eta*l1./(2*k_norm.^3) .* ((6*k_norm.^2 - 3 - 2*k_norm.^4).*cos(2*k_norm) + ...
+                        (4*k_norm.^3 - 6*k_norm).*sin(2*k_norm) + 3) );
+                    c_hat(k_norm < 1e-8) = -8*pi/3 * ((4 + eta)*l1 + 18*eta*l2);
+
+                    h3D = c_hat ./ (1 - rhoS * c_hat);   % OZ relation
+                    S_k = 1 + rhoS * h3D;                 % structure factor
+
+                    % g(r) via inverse 3D sine transform:
+                    %   h(r_norm) = 1/(2*pi^2*r_norm) * int h_hat(k_norm)*k_norm*sin(k*r) dk
+                    dk_norm = k_norm(2) - k_norm(1);
+                    h_r = zeros(numel(r_norm), 1);
+                    % r_norm = 0: use l'Hopital limit sin(k*r)/r → k
+                    h_r(1) = trapz(k_norm, h3D .* k_norm.^2) / (2*pi^2);
+                    for ii = 2:numel(r_norm)
+                        h_r(ii) = trapz(k_norm, h3D .* k_norm .* sin(k_norm * r_norm(ii))) ...
+                                  / (2*pi^2 * r_norm(ii));
+                    end
+                    g_r = max(0, 1 + h_r);
+                    g_r(r_grid < D) = 0;   % enforce hard-core exclusion
+
+                otherwise
+                    error('HardBodyPY: d must be 1, 2, or 3.');
+            end
+        end
+        function f_hat = cosine_fwd_1D(f_r, r, k, dr)
+            %% cosine_fwd_1D
+            % Forward 1D cosine (Fourier) transform for even functions:
+            %   f_hat(k) = 2 * int_0^inf f(r) cos(kr) dr
+            %
+            % Used internally by HardBodyPY for the 1D PY OZ solver.
+            %
+            % Inputs:
+            %   f_r : column vector of f(r) values on grid r
+            %   r   : real-space grid   (column vector)
+            %   k   : wavenumber grid   (column vector)
+            %   dr  : real-space step size
+            %
+            % Output:
+            %   f_hat : column vector of transform values on grid k
+            Nk    = length(k);
+            w     = 2 * dr;
+            fw    = f_r * w;
+            f_hat = zeros(Nk, 1);
+            block = 256;
+            for i0 = 1:block:Nk
+                i1 = min(i0 + block - 1, Nk);
+                C = cos(k(i0:i1) * r');   % (blk x Nr)
+                f_hat(i0:i1) = C * fw;
+            end
+        end
+        function f_r = cosine_inv_1D(f_hat, k, r, dk)
+            %% cosine_inv_1D
+            % Inverse 1D cosine (Fourier) transform for even functions:
+            %   f(r) = (1/pi) * int_0^inf f_hat(k) cos(kr) dk
+            %
+            % Used internally by HardBodyPY and MonoDisperseSphere (d=1).
+            %
+            % Inputs:
+            %   f_hat : column vector of f_hat(k) values on grid k
+            %   k     : wavenumber grid   (column vector)
+            %   r     : real-space grid   (column vector)
+            %   dk    : wavenumber step size
+            %
+            % Output:
+            %   f_r : column vector of f(r) values on grid r
+            Nr  = length(r);
+            w   = dk / pi;
+            fw  = f_hat * w;
+            f_r = zeros(Nr, 1);
+            block = 256;
+            for i0 = 1:block:Nr
+                i1 = min(i0 + block - 1, Nr);
+                C = cos(r(i0:i1) * k');   % (blk x Nk)
+                f_r(i0:i1) = C * fw;
+            end
+        end
         function mat = prepareSigma(mat,d)
             %% prepareSigma
             % Prepare scattering cross-sections and derived quantities
@@ -2206,7 +2303,10 @@ classdef MaterialClass < handle
                 sigmaNorm = @(th) (2*pi/Sigma)*sin(th).*sigma(th);
             end
             pdf = sigmaNorm(xth);
-            cdf = cumsum(pdf)*(pi/Nth);
+            if any(isnan(pdf))
+                warning('There is a NaN inside the probability density function')
+            end
+            cdf = cumsum(pdf,"omitnan")*(pi/Nth);
             ind = find(diff(cdf)>1e-8);
             ind = unique([ind ind+1]);
             invcdf = griddedInterpolant(cdf(ind),xth(ind));
