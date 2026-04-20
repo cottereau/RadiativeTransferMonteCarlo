@@ -81,5 +81,8 @@ classdef NonRegTestClass < matlab.unittest.TestCase
         function MaterialClass(testCase)
             MaterialClassExample
         end
+        function MaterialBC(testCase)
+            BoundaryReflectionEnergyTests
+        end
     end
 end
