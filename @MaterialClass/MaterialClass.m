@@ -693,10 +693,9 @@ classdef MaterialClass < handle
             % Output:
             %   out : function handle for the PSDF  Phi(k)  (normalised)
 
-            d = double(obj.d);
-            [g_r, S_k, r_grid, k_grid] = MaterialClass.HardBodyPY(eta, D, d);
+            [g_r, S_k, r_grid, k_grid] = MaterialClass.HardBodyPY(eta, D, obj.d);
 
-            switch d
+            switch obj.d
                 case 1
                     % ---- 1D hard rods ----------------------------------------
                     fprintf('\n--- 1D PY OZ solver (MonoDisperseSphere) ---\n');
@@ -2333,7 +2332,6 @@ classdef MaterialClass < handle
         [centers, nobj] = rod_packing_ls(L,D,phi);
         [centers, nobj] = disk_packing_ls(L,D,phi);
         [centers, nobj] = sphere_packing_ls(L,D,phi);
-
         function psd_summary_figure(dim_label, phi_vol, Lc, r_plot, S2_plot, R_plot, k_vec, psd_vals, phi)
             figure('Name', sprintf('GetPSDFromImage — %s Microstructure', dim_label), ...
                 'Color', 'w', 'Position', [120 80 1200 400]);
@@ -2448,7 +2446,6 @@ classdef MaterialClass < handle
                     error('plot_map: centers must have 1, 2, or 3 columns.');
             end
         end
-        [med_lam, std_lam, med_mu, std_mu, med_rho, std_rho] = convert_vvr_para_lmr(med_vp, std_vp, med_vs, std_vs, med_rho_in, std_rho_in);
-        [med_lam, std_lam, med_mu, std_mu, med_rho, std_rho] = convert_kmr_para_lmr(med_k, std_k, med_mu_in, std_mu_in, med_rho_in, std_rho_in)
+        [med_lam, std_lam, med_mu, std_mu, med_rho, std_rho] = convert_kmr_to_lmr(med_k, std_k, med_mu_in, std_mu_in, med_rho_in, std_rho_in,corr_K_mu)
     end
 end
