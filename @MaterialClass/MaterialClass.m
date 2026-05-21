@@ -20,6 +20,7 @@ classdef MaterialClass < handle
         vs
         rho
         Frequency
+        Q  = Inf;       % Quality factor. Default: no intrinsic attenuation;
         coefficients_of_variation
         correlation_coefficients
 

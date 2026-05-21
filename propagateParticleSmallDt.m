@@ -34,6 +34,43 @@ for i1 = 1:Nt
     % polarization type of particles
     p = P.p;
     s = ~P.p;
+    
+    % intrinsic attenuation / dissipation through particle weights
+    if isprop(mat,'Q') && ~isempty(mat.Q)
+    
+        omega = 2*pi*mat.Frequency;
+    
+        if mat.acoustics
+    
+            Qval = mat.Q(1);
+    
+            if isfinite(Qval)
+                P.w = P.w .* exp(-omega * dt / Qval);
+            end
+    
+        else
+    
+            Qval = mat.Q(:);
+    
+            if isscalar(Qval)
+                QP = Qval(1);
+                QS = Qval(1);
+            else
+                QP = Qval(1);
+                QS = Qval(2);
+            end
+    
+            if isfinite(QP)
+                P.w(p) = P.w(p) .* exp(-omega * dt / QP);
+            end
+    
+            if isfinite(QS)
+                P.w(s) = P.w(s) .* exp(-omega * dt / QS);
+            end
+    
+        end
+    
+    end
 
     % propagate particles
     x1 = P.x;
@@ -445,6 +482,10 @@ for i1 = 1:Nt
             end
         end
     end
+
+    % refresh polarization after possible boundary mode conversion
+    p = P.p;
+    s = ~P.p;
 
     % choose particles that are scattered at the end of time step
     if isscalar(mat.meanFreeTime)

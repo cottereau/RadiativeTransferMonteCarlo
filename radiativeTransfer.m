@@ -8,6 +8,14 @@ if ~isfield(geometry,'frame')
     geometry.frame = 'spherical'; % default frame is spherical
 end
 
+% Check if user provided a single Q value for dissipation of both P and S waves
+if isprop(material,'Q') && ~isempty(material.Q) && ~material.acoustics
+    if isscalar(material.Q)
+        warning(['Only one quality factor was provided for an elastic simulation. ', ...
+                 'The same value Q = %g will be used for both P and S waves.'], material.Q);
+    end
+end
+
 % Checks if Parallel Toolbox exists
 hasParallelToolbox = ~isempty(ver('parallel'));
 
@@ -65,14 +73,14 @@ if hasParallelToolbox
                 t_val = t_start + (it-1)*dt;
                 P = propagateParticleSmallDt( matLocal, geoLocal, P, t_val );
                 E_local(:,:,it,:) = E_local(:,:,it,:) + observeTime( geoLocal, acoustics, ...
-                    P.x, P.p, P.dir, bins, ibins, vals );
+                    P.x, P.p, P.dir, bins, ibins, vals, P.w );
             end
         else
             for it = 2:Nt
                 t_val = t_start + (it-1)*dt;
                 P = propagateParticle( matLocal, P, t_val );
                 E_local(:,:,it,:) = E_local(:,:,it,:) + observeTime( geoLocal, acoustics, ...
-                    P.x, P.p, P.dir, bins, ibins, vals );
+                    P.x, P.p, P.dir, bins, ibins, vals, P.w );
             end
         end
 
@@ -117,7 +125,7 @@ else
 
             % observe energies - DIRECT UPDATE
             E(:,:,it,:) = E(:,:,it,:) + observeTime( geometry, acoustics, ...
-                P.x, P.p, P.dir, bins, ibins, vals );
+                P.x, P.p, P.dir, bins, ibins, vals, P.w );
 
             % end of loop on time
         end
