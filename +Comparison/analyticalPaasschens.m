@@ -21,9 +21,27 @@ v = material.v;
 t = observation.time;
 r = (observation.x(1:end-1)+observation.x(2:end))/2;
 
+% dissipation
+Q = Inf;
+if isprop(material,'Q') && ~isempty(material.Q)
+    Qval = material.Q(:);
+    Q = Qval(1);
+end
+
+omega = 2*pi*material.Frequency;
+if isfinite(Q)
+    absorptionFactor = exp(-omega*t/Q);   % row vector, 1 x Nt
+else
+    absorptionFactor = ones(size(t));
+end
+
+% Note : Equivalent Paasschens absorption length:
+% la = v*Q/omega
+% absorptionFactor = exp(-v*t/la)
+
 if isempty(material.sigma)
     error(['The Differential Scattering Cross-Sections '...
-        'has been not defined, please defined it usign DSCS Class'])
+           'has been not defined, please defined it usign DSCS class'])
 end
 
 Sigma = MaterialClass.prepareSigmaOne(material.sigma{1},d); % homogeneous to 1/[T]
@@ -61,4 +79,5 @@ if nargout==2
     E_diff = (Sigma/v)^d ./ (4*pi/d*a).^(d/2) .* exp(-d/4*b.^2./a);
 end
 
-end
+E = E .* absorptionFactor;
+E_diff = E_diff .* absorptionFactor;
