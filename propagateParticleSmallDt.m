@@ -31,9 +31,17 @@ end
 % loop on time sub-iterations
 for i1 = 1:Nt
 
-    % polarization type of particles
-    p = P.p;
-    s = ~P.p;
+    % active particles are particles that still carry energy
+    alive = P.w > 0;
+    
+    % if all particles have escaped or have zero weight, stop sub-stepping
+    if ~any(alive)
+        break
+    end
+    
+    % polarization type of active particles
+    p = P.p & alive;
+    s = ~P.p & alive;
     
     % intrinsic attenuation / dissipation through particle weights
     if isprop(mat,'Q') && ~isempty(mat.Q)
@@ -45,7 +53,7 @@ for i1 = 1:Nt
             Qval = mat.Q(1);
     
             if isfinite(Qval)
-                P.w = P.w .* exp(-omega * dt / Qval);
+                P.w(alive) = P.w(alive) .* exp(-omega * dt / Qval);
             end
     
         else
@@ -83,14 +91,36 @@ for i1 = 1:Nt
         for i2 = 1:length(geometry.bnd)
 
             bnd = geometry.bnd(i2);
+            
+            % boundary type: default is reflective
+            if isfield(bnd,'type') && ~isempty(bnd.type)
+                bndType = lower(bnd.type);
+            else
+                bndType = 'reflective';
+            end
+            
+            isReflective = strcmp(bndType,'reflective');
+            isAbsorbing  = strcmp(bndType,'absorbing');
+            
+            if ~isReflective && ~isAbsorbing
+                error(['Unknown boundary type "%s". Use "reflective" ...' ...
+                       'or "absorbing".'], bndType);
+            end
 
             % boundaries along cartesian coordinates
             if bnd.dir<4
                 % index of particles outside the boundary
-                ind = (P.x(:,bnd.dir)-bnd.val).*(x1(:,bnd.dir)-bnd.val)<0;
-                
+                ind = alive & ...
+                      (P.x(:,bnd.dir)-bnd.val).*(x1(:,bnd.dir)-bnd.val) < 0;
+
                 if ~any(ind); continue; end
                 
+                if isAbsorbing
+                    P.w(ind) = 0;
+                    alive(ind) = false;
+                    continue
+                end
+                                
                 if mat.acoustics
                     % Acoustic: specular reflection
                     P.x(ind,bnd.dir) = (2*bnd.val)-P.x(ind,bnd.dir);
@@ -239,9 +269,17 @@ for i1 = 1:Nt
 
                 % which particles have moved outside the cylinder radius
                 overshoot_dist = r - bnd.val;
-                ind = overshoot_dist > 0;
+
+                ind = alive & overshoot_dist > 0;
 
                 if any(ind)
+
+                    if isAbsorbing
+                        P.w(ind) = 0;
+                        alive(ind) = false;
+                        continue
+                    end
+
                     pos_outside = P.x(ind, :);
                     r_outside = r(ind);
             
@@ -483,9 +521,12 @@ for i1 = 1:Nt
         end
     end
 
-    % refresh polarization after possible boundary mode conversion
-    p = P.p;
-    s = ~P.p;
+
+    % refresh active particles and polarization after possible boundary effects
+    alive = P.w > 0;
+    if ~any(alive), break; end
+    p = P.p & alive;
+    s = ~P.p & alive;
 
     % choose particles that are scattered at the end of time step
     if isscalar(mat.meanFreeTime)
