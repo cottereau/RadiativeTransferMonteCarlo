@@ -130,7 +130,7 @@ else
 end
 
 % initialize matrix of observations
-energy = zeros(length(bins{1})-1,length(bins{2})-1,Nt,1+~acoustics,'single');
+energy = zeros(length(bins{1})-1,length(bins{2})-1,Nt,1+~acoustics,'uint32');
 
 % initialize observation structured array
 obs = struct('d', d, ...                 % dimension of the problem

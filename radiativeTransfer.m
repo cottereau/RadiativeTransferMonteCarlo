@@ -73,14 +73,14 @@ if hasParallelToolbox
                 t_val = t_start + (it-1)*dt;
                 P = propagateParticleSmallDt( matLocal, geoLocal, P, t_val );
                 E_local(:,:,it,:) = E_local(:,:,it,:) + observeTime( geoLocal, acoustics, ...
-                    P.x, P.p, P.dir, bins, ibins, vals, P.w );
+                    P.x, P.p, P.dir, bins, ibins, vals, P.alive );
             end
         else
             for it = 2:Nt
                 t_val = t_start + (it-1)*dt;
                 P = propagateParticle( matLocal, P, t_val );
                 E_local(:,:,it,:) = E_local(:,:,it,:) + observeTime( geoLocal, acoustics, ...
-                    P.x, P.p, P.dir, bins, ibins, vals, P.w );
+                    P.x, P.p, P.dir, bins, ibins, vals, P.alive );
             end
         end
 
@@ -125,7 +125,7 @@ else
 
             % observe energies - DIRECT UPDATE
             E(:,:,it,:) = E(:,:,it,:) + observeTime( geometry, acoustics, ...
-                P.x, P.p, P.dir, bins, ibins, vals, P.w );
+                P.x, P.p, P.dir, bins, ibins, vals, P.alive );
 
             % end of loop on time
         end
@@ -188,7 +188,7 @@ else
 end
 
 % energy as a function of [t]
-obs.energy = squeeze(tensorprod(d1,reshape(tensorprod(d2,obs.energyDensity,2,2),[length(d1) Nt 1+~acoustics]),2,1));
+obs.energy = squeeze(sum(sum(double(E),1),2)) / obs.N;
 
     % -----------------------------------------------------------------
     % Nested function: called by afterEach on the DataQueue.

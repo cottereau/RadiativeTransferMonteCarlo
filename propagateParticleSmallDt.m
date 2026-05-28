@@ -28,13 +28,66 @@ if ~mat.acoustics && isfield(geometry,'bnd')
     end
 end
 
+% intrinsic attenuation parameters
+Qval = Inf;
+
+if isprop(mat,'Q') && ~isempty(mat.Q)
+    Qval = mat.Q(:);
+end
+
+if mat.acoustics
+
+    QP = Qval(1);
+    QS = QP;
+
+else
+
+    if isscalar(Qval)
+        QP = Qval(1);
+        QS = Qval(1);
+    else
+        QP = Qval(1);
+        QS = Qval(2);
+    end
+
+end
+
+useQ = isfinite(QP) || isfinite(QS);
+
+if useQ
+
+    if ~isprop(mat,'Frequency') || isempty(mat.Frequency)
+        error(['A finite quality factor Q was provided, but mat.Frequency is empty. ', ...
+               'Please define mat.Frequency before using Q-based attenuation.']);
+    end
+
+    omega = 2*pi*mat.Frequency(1);
+
+    if isfinite(QP)
+        pKillP = 1 - exp(-omega * dt / QP);
+    else
+        pKillP = 0;
+    end
+
+    if isfinite(QS)
+        pKillS = 1 - exp(-omega * dt / QS);
+    else
+        pKillS = 0;
+    end
+
+else
+    pKillP = 0;
+    pKillS = 0;
+
+end
+
 % loop on time sub-iterations
 for i1 = 1:Nt
 
     % active particles are particles that still carry energy
-    alive = P.w > 0;
+    alive = P.alive;
     
-    % if all particles have escaped or have zero weight, stop sub-stepping
+    % if all particles have been absorbed/dissipated, stop sub-stepping
     if ~any(alive)
         break
     end
@@ -43,38 +96,42 @@ for i1 = 1:Nt
     p = P.p & alive;
     s = ~P.p & alive;
     
-    % intrinsic attenuation / dissipation through particle weights
-    if isprop(mat,'Q') && ~isempty(mat.Q)
+    % intrinsic attenuation / dissipation through stochastic killing
+    if useQ
     
-        omega = 2*pi*mat.Frequency;
+        kill = false(P.N,1);
     
         if mat.acoustics
     
-            Qval = mat.Q(1);
-    
-            if isfinite(Qval)
-                P.w(alive) = P.w(alive) .* exp(-omega * dt / Qval);
+            if pKillP > 0
+                kill(alive) = rand(nnz(alive),1) < pKillP;
             end
     
         else
     
-            Qval = mat.Q(:);
-    
-            if isscalar(Qval)
-                QP = Qval(1);
-                QS = Qval(1);
-            else
-                QP = Qval(1);
-                QS = Qval(2);
+            if pKillP > 0
+                kill(p) = rand(nnz(p),1) < pKillP;
             end
     
-            if isfinite(QP)
-                P.w(p) = P.w(p) .* exp(-omega * dt / QP);
+            if pKillS > 0
+                kill(s) = rand(nnz(s),1) < pKillS;
             end
     
-            if isfinite(QS)
-                P.w(s) = P.w(s) .* exp(-omega * dt / QS);
+        end
+    
+        if any(kill)
+    
+            P.alive(kill) = false;
+    
+            % refresh active masks after absorption
+            alive = P.alive;
+    
+            if ~any(alive)
+                break
             end
+    
+            p = P.p & alive;
+            s = ~P.p & alive;
     
         end
     
@@ -108,15 +165,18 @@ for i1 = 1:Nt
             end
 
             % boundaries along cartesian coordinates
-            if bnd.dir<4
-                % index of particles outside the boundary
-                ind = alive & ...
-                      (P.x(:,bnd.dir)-bnd.val).*(x1(:,bnd.dir)-bnd.val) < 0;
+            if bnd.dir < 4
 
-                if ~any(ind); continue; end
+                % index of active particles crossing the boundary
+                ind = alive & ...
+                      ((P.x(:,bnd.dir)-bnd.val).*(x1(:,bnd.dir)-bnd.val) < 0);
+
+                if ~any(ind)
+                    continue
+                end
                 
                 if isAbsorbing
-                    P.w(ind) = 0;
+                    P.alive(ind) = false;
                     alive(ind) = false;
                     continue
                 end
@@ -263,6 +323,7 @@ for i1 = 1:Nt
 
             % boundary along cylindrical radius
             elseif bnd.dir==4
+
                 % distance to z axis
                 radial_coords = P.x(:, 1:2);
                 r = sqrt(sum(radial_coords.^2, 2));
@@ -270,12 +331,12 @@ for i1 = 1:Nt
                 % which particles have moved outside the cylinder radius
                 overshoot_dist = r - bnd.val;
 
-                ind = alive & overshoot_dist > 0;
+                ind = alive & (overshoot_dist > 0);
 
                 if any(ind)
 
                     if isAbsorbing
-                        P.w(ind) = 0;
+                        P.alive(ind) = false;
                         alive(ind) = false;
                         continue
                     end
@@ -283,8 +344,7 @@ for i1 = 1:Nt
                     pos_outside = P.x(ind, :);
                     r_outside = r(ind);
             
-                    % unit normal vector (in x-y plane) at impact point
-                    % Points OUTWARDS from cylinder center
+                    % unit (outward) normal vector in x-y plane
                     n = zeros(size(pos_outside));
                     n(:, 1:2) = pos_outside(:, 1:2) ./ r_outside;
 
@@ -521,9 +581,8 @@ for i1 = 1:Nt
         end
     end
 
-
     % refresh active particles and polarization after possible boundary effects
-    alive = P.w > 0;
+    alive = P.alive;
     if ~any(alive), break; end
     p = P.p & alive;
     s = ~P.p & alive;

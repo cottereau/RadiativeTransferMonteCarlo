@@ -1,7 +1,7 @@
-function E = observeTime(geometry,acoustics,x,p,dir,bins,ibins,vals,w)
+function E = observeTime(geometry,acoustics,x,p,dir,bins,ibins,vals,alive)
 
-if nargin < 9 || isempty(w)
-    w = ones(size(x,1),1);
+if nargin < 9 || isempty(alive)
+    alive = true(size(x,1),1);
 end
 
 % constants
@@ -9,8 +9,7 @@ d = geometry.dimension;
 frame = geometry.frame;
 N1 = length(bins{1})-1;
 N2 = length(bins{2})-1;
-E = zeros(N1,N2,1,1+~acoustics,'single');
-%E = zeros(N1,N2,1,1+~acoustics,'uint32');
+E = zeros(N1,N2,1,1+~acoustics,'uint32');
 
 % compute radius and position angles
 if d==2
@@ -21,7 +20,7 @@ end
 
 % compute angle between direction of propagation and position
 % check normalization of dir
-%cospsi = dot(x,dir,2)./r;
+% cospsi = dot(x,dir,2)./r;
 cospsi = dir(:,3);
 cospsi(cospsi>1)=1;
 cospsi(cospsi<-1)=-1;
@@ -133,35 +132,15 @@ if d==3 || isequal(ibins, [1 3])
     ind = ind & int2>=vals{2}(1) & int2<=vals{2}(2);
 end
 
-% construct weighted histograms (adding weights of the particles)
-E(:,:,1,1) = weightedHistcounts2( ...
-    hist1(p&ind), hist2(p&ind), w(p&ind), bins{1}, bins{2});
+ind = ind & alive;
+
+% construct histograms
+E(:,:,1,1) = histcounts2( ...
+    hist1(p&ind), hist2(p&ind), bins{1}, bins{2});
 
 if ~acoustics
-    E(:,:,1,2) = weightedHistcounts2( ...
-        hist1(~p&ind), hist2(~p&ind), w(~p&ind), bins{1}, bins{2});
+    E(:,:,1,2) = histcounts2( ...
+        hist1(~p&ind), hist2(~p&ind), bins{1}, bins{2});
 end
-
-end
-
-function H = weightedHistcounts2(x1,x2,w,bins1,bins2)
-
-N1 = length(bins1)-1;
-N2 = length(bins2)-1;
-
-% For each particle coordinate, which bin it belongs to
-i1 = discretize(x1,bins1);
-i2 = discretize(x2,bins2);
-
-ok = ~isnan(i1) & ~isnan(i2) & isfinite(w);
-
-H = accumarray( ...
-    [i1(ok), i2(ok)], ... % list of bin indices
-    single(w(ok)), ...    % the value to add for each particle (weight)
-    [N1, N2], ...         % force the size of the output, even if some bins are empty
-    @sum, ...             % when several particles fall in the same bin, sum their weights
-    single(0) );          % empty bins should be filled with zero.
-
-H = single(H);
 
 end

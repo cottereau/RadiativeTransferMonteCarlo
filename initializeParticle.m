@@ -138,14 +138,14 @@ if ~acoustics && isfield(source,'polarization') && source.polarization=='S'
 end
 
 % initialize structure
-P = struct( 'd', d, ...                 % dimension of the problem
+P = struct( 'd', d, ...         % dimension of the problem
     'N', N, ...                 % number of particles
     'x', x, ...                 % cartesian coordinates
     'dir', dir, ...             % direction of propagation
     'perp', perp, ...           % orthogonal to direction of propagation
     'p', p, ...                 % polarization (used only in elasticity)
     't', t, ...                 % current time for the particle
-    'w', ones(N,1) );           % weights associated (dissipation)
+    'alive', true(N,1) );       % active particles
 end
 
 % compute the cumulative distribution radial function corresponding to a
