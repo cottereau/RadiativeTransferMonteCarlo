@@ -908,10 +908,12 @@ classdef MaterialClass < handle
 
                     % Enforce physical bounds
                     S2_r    = max(0, min(1, S2_r));
-
-                    
-                    Racf = (S2_r-eta^2)./(eta*(1-eta))
-
+                    Racf = (S2_r-eta^2)./(eta*(1-eta));
+                    Racf = Racf - Racf(end);
+                    Racf(2:end+1) = Racf;
+                    Racf(1) = 1;
+                    r(2:end+1) = r;
+                    r(1) = 0;
                     obj.r = r;
                     obj.R = @(z) interp1(r, Racf, z, 'makima', 0);
                     obj.CalcLc;
@@ -926,7 +928,7 @@ classdef MaterialClass < handle
                    
                     % discretization in Fourier space
                     k = 0:0.1:3000;
-                    r = 0:D/40:25*D;
+                    r = 0:D/20:20*D;
                     % number density of spheres
                     rho = 3*eta/(4*pi);
                     % normalization of the radii
@@ -967,10 +969,16 @@ classdef MaterialClass < handle
                     % computation of the particle autocorrelation function
                     Racf = (S -(1-eta)^2) / eta / (1-eta);
 
-                    obj.r = r;
-                    obj.R = @(z) interp1(r, Racf, z, 'makima', 0);
+                    % r is in D/2-normalised units; convert back to physical
+                    % units so CalcLc produces a physical Lc, consistent with
+                    % the 2D solver and with GetPSDFromImage output.
+                    r_phys = r * D/2;
+                    obj.r = r_phys;
+                    obj.R = @(z) interp1(r_phys, Racf, z, 'makima', 0);
                     obj.CalcLc;
-                    r_norm = r / obj.CorrelationLength;
+                    r_norm = r_phys / obj.CorrelationLength;
+                    obj.r = [];
+                    obj.R = [];
                     obj.r  = r_norm;
                     obj.R  = @(z) interp1(r_norm, Racf, z, 'makima', 0);
                     obj.CalcPhi;
@@ -985,50 +993,44 @@ classdef MaterialClass < handle
             % Compute the normalised power spectral density function from a
             % 2D grayscale image or a 3D binary volume (logical/uint8/double).
             %
-            % The method replaces the previous 1-D xcorr approach with the
-            % exact 3D FFT-based pipeline translated from Center2S2func.py:
             %   1. Convert input to a binary (0/1) indicator field.
             %   2. Compute S2(r) via the Wiener-Khinchin theorem:
             %         S2_map = IFFT( |FFT(I)|^2 ) / N_voxels
             %   3. Radially average S2_map to obtain the isotropic S2(r).
             %   4. Derive the normalised autocorrelation (ACF):
             %         R(r) = [S2(r) - phi^2] / [phi*(1-phi)]
-            %   5. Compute the correlation length Lc from R(r).
-            %   6. Compute the 3D PSDF via Fourier-Bessel quadrature and
-            %      store obj.Phi, obj.R, obj.k, obj.CorrelationLength.
+            %   5. Compute the correlation length Lc from R(r) in physical units.
+            %   6. Normalise r by Lc and compute the PSDF via Fourier-Bessel
+            %      quadrature. Store obj.Phi, obj.R, obj.k, obj.CorrelationLength.
             %
-            % The method also calls CalcS2Correlation (static) so that the
-            % full S2 pipeline is always available as a standalone utility.
+            % The resulting obj.CorrelationLength is in the same physical units
+            % as dx, and is directly comparable with MonoDisperseSphere output
+            % (which also stores Lc in physical units after the 3D PY fix).
             %
             % Syntax:
             %   out = GetPSDFromImage(obj, Im)
             %   out = GetPSDFromImage(obj, Im, dx)
-            %   out = GetPSDFromImage(obj, Im, dx, dy)
-            %   out = GetPSDFromImage(obj, Im, dx, dy, dz)
             %
             % Inputs:
-            %   Im  : 2D or 3D numeric array (grayscale image or binary volume).
-            %         Values > 0.5 are treated as the solid phase (indicator = 1).
-            %   dx  : voxel/pixel size along x  [same unit as desired Lc] (default 1)
-            %   dy  : voxel/pixel size along y  (default dx)
-            %   dz  : voxel/pixel size along z  (default dx, ignored for 2D)
+            %   Im : 2D or 3D numeric array (binary volume, values > 0.5 = solid).
+            %   dx : isotropic voxel/pixel size in physical units (default 1)
             %
             % Output:
-            %   out : function handle  Phi(k)  — normalised 3D PSDF
+            %   out : function handle  Phi(k)  — normalised PSDF
             %
             % Side effects (properties set on obj):
             %   obj.Phi              — PSDF function handle
-            %   obj.R                — normalised ACF function handle
-            %   obj.k                — wavenumber vector (normalised by Lc)
-            %   obj.r                — radial distance vector (normalised by Lc)
-            %   obj.CorrelationLength— correlation length Lc  [same units as dx]
+            %   obj.R                — normalised ACF function handle  R(r/Lc)
+            %   obj.k                — wavenumber vector  k*Lc  [-]
+            %   obj.r                — radial distance vector  r/Lc  [-]
+            %   obj.CorrelationLength— physical correlation length  [same units as dx]
             %
             % See also: MaterialClass.CalcS2Correlation, MaterialClass.VoxelizeDomain
 
-            % --- default pixel sizes ---
-            if nargin < 3 || isempty(dx),  dx = 1;  end
-            if nargin < 4 || isempty(dy),  dy = dx; end
-            if nargin < 5 || isempty(dz),  dz = dx; end
+            % --- default pixel size ---
+            if nargin < 3 || isempty(dx), dx = 1; end
+            dy = dx;
+            dz = dx;
 
             % --- convert to binary double indicator field ---
             if islogical(Im)
@@ -1047,72 +1049,7 @@ classdef MaterialClass < handle
             % 1-D branch: vector input
             % =========================================================
             if isvector(I)
-                I       = I(:);
-                N       = numel(I);
-                phi_vol = mean(I);
-
-                % S2 via FFT (Wiener-Khinchin), periodic domain
-                F      = fft(I);
-                S2_raw = real(ifft(F .* conj(F))) / N;
-                S2_raw = fftshift(S2_raw);          % r=0 at centre
-
-                % take non-negative-r half
-                half      = floor(N/2);
-                S2_radial = S2_raw(half+1 : end);
-                r_axis    = (0 : numel(S2_radial)-1)' * dx;
-
-                % clip to L/2
-                keep      = r_axis <= N*dx/2;
-                r_axis    = r_axis(keep);
-                S2_radial = S2_radial(keep);
-
-                % normalised ACF
-                denom = phi_vol * (1 - phi_vol);
-                if denom < 1e-12
-                    warning('MaterialClass:GetPSDFromImage', ...
-                        'Volume fraction is %.4f — image may be degenerate.', phi_vol);
-                    denom = 1;
-                end
-                Racf   = (S2_radial - phi_vol^2) / denom;
-                r_phys = r_axis;
-
-                % Hann window
-                right_win = min(200, floor(numel(Racf)/4));
-                win = hann(2*right_win);
-                Racf(end-right_win+1:end) = ...
-                    Racf(end-right_win+1:end) .* win(right_win+1:end);
-
-                % correlation length: Lc = 2 * int_0^inf R(r) dr  (1D definition)
-                Lc = 2 * trapz(r_phys, max(Racf, 0));
-                if Lc <= 0
-                    warning('MaterialClass:GetPSDFromImage', ...
-                        'Correlation length came out non-positive (%.4g). Check image.', Lc);
-                    Lc = r_phys(end) / 10;
-                end
-                obj.CorrelationLength = Lc;
-
-                r_norm = r_phys / Lc;
-                obj.r  = r_norm;
-                obj.R  = @(z) interp1(r_norm, Racf, z, 'makima', 0);
-
-                % 1D PSDF: Phi(k) = (1/pi) * int_0^inf R(r) cos(k*r) dr
-                Nk_psd    = 512;
-                k_max_psd = min(pi / mean(diff(r_norm)), 6.0);
-                obj.k     = linspace(0, k_max_psd, Nk_psd);
-                psd_vals  = zeros(1, Nk_psd);
-                for ik = 1:Nk_psd
-                    psd_vals(ik) = (1/pi) * trapz(r_norm, Racf .* cos(obj.k(ik) .* r_norm));
-                end
-                psd_vals = max(psd_vals, 0);
-                obj.Phi  = @(z) interp1(obj.k, psd_vals, z, 'makima', 0);
-                out      = obj.Phi;
-
-                r_plot  = r_norm(r_norm <= 6);
-                S2_plot = S2_radial(r_norm <= 6);
-                R_plot  = Racf(r_norm <= 6);
-                MaterialClass.psd_summary_figure('1D', phi_vol, Lc, ...
-                    r_plot, S2_plot, R_plot, obj.k, psd_vals, phi_vol);
-                return;
+              error('Not implemented')
             end
 
             % =========================================================
@@ -1140,12 +1077,27 @@ classdef MaterialClass < handle
                     'Volume fraction is %.4f — image may be degenerate.', phi_vol);
                 denom = 1;
             end
-            Racf   = (S2_radial - phi_vol^2) / denom;
-            Racf   = Racf(:);
-            r_phys = r_axis(:);
+            if 1
+                Racf   = (S2_radial - phi_vol^2) / denom;
+                Racf   = Racf(:);
+                Racf(2:end+1) = Racf;
+                Racf(1) = 1;
+                r_phys = r_axis(:);
+                r_phys(2:end+1)=r_phys;
+                r_phys(1) = 0;
+            end
+            if 0
+                r_phys = r_axis(:);
+                r_phys(2:end+1)=r_phys;
+                r_phys(1) = 0;
 
-            % correlation length — set obj.r/obj.R in physical units first so
-            % CalcLc can integrate using the correct dimension formula (obj.d)
+                Racf = S2_radial - S2_radial(end);
+                Racf = Racf./Racf(1);
+                Racf(end+1) = 0;
+            end
+            if 0
+                % correlation length — set obj.r/obj.R in physical units first so
+            % CalcLc can integrate using the correct dimension
             obj.r = r_phys;
             obj.R = @(z) interp1(r_phys, Racf, z, 'makima', 0);
             Lc = obj.CalcLc;
@@ -1154,50 +1106,51 @@ classdef MaterialClass < handle
                     'Correlation length came out non-positive (%.4g). Check image.', Lc);
                 Lc = r_phys(end) / 10;
             end
-            obj.CorrelationLength = Lc;
-
-            % re-normalise r by Lc
             r_norm = r_phys / Lc;
+            if any(r_norm > 20)
+                idx = find(r_norm>20,1,'first');
+                win = hann(21);
+                win = [ones(idx,1); win(11:end); zeros(numel(r_norm)-idx-11,1)];
+                Racf = Racf.*win;
+            end
+            end
+            % Taper Racf: half-cosine from 1→0 between 60 % and 75 %, then 0.
+            % Starting at 30-40% was too aggressive for domains ~30D and cut
+            % hard-sphere ACF oscillations that extend to ~5D.
+            N_racf  = numel(Racf);
+            i_start = round(0.60 * N_racf);
+            i_end   = round(0.75 * N_racf);
+            n_tap   = i_end - i_start + 1;
+            taper   = 0.5 * (1 + cos(pi * (0:n_tap-1)' / (n_tap - 1)));
+            Racf(i_start:i_end) = Racf(i_start:i_end) .* taper;
+            Racf(i_end+1:end)   = 0;
+
+            obj.r = r_phys;
+            obj.R = @(z) interp1(r_phys, Racf, z, 'makima', 0);
+            Lc = obj.CalcLc;
+            if ~isreal(Lc) || Lc <= 0
+                figure
+                plot(r_phys, Racf)
+                warning('MaterialClass:GetPSDFromImage', ...
+                    'Correlation length non-positive or complex (%.4g). Check image.', real(Lc));
+                Lc = r_phys(end) / 10;
+            end
+
+            r_norm = r_phys / Lc;
+
+            obj.r = [];
+            obj.R = [];
             obj.r  = r_norm;
             obj.R  = @(z) interp1(r_norm, Racf, z, 'makima', 0);
 
-            % PSDF via Fourier-Bessel quadrature
-            %   2D: Phi(k) = 1/(2*pi) * int_0^inf r*J0(k*r)*R(r) dr
-            %   3D: Phi(k) = 4*pi/(2*pi)^3 * int_0^inf r^2*sinc(k*r)*R(r) dr
-            Nk_psd    = 512;
-            k_max_psd = min(pi / mean(diff(r_norm)), 6.0);
-            obj.k     = linspace(0, k_max_psd, Nk_psd);
-            psd_vals  = zeros(1, Nk_psd);
-
-            if nz == 1
-                % 2D Hankel transform
-                for ik = 1:Nk_psd
-                    kr = obj.k(ik) * r_norm;
-                    J0 = besselj(0, kr);
-                    psd_vals(ik) = (1/(2*pi)) * trapz(r_norm, r_norm .* Racf .* J0);
-                end
-            else
-                % 3D spherical Fourier-Bessel (sinc) transform
-                for ik = 1:Nk_psd
-                    if obj.k(ik) < 1e-8
-                        integrand = r_norm.^2 .* Racf;
-                    else
-                        kr = obj.k(ik) * r_norm;
-                        j0 = sin(kr) ./ kr;
-                        j0(kr < 1e-12) = 1;
-                        integrand = r_norm.^2 .* Racf .* j0;
-                    end
-                    psd_vals(ik) = (4*pi / (2*pi)^3) * trapz(r_norm, integrand);
-                end
-            end
-            psd_vals = max(psd_vals, 0);
-
-            obj.Phi = @(z) interp1(obj.k, psd_vals, z, 'makima', 0);
+            obj.CalcPhi;
+            psd_vals = obj.Phi(obj.k);
             out     = obj.Phi;
 
-            r_plot  = r_norm(r_norm <= 6);
-            S2_plot = S2_radial(r_norm <= 6);
-            R_plot  = Racf(r_norm <= 6);
+            r_plot  = r_norm;
+            S2_plot = S2_radial;
+            S2_plot(end+1) = 0;
+            R_plot  = Racf;
             dim_label = sprintf('%dD', 2 + (nz > 1));
             MaterialClass.psd_summary_figure(dim_label, phi_vol, Lc, ...
                 r_plot, S2_plot, R_plot, obj.k, psd_vals, phi_vol);
@@ -1291,25 +1244,22 @@ classdef MaterialClass < handle
             %
             % For isotropic correlation functions in d dimensions.
             
-            % Use a logarithmic grid for integration to capture decay
-            if(isempty(obj.r))
-                r = logspace(-4, 3, 4096); 
+            if isempty(obj.r)
+                r = linspace(0, 15, 4096);
+                r(1) = 1e-6;
             else
                 r = obj.r;
             end
             R_vals = obj.R(r);
 
             if obj.d == 1
-                % Lc = 2 * int_0^inf R(r) dr
-                Lc = 2 * trapz(r, R_vals);
+                Lc = abs(2 * trapz(r, R_vals));
             elseif obj.d == 2
-                % Lc^2 = 2 * int_0^inf r*R(r) dr
-                I = trapz(r, r .* R_vals);
-                Lc = sqrt(2 * I);
+                I  = trapz(r, r .* R_vals);
+                Lc = sqrt(2 * abs(I));
             elseif obj.d == 3
-                % Lc^3 = 3 * int_0^inf r^2*R(r) dr
-                I = trapz(r, r.^2 .* R_vals);
-                Lc = (3 * I)^(1/3);
+                I  = trapz(r, r.^2 .* R_vals);
+                Lc = nthroot(3 * abs(I), 3);
             else
                 error('MaterialClass:InvalidDimension', 'Dimension must be 1, 2, or 3');
             end
@@ -1337,11 +1287,13 @@ classdef MaterialClass < handle
             % where sinc(k*x) = sin(k*x)/(k*x)
             
             % Grid for real space (r) and wavenumber (k)
-            r = logspace(-4, 3, 4096);  % real space grid
+            r = linspace(0, 15, 4096);  % real space grid (normalised by Lc)
+            r(1) = 1e-6;                % avoid r=0 in sinc/Bessel kernels
             R_vals = obj.R(r);
-            
+
             % Wavenumber grid
-            k = logspace(-3, 3, 4096);  % wavenumber grid
+            k = linspace(0, 20, 4096);  % wavenumber grid (normalised by Lc)
+            k(1) = 1e-6;                % avoid k=0 in sinc kernel
             PSD = zeros(size(k));
             
             if obj.d == 1
@@ -1375,9 +1327,9 @@ classdef MaterialClass < handle
             PSD = max(PSD, 0);
             
             % Store results in object
-            obj.r = r;
+            %obj.r = r;
             obj.k = k;
-            obj.Phi = @(z) interp1(k, PSD, z, 'pchip', 0);
+            obj.Phi = @(z) interp1(k, PSD, z, 'makima', 0);
             out = obj.Phi;
         end
         function out = CalcR(obj)
@@ -1945,7 +1897,8 @@ classdef MaterialClass < handle
                             fprintf('  Progresso: %.1f%%\n', 100*i/n_obj);
                         end
                         cx = coordinates(i);
-                        ix = mod(find(abs(xv - cx) <= R) - 1, nx) + 1;
+                        dx_c = abs(xv - cx); dx_c = min(dx_c, L - dx_c);
+                        ix = find(dx_c <= R);
                         if isempty(ix), continue; end
                         ddx = abs(xv(ix) - cx);
                         ddx = ddx - (ddx > L/2) * L;
@@ -1966,8 +1919,8 @@ classdef MaterialClass < handle
                         end
                         cx = coordinates(i,1);
                         cy = coordinates(i,2);
-                        ix = mod(find(abs(xv - cx) <= R) - 1, nx) + 1;
-                        iy = mod(find(abs(yv - cy) <= R) - 1, ny) + 1;
+                        dx_c = abs(xv - cx); dx_c = min(dx_c, L(1) - dx_c); ix = find(dx_c <= R);
+                        dy_c = abs(yv - cy); dy_c = min(dy_c, L(2) - dy_c); iy = find(dy_c <= R);
                         if isempty(ix) || isempty(iy), continue; end
                         [IX, IY] = ndgrid(ix, iy);
                         ddx = abs(xv(IX) - cx);   ddx = ddx - (ddx > L(1)/2) * L(1);
@@ -1994,9 +1947,9 @@ classdef MaterialClass < handle
                         cx = coordinates(i,1);
                         cy = coordinates(i,2);
                         cz = coordinates(i,3);
-                        ix = mod(find(abs(xv - cx) <= R) - 1, nx) + 1;
-                        iy = mod(find(abs(yv - cy) <= R) - 1, ny) + 1;
-                        iz = mod(find(abs(zv - cz) <= R) - 1, nz) + 1;
+                        dx_c = abs(xv - cx); dx_c = min(dx_c, L(1) - dx_c); ix = find(dx_c <= R);
+                        dy_c = abs(yv - cy); dy_c = min(dy_c, L(2) - dy_c); iy = find(dy_c <= R);
+                        dz_c = abs(zv - cz); dz_c = min(dz_c, L(3) - dz_c); iz = find(dz_c <= R);
                         if isempty(ix) || isempty(iy) || isempty(iz), continue; end
                         [IX, IY, IZ] = ndgrid(ix, iy, iz);
                         ddx = abs(xv(IX) - cx);   ddx = ddx - (ddx > L(1)/2) * L(1);
@@ -2066,6 +2019,10 @@ classdef MaterialClass < handle
 
             % --- FFT-based autocorrelation (Wiener-Khinchin) ---
             %   S2_map = IFFT( |FFT(I)|^2 ) / N
+            if 0
+                I_float = I_float - phi_vol;
+                I_float = I_float./std_vol;
+            end
             F      = fftn(I_float);
             S2_map = real(ifftn(F .* conj(F))) / numel(I_float);
 
@@ -2600,5 +2557,64 @@ classdef MaterialClass < handle
             end
         end
         [med_lam, std_lam, med_mu, std_mu, med_rho, std_rho] = convert_kmr_to_lmr(med_k, std_k, med_mu_in, std_mu_in, med_rho_in, std_rho_in,corr_K_mu)
+
+        function h = PlotVoxel(M, resolution, slice_index)
+            %% PlotVoxel  Visualise a voxelised/pixelised microstructure.
+            %
+            % For a 2-D binary array the full image is shown.
+            % For a 3-D binary volume an XY cross-section is shown.
+            %
+            % Syntax:
+            %   MaterialClass.PlotVoxel(M, resolution)
+            %   MaterialClass.PlotVoxel(M, resolution, slice_index)
+            %
+            % Inputs:
+            %   M           : logical/numeric array — nx×ny (2D) or nx×ny×nz (3D)
+            %   resolution  : voxel/pixel edge length (isotropic, same unit as domain)
+            %   slice_index : z-index of the XY slice to display (3D only).
+            %                 Defaults to the middle slice.
+
+            if nargin < 2 || isempty(resolution), resolution = 1; end
+
+            nd = ndims(M);
+            if nd == 2 || (nd == 3 && size(M, 3) == 1)
+                % ---- 2-D image ----
+                [nx, ny] = size(M);
+                x_ax = (0:ny-1) * resolution;
+                y_ax = (0:nx-1) * resolution;
+                h = figure('Name', '2D Microstructure', 'Color', 'w');
+                imagesc(x_ax, y_ax, double(M));
+                colormap(gray(2));
+                clim([0 1]);
+                axis image;
+                xlabel('x'); ylabel('y');
+                phi = mean(M(:));
+                title(sprintf('2D microstructure  (\\phi = %.4f)', phi));
+                colorbar('Ticks', [0.25 0.75], 'TickLabels', {'matrix','inclusion'});
+            else
+                % ---- 3-D volume — one XY slice ----
+                [nx, ny, nz] = size(M);
+                if nargin < 3 || isempty(slice_index)
+                    slice_index = round(nz / 2);
+                end
+                slice_index = max(1, min(nz, slice_index));
+
+                x_ax = (0:ny-1) * resolution;
+                y_ax = (0:nx-1) * resolution;
+                h = figure('Name', sprintf('3D Microstructure — XY slice z=%d/%d', slice_index, nz), ...
+                    'Color', 'w');
+                imagesc(x_ax, y_ax, double(M(:,:,slice_index)));
+                colormap(gray(2));
+                clim([0 1]);
+                axis image;
+                xlabel('x'); ylabel('y');
+                phi = mean(M(:));
+                title(sprintf('3D microstructure — XY slice z=%d/%d  (\\phi_{vol} = %.4f)', ...
+                    slice_index, nz, phi));
+                colorbar('Ticks', [0.25 0.75], 'TickLabels', {'matrix','inclusion'});
+            end
+            set(gca, 'FontSize', 13);
+            box on;
+        end
     end
 end

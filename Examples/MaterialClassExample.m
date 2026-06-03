@@ -93,8 +93,6 @@ Dsphere = matMD3.v/matMD3.Frequency;
 phi3 = 0.15;
 matMD3.SpectralParam = struct('rhoS',phi3,'Diam',Dsphere);
 matMD3.getPSDF;   % calls MonoDisperseSphere internally (sets obj.R, obj.Phi, obj.CorrelationLength)
-matMD3.PlotCorrelation;
-matMD3.PlotPSD;
 matMD3 = matMD3.prepareSigma(matMD3, matMD3.d);
 
 L1 = [50 50 50]*Dsphere;
@@ -111,14 +109,16 @@ mat3D = MaterialClass();
 mat3D.d = 3;
 mat3D.GetPSDFromImage(M3D, resolution);
 
-imageCorr =  mat3D.R( mat3D.r);
-modelCorr = matMD3.R(matMD3.r);
-%
-figure
-plot(mat3D.r,imageCorr)
+
+
+matMD3.PlotCorrelation;
 hold on
-plot(matMD3.r,modelCorr)
+plot(mat3D.r,mat3D.R( mat3D.r))
 xlim([0 50*Dsphere])
+
+matMD3.PlotPSD;
+hold on
+plot(mat3D.k,mat3D.Phi(mat3D.k))
 
 %%
 
@@ -133,11 +133,9 @@ matMD2.coefficients_of_variation = [0.1 0.2];
 matMD2.correlation_coefficients = 0;
 matMD2.SpectralLaw   = 'monodispersesphere';
 Dsphere = matMD2.v/matMD2.Frequency;
-phi2 = 0.15;
+phi2 = 0.1;
 matMD2.SpectralParam = struct('rhoS',phi2,'Diam',Dsphere);
 matMD2.getPSDF;   % 2D PY OZ solver; also produces g(r)/S(k)/S2(r)/chi(r) figure
-matMD2.PlotCorrelation;
-matMD2.PlotPSD;
 matMD2 = matMD2.prepareSigma(matMD2, matMD2.d);
 
 
@@ -145,21 +143,23 @@ L2 = [50 50]*Dsphere;
 centersSphere = MaterialClass.CreateSphereComposite(L2,Dsphere,phi2);
 MaterialClass.plot_map(centersSphere, Dsphere, L2);
 
-resolution = Dsphere/10;
+resolution = Dsphere/20;
 
 M2D = MaterialClass.VoxelizeDomain(centersSphere, Dsphere, L2, resolution);
 fprintf('2D phi_vox = %.4f\n', mean(M2D(:)));
 
 % 2D — spheres
+clear mat2D
 mat2D = MaterialClass();
 mat2D.d = 2;
 mat2D.GetPSDFromImage(M2D, resolution);
 
-imageCorr =  mat2D.R( mat2D.r);
-modelCorr = matMD2.R(matMD2.r);
-%
-figure
-plot(mat2D.r,imageCorr)
+
+matMD2.PlotCorrelation;
 hold on
-plot(matMD2.r,modelCorr)
+plot(mat2D.r,mat2D.R( mat2D.r))
 xlim([0 50*Dsphere])
+
+matMD2.PlotPSD;
+hold on
+plot(mat2D.k,mat2D.Phi(mat2D.k))
