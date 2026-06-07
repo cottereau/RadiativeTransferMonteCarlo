@@ -186,27 +186,33 @@ classdef MaterialClass < handle
             %   and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
             %   doi: 10.1016/S0165-2125(96)00021-2
             %
-            % The 2D formulas are based on:
-            %   H. Sato, M. C. Fehler, T. Maeda. Seismic Wave Propagation and Scattering
-            %   in the Heterogeneous Earth, 2nd edition. Springer, 2012.
-            %   (Chapter 4, Born approximation for wave scattering in random media)
-            %   See also: R. S. Wu and K. Aki. Scattering characteristics of elastic waves
-            %   by an elastic heterogeneity. Geophysics 50(4), pp. 582-595, 1985.
-            %   doi: 10.1190/1.1441934
+            % Note:
+            % In Ryzhik et al, the power spectral density functions for 
+            % lambda and mu are related to their respective reciprocals.
+            % In our code, we consider lambda and mu fluctuations instead.
+            % The crossed PSDFs containing rho will thus change sign 
+            % compared to the original formulas in the reference.
+            %
+            % The 2D elastic formulas correspond to the P-SV reduction of the
+            % Ryzhik et al. elastic RTE and are consistent with the Born-scattering
+            % expressions in Sato et al. (2012), Chapter 4.
 
             switch obj.acoustics
                 case 1
+                    
+                    omega = 2*pi*obj.Frequency;
+                    zeta = omega/obj.v*obj.CorrelationLength;
+                    delta_kk = obj.coefficients_of_variation(1); % CV of kappa (compressibility)
+                    delta_rr = obj.coefficients_of_variation(2); % CV of rho (density)
+                    rho_kr = obj.correlation_coefficients; % corr(kappa,rho)
+
                     switch obj.d
                         case 1
                             error('\sigma for 1D not implemented')
                         case 2
                             % 2D ACOUSTICS
-                            % In 2D the differential scattering cross section has units of
-                            % length (not area), and the solid angle is replaced by dtheta.
-                            % Leading prefactor is (pi/4)*zeta^2 instead of (pi/2)*zeta^3.
-                            % Reference: Sato, Fehler & Maeda (2012), Ch. 4
                             %
-                            %   sigma(th) = (pi/4) * zeta^2 * omega
+                            %   sigma(th) = (pi/2) * zeta^2 * omega
                             %               * (cos(th)^2 * delta_rr^2
                             %                  + 2*cos(th)*rho_kr*delta_kk*delta_rr
                             %                  + delta_kk^2)
@@ -216,148 +222,138 @@ classdef MaterialClass < handle
                             % Note: Phi is the 2D isotropic PSDF evaluated at the
                             % scalar wavenumber |k' - k| = k*sqrt(2*(1-cos(th))).
 
-                            zeta = (2*pi*obj.Frequency)/obj.v * obj.CorrelationLength;
-                            delta_kk = obj.coefficients_of_variation(1); % CV of compressibility
-                            delta_rr = obj.coefficients_of_variation(2); % CV of density
-                            rho_kr   = obj.correlation_coefficients;     % corr. of kappa and rho
-
-                            obj.sigma = {@(th) (pi/4)*zeta^2 * ...
+                            obj.sigma = {@(th) (pi/2)*omega*zeta^2 * ...
                                 (cos(th).^2*delta_rr^2 + ...
                                 2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
-                                .*obj.Phi(zeta.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency)};
+                                .*obj.Phi(zeta.*sqrt(2*(1-cos(th))))};
 
                         case 3
-                            % acoustics
-                            zeta = (2*pi*obj.Frequency)/obj.v*obj.CorrelationLength;
-                            delta_kk = obj.coefficients_of_variation(1); % coefficient of variation of compressibility
-                            delta_rr = obj.coefficients_of_variation(2); % coefficient of variation of density
-                            rho_kr = obj.correlation_coefficients; % correlation of compressibility and density
-
+                            % 3D ACOUSTICS
                             % [Ryzhik et al, 1996; Eq. (1.3)]
-                            obj.sigma = {@(th) (pi/2)*zeta^3*(cos(th).^2*delta_rr^2 + ...
+                            obj.sigma = {@(th) (pi/2)*omega*zeta^3*(cos(th).^2*delta_rr^2 + ...
                                 2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
-                                .*obj.Phi(zeta.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency)};
+                                .*obj.Phi(zeta.*sqrt(2*(1-cos(th))))};
                     end
+                
                 case 0
+
+                    % Correlation inputs are direct physical fractional 
+                    % fluctuations
+                    K      = obj.vp / obj.vs;
+                    omega  = 2*pi*obj.Frequency;
+                    zetaP  = omega / obj.vp * obj.CorrelationLength;
+                    zetaS  = K * zetaP;
+                
+                    delta_ll = obj.coefficients_of_variation(1); % CV of lambda
+                    delta_mm = obj.coefficients_of_variation(2); % CV of mu
+                    delta_rr = obj.coefficients_of_variation(3); % CV of density
+                
+                    rho_lm   = obj.correlation_coefficients(1);  % corr(lambda,mu)
+                    rho_lr   = obj.correlation_coefficients(2);  % corr(lambda,rho)
+                    rho_mr   = obj.correlation_coefficients(3);  % corr(mu,rho)
+
                     switch obj.d
                         case 1
                             error('\sigma for 1D not implemented')
                         case 2
-                            % 2D ELASTICS
-                            % In 2D the prefactor changes from (pi/2)*zeta^3 -> (pi/4)*zeta^2,
-                            % and similarly for S-wave terms.
-                            % Reference: Sato, Fehler & Maeda (2012), Ch. 4;
-                            %            Wu & Aki (1985), Geophysics 50(4).
-                            %
-                            % All angular radiation-pattern numerators are identical to the
-                            % 3D case (they come from the polarisation/geometry of the
-                            % incident and scattered modes); only the dimensional prefactor
-                            % and the PSDF normalisation change.
-
-                            K      = obj.vp / obj.vs;
-                            zetaP  = (2*pi*obj.Frequency) / obj.vp * obj.CorrelationLength;
-                            zetaS  = K * zetaP;
-
-                            delta_ll = obj.coefficients_of_variation(1); % CV of lambda
-                            delta_mm = obj.coefficients_of_variation(2); % CV of mu
-                            delta_rr = obj.coefficients_of_variation(3); % CV of density
-                            rho_lm   = obj.correlation_coefficients(1);  % corr. lambda-mu
-                            rho_lr   = obj.correlation_coefficients(2);  % corr. lambda-density
-                            rho_mr   = obj.correlation_coefficients(3);  % corr. mu-density
-
-                            % --- P -> P ---
-                            % 2D analogue of [Ryzhik et al. 1996, Eq. (1.3)] and
-                            % [Sato et al. 2012, Ch. 4 / Wu & Aki 1985]
-                            sigmaPP = @(th) (pi/4)*zetaP^2 * ...
-                                ( (1-2/K^2)^2*delta_ll^2 ...
-                                + 4*(1/K^2 - 2/K^4)*rho_lm*delta_ll*delta_mm.*cos(th).^2 ...
-                                + (4/K^4)*delta_mm^2.*cos(th).^4 ...
-                                + delta_rr^2.*cos(th).^2 ...
-                                + 2*(1-2/K^2)*rho_lr*delta_ll*delta_rr.*cos(th) ...
-                                + (4/K^2)*rho_mr*delta_mm*delta_rr.*cos(th).^3 ) ...
-                                .*obj.Phi(zetaP.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency);
-
-                            % --- P -> S ---
-                            % 2D analogue of [Sato et al. 2012, Ch. 4; Ryzhik et al. Eqs.(4.56),(1.20),(1.22)]
-                            sigmaPS = @(th) (pi/4)*K*zetaP^2 * ...
-                                ( K^2*delta_rr^2 ...
-                                + 4*delta_mm^2.*cos(th).^2 ...
-                                + 4*K*rho_mr*delta_mm*delta_rr.*cos(th) ) ...
-                                .*(1-cos(th).^2) ...
-                                .*obj.Phi(zetaP.*sqrt(1+K^2-2*K*cos(th))) * (2*pi*obj.Frequency);
-
-                            % --- S -> P ---
-                            % 2D analogue of [Sato et al. 2012, Ch. 4; Ryzhik et al. Eqs.(4.56),(1.20),(1.21)]
-                            sigmaSP = @(th) (pi/8/K^3)*zetaS^2 * ...
-                                ( delta_rr^2 ...
-                                + (4/K^2)*delta_mm^2.*cos(th).^2 ...
-                                + (4/K)*rho_mr*delta_mm*delta_rr.*cos(th) ) ...
-                                .*(1-cos(th).^2) ...
-                                .*obj.Phi(zetaS.*sqrt(1+1/K^2-2/K*cos(th))) * (2*pi*obj.Frequency);
-
-                            % --- S -> S ---
-                            % 2D analogue of [Ryzhik et al., Eq. (4.54); Sato et al. 2012, Ch. 4]
-                            % In 2D, SH and SV are decoupled; the combined SS term below
-                            % corresponds to the in-plane (SV-SV) scattering coefficient.
-                            sigmaSS_TT = @(th) (pi/8)*zetaS^2*delta_rr^2 ...
-                                .*(1+cos(th).^2) ...
-                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency);
-
-                            sigmaSS_GG = @(th) (pi/8)*zetaS^2*delta_mm^2 ...
-                                .*(4*cos(th).^4 - 3*cos(th).^2 + 1) ...
-                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency);
-
-                            sigmaSS_GT = @(th) (pi/8)*zetaS^2*rho_mr*delta_mm*delta_rr ...
-                                .*(4*cos(th).^3) ...
-                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th)))) * (2*pi*obj.Frequency);
-
-                            sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
-
-                            obj.sigma = {sigmaPP, sigmaPS; ...
-                                sigmaSP, sigmaSS};
+                        % 2D P-SV ELASTICS
+                        %
+                        % Note:
+                        % Phi must be the 2D Ryzhik-normalized spectrum:
+                        %   Rhat_2D(q) = variance * Lc^2 * Phi(q*Lc)
+                        %
+                        % If using Sato's raw 2D PSDF P_2D(q), where
+                        %   P_2D(q) = variance * Lc^2 * Phi_Sato(q*Lc),
+                        % then all prefactors below must be divided by (2*pi)^2.
+                        %
+                        % sigma{1,1}: P -> P
+                        % sigma{1,2}: P -> SV
+                        % sigma{2,1}: SV -> P
+                        % sigma{2,2}: SV -> SV
+                    
+                        % ---------- P -> P ----------
+                        sigmaPP = @(th) (pi/2)*omega*zetaP^2 .* ...
+                            ( (1 - 2/K^2)^2*delta_ll^2 ...
+                            + 4*(1/K^2 - 2/K^4)*rho_lm*delta_ll*delta_mm.*cos(th).^2 ...
+                            + (4/K^4)*delta_mm^2.*cos(th).^4 ...
+                            + delta_rr^2.*cos(th).^2 ...
+                            - 2*(1 - 2/K^2)*rho_lr*delta_ll*delta_rr.*cos(th) ...
+                            - (4/K^2)*rho_mr*delta_mm*delta_rr.*cos(th).^3 ) ...
+                            .* obj.Phi(zetaP.*sqrt(2*(1-cos(th))));
+                    
+                        % ---------- P -> SV ----------
+                        sigmaPS = @(th) (pi/2)*omega*zetaP^2 .* ...
+                            ( K^2*delta_rr^2 ...
+                            + 4*delta_mm^2.*cos(th).^2 ...
+                            - 4*K*rho_mr*delta_mm*delta_rr.*cos(th) ) ...
+                            .* (1-cos(th).^2) ...
+                            .* obj.Phi(zetaP.*sqrt(1 + K^2 - 2*K*cos(th)));
+                    
+                        % ---------- SV -> P ----------
+                        sigmaSP = @(th) (pi/2)*omega*zetaP^2 .* ...
+                            ( delta_rr^2 ...
+                            + (4/K^2)*delta_mm^2.*cos(th).^2 ...
+                            - (4/K)*rho_mr*delta_mm*delta_rr.*cos(th) ) ...
+                            .* (1-cos(th).^2) ...
+                            .* obj.Phi(zetaS.*sqrt(1 + 1/K^2 - 2*cos(th)/K));
+                    
+                        % ---------- SV -> SV ----------
+                        GammaSV = @(th) 2*cos(th).^2 - 1;
+                    
+                        sigmaSS = @(th) (pi/2)*omega*zetaS^2 .* ...
+                            ( delta_rr^2.*cos(th).^2 ...
+                            + delta_mm^2.*GammaSV(th).^2 ...
+                            - 2*rho_mr*delta_mm*delta_rr.*cos(th).*GammaSV(th) ) ...
+                            .* obj.Phi(zetaS.*sqrt(2*(1-cos(th))));
+                    
+                        obj.sigma = {sigmaPP, sigmaPS; ...
+                                     sigmaSP, sigmaSS};
                         case 3
-                            %elastic
-                            K = obj.vp/obj.vs;
-                            zetaP = (2*pi*obj.Frequency)/obj.vp*obj.CorrelationLength;
-                            zetaS = K*zetaP;
-                            delta_ll = obj.coefficients_of_variation(1); % squared coefficient of variation of lambda
-                            delta_mm = obj.coefficients_of_variation(2); % squared coefficient of variation of mu
-                            delta_rr = obj.coefficients_of_variation(3); % squared coefficient of variation of density
-                            rho_lm = obj.correlation_coefficients(1); % correlation coefficient between lambda and mu
-                            rho_lr = obj.correlation_coefficients(2); % correlation coefficient between lambda and density
-                            rho_mr = obj.correlation_coefficients(3); % correlation coefficient between mu and density
+                            % 3D ELASTICS
+                            %
+                            % Note:
+                            % Phi must be the 3D Ryzhik-normalized spectrum:
+                            %   Rhat_3D(q) = variance * Lc^3 * Phi(q*Lc)
+                            %
+                            % If using Sato's raw 3D PSDF P_3D(q), where
+                            %   P_3D(q) = variance * Lc^3 * Phi_Sato(q*Lc),
+                            % then all prefactors below must be divided by (2*pi)^3.
+                            %
+                            % sigma{1,1}: P -> P
+                            % sigma{1,2}: P -> S
+                            % sigma{2,1}: S -> P
+                            % sigma{2,2}: S -> S
 
                             % [Ryzhik et al; Eq. (1.3)] and [Turner, 1998; Eq. (3)]
-                            sigmaPP = @(th) (pi/2)*zetaP^3* ...
+                            sigmaPP = @(th) (pi/2)*omega*zetaP^3* ...
                                 ( (1-2/K^2)^2*delta_ll^2 + 4*(1/K^2-2/K^4)*rho_lm*delta_ll*delta_mm*cos(th).^2 ...
                                 + (4/K^4)*delta_mm^2*cos(th).^4 + delta_rr^2*cos(th).^2 ...
-                                + 2*(1-2/K^2)*rho_lr*delta_ll*delta_rr*cos(th) ...
-                                + (4/K^2)*rho_mr*delta_mm*delta_rr*cos(th).^3 ) ...
-                                .*obj.Phi(zetaP.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency);
+                                - 2*(1-2/K^2)*rho_lr*delta_ll*delta_rr*cos(th) ...
+                                - (4/K^2)*rho_mr*delta_mm*delta_rr*cos(th).^3 ) ...
+                                .*obj.Phi(zetaP.*sqrt(2*(1-cos(th))));
 
                             %  Ryzhik et al; Eqs. (4.56), (1.20), (1.22)
-                            sigmaPS = @(th) (pi/2)*K*zetaP^3* ...
-                                ( K^2*delta_rr^2 + 4*delta_mm^2*cos(th).^2 + 4*K*rho_mr*delta_mm*delta_rr*cos(th) )...
-                                .*(1-cos(th).^2).*obj.Phi(zetaP.*sqrt(1+K^2-2*K*cos(th)))*(2*pi*obj.Frequency);
+                            sigmaPS = @(th) (pi/2)*K*omega*zetaP^3* ...
+                                ( K^2*delta_rr^2 + 4*delta_mm^2*cos(th).^2 - 4*K*rho_mr*delta_mm*delta_rr*cos(th) )...
+                                .*(1-cos(th).^2).*obj.Phi(zetaP.*sqrt(1+K^2-2*K*cos(th)));
 
                             %  Ryzhik et al; Eqs. (4.56), (1.20), (1.21)
-                            sigmaSP = @(th) (pi/4/K^3)*zetaS^3* ...
-                                ( delta_rr^2 + (4/K^2)*delta_mm^2*cos(th).^2 + (4/K)*rho_mr*delta_mm*delta_rr*cos(th) ) ...
-                                .*(1-cos(th).^2).*obj.Phi(zetaS.*sqrt(1+1/K^2-2/K*cos(th)))*(2*pi*obj.Frequency);
+                            sigmaSP = @(th) (pi/4/K^3)*omega*zetaS^3* ...
+                                ( delta_rr^2 + (4/K^2)*delta_mm^2*cos(th).^2 - (4/K)*rho_mr*delta_mm*delta_rr*cos(th) ) ...
+                                .*(1-cos(th).^2).*obj.Phi(zetaS.*sqrt(1+1/K^2-2/K*cos(th)));
 
                             % Ryzhik et al; Eq. (4.54)
-                            sigmaSS_TT = @(th) (pi/4)*zetaS^3*delta_rr^2*(1+cos(th).^2)...
-                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency);
-                            sigmaSS_GG = @(th) (pi/4)*zetaS^3*delta_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
-                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency);
-                            sigmaSS_GT = @(th) (pi/4)*zetaS^3*rho_mr*delta_mm*delta_rr*(4*cos(th).^3)...
-                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))))*(2*pi*obj.Frequency);
-
+                            sigmaSS_TT = @(th) (pi/4)*omega*zetaS^3*delta_rr^2*(1+cos(th).^2)...
+                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))));
+                            sigmaSS_GG = @(th) (pi/4)*omega*zetaS^3*delta_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
+                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))));
+                            sigmaSS_GT = @(th) -(pi/4)*omega*zetaS^3*rho_mr*delta_mm*delta_rr*(4*cos(th).^3)...
+                                .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))));
 
                             sigmaSS = @(th) sigmaSS_TT(th) + sigmaSS_GG(th) + sigmaSS_GT(th);
 
                             obj.sigma = {sigmaPP,sigmaPS; ...
-                                sigmaSP,sigmaSS};
+                                         sigmaSP,sigmaSS};
                     end
             end
         end
@@ -393,18 +389,38 @@ classdef MaterialClass < handle
             %
             % Output:
 
-            % In Ryzhik et al, the PSDFs are those of the fractional parts (normalized)
-            % of the corresponding random fields. The corr_matrix thus contains the
-            % coefficients of variation in diagonal and correlation coefficients in off-diagonal
-            % instead of the standard deviation and covariance, respectively.
-
-            % Following Khazaie et al 2017, PSDFs are supposed as factorizable.
+            % In Ryzhik et al, the PSDFs are those of the fractional parts 
+            % (normalized) of the corresponding random fields.
+            % We assume a factorizable spectral covariance:
+            %   Rhat_ab(q) = sigma_a * sigma_b * rho_ab * Phi(q)
+            % where sigma_a are the coefficients of variation and rho_ab are
+            % correlation coefficients. Here we check only the correlation matrix
+            % with ones on the diagonal and rho_ab off diagonal.
             % Extending to the non-factorizable case is straightforward.
 
-            % constants
-
-            if any(abs(obj.correlation_coefficients)>1)
-                error('Absolute values of correlation coefficients should be less than 1!')
+            if obj.acoustics
+                rho_kr = obj.correlation_coefficients;
+            
+                if abs(rho_kr) > 1
+                    error('Absolute value of corr(kappa,rho) should be less than 1!')
+                end
+            
+            else
+                rho_lm = obj.correlation_coefficients(1);
+                rho_lr = obj.correlation_coefficients(2);
+                rho_mr = obj.correlation_coefficients(3);
+            
+                Ccorr = [1      rho_lm  rho_lr; ...
+                         rho_lm 1       rho_mr; ...
+                         rho_lr rho_mr  1     ];
+            
+                if min(eig(Ccorr)) < -1e-12
+                    error('The lambda-mu-rho correlation matrix is not positive semidefinite.');
+                end
+            
+                if any(abs(obj.correlation_coefficients)>1)
+                    error('Absolute values of correlation coefficients should be less than 1!')
+                end
             end
 
             % warning: these are for 3D: formulas should depend on dimensionality
@@ -436,21 +452,30 @@ classdef MaterialClass < handle
                             obj.GetPSDFromImage(obj.SpectralParam);
                     end
 
-            % function to evaluate PSDF:
-            % Some notes :
-            % The correlation functions are normalized in 1D, 2D, 3D as follows
-            % 1D : lc = 2 * integral of R(x)dx from 0 to inf
-            % 2D : lc^2 = 2 * integral of x*R(x)dx from 0 to inf
-            % 3D : lc^3 = 3 * integral of x^2*R(x)dx from 0 to inf
-
-            % The power spectral density functions are calculated via an n-D
-            % Fourier Transform integral, based on the following convention
-            % \Phi(k) = (1/2/pi)^d * integral of exp(-i*k*x)*R(x)dx on R^d
-            % This integral in 1D, 2D and 3D can be simplified as:
-            % 1D : 2/(2*pi) * integral of cos(k*x)*R(x)dx from 0 to inf
-            % 2D : 2*pi//(2*pi)^2 * integral of x*J_0(k*x)*R(x)dx from 0 to inf
-            % 3D : 4*pi/(2*pi)^3 * integral of x^2*sinc(k*x)*R(x)dx from 0 to inf
         end
+
+        % Correlation-length convention:
+        %   1D: Lc   = 2 * int_0^inf R(r) dr
+        %   2D: Lc^2 = 2 * int_0^inf r * R(r) dr
+        %   3D: Lc^3 = 3 * int_0^inf r^2 * R(r) dr
+        %
+        % In the analytical models below, the dimensionless correlation
+        % function R(z), z = r/Lc, should satisfy Lc = 1 under the
+        % corresponding formula above.
+        %
+        % Fourier-transform convention:
+        %   Phi(k) = 1/(2*pi)^d * int_{R^d} exp(-i k.x) R(|x|) dx.
+        %
+        % For isotropic correlation functions, this becomes:
+        %   1D: Phi(k) = 2/(2*pi) * int_0^inf cos(k*r) R(r) dr
+        %   2D: Phi(k) = 2*pi/(2*pi)^2 * int_0^inf r*J0(k*r) R(r) dr
+        %   3D: Phi(k) = 4*pi/(2*pi)^3 * int_0^inf r^2*sinc(k*r) R(r) dr
+        %
+        % with sinc(x) = sin(x)/x.
+        %
+        % With this convention, the dimensional spectrum is
+        %   Rhat_d(q) = sigma^2 * Lc^d * Phi(q*Lc).
+
         function out = Exponential(obj,lc)
             %% Exponential
             % Compute the normalized power spectral density function for
@@ -475,11 +500,14 @@ classdef MaterialClass < handle
                 obj.R = @(z) exp(-2*z);
                 obj.Phi = @(z) 1./(2*pi*(1+(z/2).^2));
             elseif obj.d == 2
-                obj.R = @(z) exp(-2*sqrt(2)*z);
-                obj.Phi = @(z) 1./(16*pi*(1+(z/(2*sqrt(2))).^2).^(1.5));
+                a = sqrt(2);
+                obj.R = @(z) exp(-a*z);
+                obj.Phi = @(z) 1./(4*pi*(1+(z/a).^2).^(1.5));
+            
             elseif obj.d == 3
-                obj.R = @(z) exp(-2*6^(1/3)*z);
-                obj.Phi = @(z) 1./(48*pi^2*(1+(z/(2*6^(1/3))).^2).^2);
+                a = 6^(1/3);
+                obj.R = @(z) exp(-a*z);
+                obj.Phi = @(z) 1./(6*pi^2*(1+(z/a).^2).^2);
             else
                 error('incorrect dimension!')
             end
@@ -487,6 +515,7 @@ classdef MaterialClass < handle
             %obj.R = @(z) exp(-2*z);
             out = obj.Phi;
         end
+        
         function out = PowerLaw(obj,lc)
             %% PowerLaw
             % Compute the normalized power spectral density function for
@@ -510,20 +539,24 @@ classdef MaterialClass < handle
             % obj.Phi = out;
             % obj.R = @(z) 1./(1+(pi^2*z.^2/4))^2;
             if obj.d == 1
-                obj.R = @(z) 1./(1+((2/pi)*z)^2)^2;
-                obj.Phi = @(z) (pi^3/8)*(z+2/pi).*exp(-pi/2*z);
+                a = pi/2;
+                obj.R = @(z) 1./(1+(a*z).^2).^2;
+                obj.Phi = @(z) 1./(2*pi).*(1+z/a).*exp(-z/a);
+            
             elseif obj.d == 2
-                obj.R = @(z) 1./(1+(2*z)^2)^2;
-                obj.Phi = @(z) (pi/8)*z.*besselk(1,z/2);
+                obj.R = @(z) 1./(1+z.^2).^2;
+                obj.Phi = @(z) z.*besselk(1,z)./(4*pi);
+                % use the limit Phi(0)=1/(4*pi) if needed
+            
             elseif obj.d == 3
-                obj.R = @(z) 1./(1+((6*pi)^(1/3)*z).^2).^2;
-                obj.Phi = @(z) (pi/6)*exp(-z/((6*pi)^(1/3)));
-            else
-                error('incorrect dimension!')
+                a = (3*pi/4)^(1/3);
+                obj.R = @(z) 1./(1+(a*z).^2).^2;
+                obj.Phi = @(z) 1./(6*pi^2).*exp(-z/a);
             end
 
             out = obj.Phi;
         end
+
         function out = Gaussian(obj,lc)
             %% Gaussian
             % Compute the normalized power spectral density function for
@@ -546,13 +579,14 @@ classdef MaterialClass < handle
 
             if obj.d == 1
                 obj.R = @(z) exp(-pi*z.^2);
-                obj.Phi = @(z) 1/(2*pi).*exp(-z.^2/4/pi);
+                obj.Phi = @(z) 1./(2*pi).*exp(-z.^2/(4*pi));
             elseif obj.d == 2
-                obj.R = @(z) exp(-4*z.^2);
-                obj.Phi = @(z) 1./(16*pi)*exp(-z.^2/16);
+                obj.R = @(z) exp(-z.^2);
+                obj.Phi = @(z) 1./(4*pi).*exp(-z.^2/4);
             elseif obj.d == 3
-                obj.R = @(z) exp(-(36*pi)^(1/3)*z.^2);
-                obj.Phi = @(z) 1./(48*pi^2)*exp(-z.^2/4/(36*pi)^(2/3));
+                a = (3*sqrt(pi)/4)^(2/3);
+                obj.R = @(z) exp(-a*z.^2);
+                obj.Phi = @(z) 1./(6*pi^2).*exp(-z.^2/(4*a));
             else
                 error('incorrect dimension!')
             end
@@ -563,6 +597,7 @@ classdef MaterialClass < handle
             % obj.Phi = out;
             % obj.R = @(z)exp(-pi*z.^2);
         end
+
         function out = Triangular(obj,lc)
             %% Triangular
             % Compute the normalized power spectral density function for
@@ -582,10 +617,18 @@ classdef MaterialClass < handle
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'Triangular';
-            out = @(z) (3/8/pi^4)*(1-z/2/pi).*obj.heaviside(2*pi-z);
-            obj.Phi = out;
-            obj.R = @(z)(12*(2-2*cos(2*pi*z)-(2*pi*z).*sin(2*pi*z)))./(2*pi*z).^4;
+
+            if obj.d == 3
+                obj.R = @(z)(12*(2-2*cos(2*pi*z)-(2*pi*z).*sin(2*pi*z)))./(2*pi*z).^4;
+                obj.Phi = @(z) (3/8/pi^4)*(1-z/2/pi).*obj.heaviside(2*pi-z);
+            else
+                error('dimensions other than 3 are not coded yet!');
+            end
+
+            out = obj.Phi;
+            
         end
+
         function out = LowPass(obj,lc)
             %% LowPass
             % Compute the normalized power spectral density function for
@@ -605,10 +648,19 @@ classdef MaterialClass < handle
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'low_pass';
-            out = @(z) (2/9/pi^4)*obj.heaviside(3*pi/2-z);
-            obj.Phi = out;
-            obj.R = @(z) (3*(sin(3*pi*z/2)-3*pi*z/2.*cos(3*pi*z/2)))./(3*pi*z/2).^3;
+            
+            if obj.d == 3
+                a = 3*pi/2;
+                obj.R = @(z) (3*(sin(a*z)-a*z.*cos(a*z)))./(a*z).^3;
+                obj.Phi = @(z) (2/9/pi^4)*obj.heaviside(a-z);
+            else
+                error('LowPass spectral model is currently implemented only for d = 3.');
+            end
+
+            out = obj.Phi;
+
         end
+
         function out = VonKarman(obj,lc,nu)
             %% VonKarman
             % Compute the normalized power spectral density function for
@@ -628,40 +680,27 @@ classdef MaterialClass < handle
             % second-order statistics: Journal of Geophysical Research,
             % 93, 13,589-13,608.
 
-
-            %are the characteristic scales of the medium along the
-            % 3-dimensions and $k_x$, $k_y$ and $k_z$
-            % are the wavenumber components
-
             % $K_\nu$ is the modified Bessel function of order $\nu $,
             % where $0.0<\nu<1.0$ is the Hurst number (Mandelbrot, 1985,1983).
-            % The fractal dimension of a stochastic field characterized
-            % by a von Karman autocorrelation is given by:
-            % \begin{displaymath}
-            % D=E+1-\nu \
-            % \end{displaymath}	(6)
-            %
-            % where $E$ is the Euclidean dimension i.e., $E=3$
-            % for the three-dimensional problem.
-            %
+
             obj.SpectralParam = struct('correlationLength',lc,'nu',nu);
             obj.SpectralLaw = 'VonKarman';
             obj.CorrelationLength = lc;
 
             if obj.d == 1
-                obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
-                    (2*sqrt(pi)*gamma(nu+0.5)/gamma(nu)*z).^nu ...
-                    .* besselk(nu,2*sqrt(pi)*gamma(nu+0.5)/gamma(nu)*z);
-                obj.Phi = @(z) 1 ./ (1 + (z./(2*sqrt(pi)*gamma(nu+0.5)/gamma(nu))).^2).^(nu+0.5);
+                a = 2*sqrt(pi)*gamma(nu+0.5)/gamma(nu);
+                obj.R = @(z) 2^(1-nu)/gamma(nu) * (a*z).^nu .* besselk(nu,a*z);
+                obj.Phi = @(z) 1/(2*pi) ./ (1+(z/a).^2).^(nu+0.5);
+            
             elseif obj.d == 2
-                obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
-                    (4*sqrt(nu)*z).^nu .* besselk(nu,4*sqrt(nu)*z);
-                obj.Phi = @(z) (pi/4) * 1 ./ (1 + (z./(4*sqrt(nu))).^2).^(nu+0.5);
+                a = 2*sqrt(nu);
+                obj.R = @(z) 2^(1-nu)/gamma(nu) * (a*z).^nu .* besselk(nu,a*z);
+                obj.Phi = @(z) 1/(4*pi) ./ (1+(z/a).^2).^(nu+1);
+            
             elseif obj.d == 3
-                obj.R = @(z) 2^(1-nu)/gamma(nu) * ...
-                    ((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3)*z).^nu .* ...
-                    besselk(nu,((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3))*z);
-                obj.Phi = @(z) (pi/46) * 1 ./ (1 + (z./((48*sqrt(pi)*gamma(nu+1.5)/gamma(nu)).^(1/3))).^2).^(nu+1.5);
+                a = (6*sqrt(pi)*gamma(nu+1.5)/gamma(nu))^(1/3);
+                obj.R = @(z) 2^(1-nu)/gamma(nu) * (a*z).^nu .* besselk(nu,a*z);
+                obj.Phi = @(z) 1/(6*pi^2) ./ (1+(z/a).^2).^(nu+1.5);
             else
                 error('incorrect dimension!')
             end
@@ -669,6 +708,7 @@ classdef MaterialClass < handle
             out = obj.Phi;
 
         end
+
         function out = MonoDisperseSphere(obj, eta, D)
             %% MonoDisperseSphere
             % Compute the normalised power spectral density function for a
