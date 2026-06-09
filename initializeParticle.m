@@ -65,7 +65,29 @@ switch source.type
         end
 
         % source direction
-        n = source.direction(:)';
+        if isscalar(source.direction)
+            if source.direction == 1
+                n = [1 0 0];
+            elseif source.direction == 2
+                n = [0 1 0];
+            elseif source.direction == 3
+                n = [0 0 1];
+            elseif source.direction == -1
+                n = [-1 0 0];
+            elseif source.direction == -2
+                n = [0 -1 0];
+            elseif source.direction == -3
+                n = [0 0 -1];
+            else
+                error('For a scalar plane-source direction, use ±1, ±2, or ±3.');
+            end
+        else
+            n = source.direction(:)';
+            if numel(n) ~= 3
+                error('For a plane source, source.direction must be a 3-component vector or a scalar axis ±1, ±2, ±3.');
+            end
+        end
+        
         n = n / norm(n);
 
         % generate random positions (gaussian)
