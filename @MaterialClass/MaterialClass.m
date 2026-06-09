@@ -1154,12 +1154,13 @@ classdef MaterialClass < handle
                 Racf = Racf.*win;
             end
             end
-            % Taper Racf: half-cosine from 1→0 between 60 % and 75 %, then 0.
-            % Starting at 30-40% was too aggressive for domains ~30D and cut
-            % hard-sphere ACF oscillations that extend to ~5D.
+            % Taper Racf: half-cosine from 1→0 between 80 % and 90 %, then 0.
+            % 60-75% was too aggressive: for hard-sphere ACFs with correlation
+            % length ~3D and max_r~15D, cutting at 9D lost ~40% of the
+            % integral r^2*R(r), causing Lc to be underestimated by ~15-20%.
             N_racf  = numel(Racf);
-            i_start = round(0.60 * N_racf);
-            i_end   = round(0.75 * N_racf);
+            i_start = round(0.80 * N_racf);
+            i_end   = round(0.90 * N_racf);
             n_tap   = i_end - i_start + 1;
             taper   = 0.5 * (1 + cos(pi * (0:n_tap-1)' / (n_tap - 1)));
             Racf(i_start:i_end) = Racf(i_start:i_end) .* taper;
