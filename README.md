@@ -347,7 +347,7 @@ The implementation is based on the Monte Carlo method. Additional details on thi
 
 ## Publications
 
-- **Corrêa, L.D.A., Khazaie, S., Gomez, C. and Cottereau, R.**, 2026. *Quantitative error assessment of radiative transfer approximations of acoustic wave energies in unbounded and bounded random media*. Wave Motion, p.103715. [DOI](https://doi.org/10.1016/j.wavemoti.2026.103715)
+- **de Abreu Corrêa, L., Khazaie, S., Gomez, C. and Cottereau, R.**, 2026. *Quantitative error assessment of radiative transfer approximations of acoustic wave energies in unbounded and bounded random media*. Wave Motion, p.103715. [DOI](https://doi.org/10.1016/j.wavemoti.2026.103715)
 
 ## How to Cite
 
@@ -356,7 +356,7 @@ If you use this code in your research, please cite the following paper:
 ```bibtex
 @article{CorreaKhazaieGomezCottereau2026,
   title   = {Quantitative error assessment of radiative transfer approximations of acoustic wave energies in unbounded and bounded random media},
-  author  = {Corr{\^e}a, L. D. A. and Khazaie, S. and Gomez, C. and Cottereau, R.},
+  author  = {de Abreu Corr{\^e}a, L. and Khazaie, S. and Gomez, C. and Cottereau, R.},
   journal = {Wave Motion},
   pages   = {103715},
   year    = {2026},
@@ -377,7 +377,7 @@ For questions, bug reports, or contributions:
 
 - **Lead Maintainer:** [Régis Cottereau](mailto:cottereau@lma.cnrs-mrs.fr) — Laboratoire de Mécanique et d'Acoustique (LMA), CNRS, Marseille
 - **Contributors:** 
-  - [Lúcio de Abreu Corrêa](mailto:de-abreu-correa@lma.cnrs-mrs.fr) — LMA, CNRS
+  - [Lúcio de Abreu Corrêa](mailto:de-abreu-correa@lma.cnrs-mrs.fr) — Laboratoire de Mécanique et d'Acoustique (LMA), CNRS, Marseille
   - [Shahram Khazaie](mailto:Shahram.Khazaie@univ-nantes.fr) — Institut de Recherche en Génie Civil et Mécanique (GeM), Nantes Université
 
 ## License
