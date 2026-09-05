@@ -180,12 +180,12 @@ Available fields:
 | Field             | Type                            | Description                                                                                                 |
 | ----------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `numberParticles` | integer                         | Number of Monte Carlo particles.                                                                            |
-| `type`            | char                            | `'point'` (default) or `'plane'`                                                                 |
+| `type`            | char                            | `'point'` (default), `'plane'`, or `'disk'`. Disk sources are available in 3D only.                          |
 | `position`        | vector                          | Source position in Cartesian coordinates. In 2D, `[x y]` is accepted and internally converted to `[x y 0]`. |
-| `lambda`          | float                           | Width of the Gaussian initial spatial distribution.                                                         |
-| `direction` | char, numeric vector, or scalar axis index | For point sources, use `'uniform'` (default), `'outgoing'`, or `'upper'`. For plane sources, use a 3-component vector such as `[0 0 1]`. Axis indices `±1`, `±2`, `±3` are equivalent to the corresponding Cartesian unit vectors. |
+| `lambda`          | float                           | Width of the Gaussian initial spatial distribution. For plane and disk sources, the standard deviation along the source normal is `lambda/2`. |
+| `direction` | char, numeric vector, or scalar axis index | For point sources, use `'uniform'` (default), `'outgoing'`, or `'upper'`. For plane and disk sources, this defines both the source normal and propagation direction. Use a 3-component vector such as `[0 0 1]`, or an axis index `±1`, `±2`, or `±3`. |
 | `radial`          | function/distribution, optional | User-defined radial distribution for point sources.                                                         |
-| `extent` | scalar or vector | Plane-source aperture size. For a rectangular aperture, use `[L1 L2]`, where `L1` and `L2` are the side lengths in the plane perpendicular to `source.direction`. For a circular aperture, use a scalar radius `R` with `source.aperture = 'circle'`. |
+| `extent` | scalar or vector | Source aperture size. For a rectangular plane source, use `[L1 L2]`. For a circular plane aperture or disk source, use a scalar radius `R`. |
 | `aperture`        | char, optional                  | Plane-source aperture: `'rectangle'` (default) or `'circle'`.                                 |
 | `polarization` | char, elastic only | Initial wave mode for elastic simulations. Use `'P'` (default) for compressional-wave particles or `'S'` for shear-wave particles. |
 
@@ -196,6 +196,20 @@ For a point source, `source.direction` can be:
 | `'uniform'` (default) | Isotropic source direction.                                                                                |
 | `'outgoing'`           | Initial propagation direction is aligned with the initial particle position relative to the source center. |
 | `'upper'`              | Isotropic source over the upper hemisphere.                                                                |
+
+A disk source is a plane wave with a circular aperture. Particle positions
+are sampled uniformly over a disk of radius `source.extent`, centered at
+`source.position` and normal to `source.direction`. Every particle propagates
+along `source.direction`; no additional radiation parameter is required.
+
+```matlab
+source = struct('numberParticles', 1e6, ...
+                'type', 'disk', ...
+                'position', [0 0 0], ...
+                'extent', 1, ...
+                'direction', 3, ...
+                'lambda', 0.05);
+```
 
 ### Observation
 

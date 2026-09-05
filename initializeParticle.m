@@ -57,10 +57,17 @@ switch source.type
         x = source.position + ...
             r.*[cos(theta0).*sin(phi0) sin(theta0).*sin(phi0) cos(phi0)];
 
-        % plane waves
-    case 'plane' % only in 3D
-        % default aperture shape
-        if ~isfield(source,'aperture') || isempty(source.aperture)
+        % plane waves and disk sources
+    case {'plane','disk'} % only in 3D
+        isDiskSource = strcmp(source.type,'disk');
+        if isDiskSource && d ~= 3
+            error('Disk sources are only implemented in 3D.');
+        end
+
+        % A disk source is a plane wave with a circular aperture.
+        if isDiskSource
+            source.aperture = 'circle';
+        elseif ~isfield(source,'aperture') || isempty(source.aperture)
             source.aperture = 'rectangle';
         end
 
@@ -79,12 +86,13 @@ switch source.type
             elseif source.direction == -3
                 n = [0 0 -1];
             else
-                error('For a scalar plane-source direction, use ±1, ±2, or ±3.');
+                error('For a scalar plane or disk source direction, use ±1, ±2, or ±3.');
             end
         else
             n = source.direction(:)';
             if numel(n) ~= 3
-                error('For a plane source, source.direction must be a 3-component vector or a scalar axis ±1, ±2, ±3.');
+                error(['For a plane or disk source, source.direction must be a ' ...
+                    '3-component vector or a scalar axis ±1, ±2, ±3.']);
             end
         end
         
@@ -122,7 +130,8 @@ switch source.type
 
                 % circular aperture, uniform over a disk of radius R
                 if ~isscalar(source.extent)
-                    error('For source.aperture = ''circle'', source.extent must be a scalar radius.');
+                    error(['For a disk source or source.aperture = ''circle'', ' ...
+                        'source.extent must be a scalar radius.']);
                 end
                 R = source.extent;
 
