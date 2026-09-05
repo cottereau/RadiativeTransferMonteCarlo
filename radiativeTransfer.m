@@ -21,11 +21,14 @@ hasParallelToolbox = ~isempty(ver('parallel'));
 
 % discretization in packets of particles for optimal vectorization
 Npk = 1e5;
-Np = ceil(source.numberParticles/Npk); % number of packets
+Ntotal = source.numberParticles;
+Np = ceil(Ntotal/Npk); % number of packets
+particlesPerPacket = Npk * ones(1,Np);
+particlesPerPacket(end) = Ntotal - Npk*(Np-1);
 
 % initialize observation structure
 [ obs, E, bins, ibins, vals, Nt, t , d1, d2 ] = ...
-    initializeObservation( geometry, acoustics, observation, Np*Npk );
+    initializeObservation( geometry, acoustics, observation, Ntotal );
 
 % prepare scattering cross sections
 material = MaterialClass.prepareSigma( material, d );
@@ -57,6 +60,8 @@ if hasParallelToolbox
     % loop on packages of particles
     parfor ip = 1:Np
 
+        Npacket = particlesPerPacket(ip);
+
         % Retrieve local copies from the Constant wrapper
         matLocal = cMaterial.Value;
         geoLocal = cGeometry.Value;
@@ -65,7 +70,7 @@ if hasParallelToolbox
         E_local = zeros(szE, classE);
 
         % initialize particles
-        P = initializeParticle( Npk, d, acoustics, source );
+        P = initializeParticle( Npacket, d, acoustics, source );
 
         % loop on time
         if matLocal.timeSteps == 0
@@ -104,8 +109,11 @@ else
     % loop on packages of particles
     for ip = 1:Np
         tic; % Start iteration timer
+
+        Npacket = particlesPerPacket(ip);
+
         % initialize particles
-        P = initializeParticle( Npk, d, acoustics, source );
+        P = initializeParticle( Npacket, d, acoustics, source );
 
         % NOTE: In serial, we do NOT need E_local.
         % We can write directly to E, saving memory and overhead.
