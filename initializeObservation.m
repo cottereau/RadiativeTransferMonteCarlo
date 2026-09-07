@@ -134,6 +134,7 @@ energy = zeros(length(bins{1})-1,length(bins{2})-1,Nt,1+~acoustics,'uint32');
 
 % initialize observation structured array
 obs = struct('d', d, ...                 % dimension of the problem
+             'frame', frame, ...         % observation coordinate frame
              'acoustics', acoustics, ... % true if acoustics problem
              'N', N, ...                 % total number of particles
              't', t, ...                 % time instants

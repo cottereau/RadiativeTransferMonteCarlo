@@ -1,4 +1,36 @@
 function plotEnergies( type, obs, material, lambda, cmax, rmax )
+% plotEnergies  Plot or export energy diagnostics from radiativeTransfer.
+%
+% For total-energy movies, integrate observations over all propagation
+% directions, so that observation.directions = [0 pi] and obs.Npsi == 1.
+% For elastic simulations, the total-energy movie displays three linked
+% panels containing P, S, and P+S energy.
+%
+% Optional fields of TYPE for total-energy movies:
+%   energyScale        'linear' (default) or 'log10'.
+%   clim               Fixed two-element color limits shared by all panels,
+%                      or a 3-by-2 array for elastic P, S, and total panels.
+%                      By default, linear limits use the maximum energy at
+%                      the middle observation time for each panel.
+%   logFloor           Positive floor used by log10. Default: 1e-12.
+%   colormap           MATLAB colormap name. Default: 'turbo'.
+%   filename           Output GIF filename. Default: movieTotalEnergy.gif.
+%   delayTime          Delay between GIF frames. Default: 0.05 seconds.
+%   visible            Figure visibility, 'on' (default) or 'off'.
+%   axisMode           'normal' (default), 'equal', or 'tight'.
+%   mirrorCylindrical  Mirror cylindrical r-z plots across r = 0. The
+%                      default is true for cylindrical r-z plots.
+%   xlim, zlim         Optional fixed horizontal and vertical plot limits.
+%   boundaries         Optional geometry.bnd array to overlay.
+%
+% Example:
+%   plotting = struct('movieTotalEnergy',true, ...
+%                     'energyScale','log10', ...
+%                     'clim',[-8 -2], ...
+%                     'filename','movieTotalEnergy.gif', ...
+%                     'visible','off');
+%   plotEnergies(plotting, obs, material, source.lambda);
+
 % % unbounded case
 % if ~isfield(obs,'nSources')
 %     obs.nSources = 1;
@@ -23,7 +55,7 @@ end
 % plot total energy
 if isfield(type,'movieTotalEnergy') && type.movieTotalEnergy
     if obs.Npsi==1
-        plotTotalEnergy( obs, cmax )
+        plotTotalEnergy( obs, cmax, type )
     else
         plotDirectionalEnergy( obs, material, lambda, type.sensors, rmax );
     end
@@ -52,61 +84,352 @@ end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function plotTotalEnergy( obs, cmax )
+function plotTotalEnergy(obs,cmax,type)
 
-% values to be plotted
+% Identify the two spatial coordinates stored in energyDensity.
 if obs.Nx == 1
-    x = obs.y;
-    z = obs.z;
+    horizontalValues = obs.y;
+    verticalValues = obs.z;
+    horizontalEdges = obs.binY;
+    verticalEdges = obs.binZ;
+    horizontalCoordinate = 2;
+    verticalCoordinate = 3;
+elseif obs.Ny == 1
+    horizontalValues = obs.x;
+    verticalValues = obs.z;
+    horizontalEdges = obs.binX;
+    verticalEdges = obs.binZ;
+    horizontalCoordinate = 1;
+    verticalCoordinate = 3;
 else
-    x = obs.x;
-    if obs.Ny == 1
-        z = obs.z;
+    horizontalValues = obs.x;
+    verticalValues = obs.y;
+    horizontalEdges = obs.binX;
+    verticalEdges = obs.binY;
+    horizontalCoordinate = 1;
+    verticalCoordinate = 2;
+end
+
+horizontalPlot = plottingCoordinates(horizontalValues,horizontalEdges, ...
+    size(obs.energyDensity,1));
+verticalPlot = plottingCoordinates(verticalValues,verticalEdges, ...
+    size(obs.energyDensity,2));
+
+if isfield(obs,'frame')
+    frame = obs.frame;
+else
+    frame = 'cartesian';
+    if isfield(type,'boundaries') && ~isempty(type.boundaries) && ...
+            any([type.boundaries.dir] == 4)
+        frame = 'cylindrical';
+    end
+end
+
+horizontalLabel = coordinateLabel(frame,horizontalCoordinate);
+verticalLabel = coordinateLabel(frame,verticalCoordinate);
+isCylindricalRadius = strcmp(frame,'cylindrical') && ...
+    horizontalCoordinate == 1;
+isCylindricalRZ = isCylindricalRadius && verticalCoordinate == 3;
+
+% Read plotting options and apply defaults.
+if ~isfield(type,'energyScale') || isempty(type.energyScale)
+    type.energyScale = 'linear';
+end
+if ~isfield(type,'colormap') || isempty(type.colormap)
+    type.colormap = 'turbo';
+end
+if ~isfield(type,'filename') || isempty(type.filename)
+    type.filename = 'movieTotalEnergy.gif';
+end
+if ~isfield(type,'delayTime') || isempty(type.delayTime)
+    type.delayTime = 0.05;
+end
+if ~isfield(type,'logFloor') || isempty(type.logFloor)
+    type.logFloor = 1e-12;
+end
+if ~isfield(type,'visible') || isempty(type.visible)
+    type.visible = 'on';
+end
+if ~isfield(type,'axisMode') || isempty(type.axisMode)
+    type.axisMode = 'normal';
+end
+if ~isfield(type,'mirrorCylindrical') || isempty(type.mirrorCylindrical)
+    type.mirrorCylindrical = isCylindricalRZ;
+end
+
+if ~isscalar(type.mirrorCylindrical) || ...
+        ~(islogical(type.mirrorCylindrical) || isnumeric(type.mirrorCylindrical))
+    error('type.mirrorCylindrical must be a scalar logical value.');
+end
+mirrorCylindrical = logical(type.mirrorCylindrical);
+if mirrorCylindrical && ~isCylindricalRZ
+    error('Cylindrical mirroring is only available for cylindrical r-z plots.');
+end
+if ~isscalar(type.delayTime) || ~isfinite(type.delayTime) || type.delayTime < 0
+    error('type.delayTime must be a finite nonnegative scalar.');
+end
+if ~isscalar(type.logFloor) || ~isfinite(type.logFloor) || type.logFloor <= 0
+    error('type.logFloor must be a finite positive scalar.');
+end
+
+% Assemble the acoustic or elastic energy panels.
+energyDensity = obs.energyDensity;
+if obs.acoustics
+    energyPanels = energyDensity(:,:,:,1);
+    panelTitles = {'Energy density'};
+else
+    pressureEnergy = energyDensity(:,:,:,1);
+    shearEnergy = energyDensity(:,:,:,2);
+    energyPanels = cat(4,pressureEnergy,shearEnergy, ...
+        pressureEnergy + shearEnergy);
+    panelTitles = {'P energy density','S energy density', ...
+        'Total energy density'};
+end
+numberPanels = numel(panelTitles);
+
+if mirrorCylindrical
+    horizontalPlot = [-horizontalPlot(end:-1:1) horizontalPlot];
+    energyPanels = cat(1,energyPanels(end:-1:1,:,:,:),energyPanels);
+    horizontalLabel = 'x';
+end
+
+% Determine color scaling.
+switch lower(char(type.energyScale))
+    case 'linear'
+        plottedEnergy = energyPanels;
+        if isfield(type,'clim') && ~isempty(type.clim)
+            colorLimits = validateColorLimits(type.clim,numberPanels);
+        elseif ~isempty(cmax)
+            if ~isnumeric(cmax) || any(~isfinite(cmax(:))) || any(cmax(:) <= 0)
+                error('cmax must contain finite positive values.');
+            end
+            if numberPanels == 1
+                maximumEnergy = max(cmax(:));
+            elseif isscalar(cmax)
+                maximumEnergy = repmat(cmax,1,numberPanels);
+            elseif numel(cmax) == 2
+                maximumEnergy = [cmax(:)' sum(cmax(:))];
+            elseif numel(cmax) == numberPanels
+                maximumEnergy = cmax(:)';
+            else
+                error('For elastic movies, cmax must contain one, two, or three values.');
+            end
+            colorLimits = [zeros(numberPanels,1) maximumEnergy(:)];
+        else
+            % Use the middle observation time as a representative fixed
+            % linear scale, following the historical plotting behavior.
+            referenceTimeIndex = ceil(obs.Nt/2);
+            colorLimits = zeros(numberPanels,2);
+            for panelIndex = 1:numberPanels
+                referenceEnergy = energyPanels(:,:,referenceTimeIndex,panelIndex);
+                finiteReferenceEnergy = referenceEnergy(isfinite(referenceEnergy));
+
+                if isempty(finiteReferenceEnergy)
+                    maximumEnergy = 0;
+                else
+                    maximumEnergy = max(finiteReferenceEnergy);
+                end
+
+                % Fall back to the global panel maximum if the reference
+                % frame contains no finite positive energy.
+                if maximumEnergy <= 0
+                    panelEnergy = energyPanels(:,:,:,panelIndex);
+                    finitePanelEnergy = panelEnergy(isfinite(panelEnergy));
+                    if isempty(finitePanelEnergy)
+                        maximumEnergy = 1;
+                    else
+                        maximumEnergy = max(finitePanelEnergy);
+                        if maximumEnergy <= 0
+                            maximumEnergy = 1;
+                        end
+                    end
+                end
+                colorLimits(panelIndex,:) = [0 maximumEnergy];
+            end
+        end
+
+    case 'log10'
+        plottedEnergy = log10(max(energyPanels,type.logFloor));
+        if isfield(type,'clim') && ~isempty(type.clim)
+            colorLimits = validateColorLimits(type.clim,numberPanels);
+        else
+            colorLimits = repmat([-8 -2],numberPanels,1);
+        end
+
+    otherwise
+        error('Unknown energyScale "%s". Use "linear" or "log10".', ...
+            char(type.energyScale));
+end
+
+% Determine fixed spatial limits.
+if isfield(type,'xlim') && ~isempty(type.xlim)
+    horizontalLimits = validateAxisLimits(type.xlim,'type.xlim');
+    if mirrorCylindrical && horizontalLimits(1) >= 0
+        horizontalLimits = [-horizontalLimits(2) horizontalLimits(2)];
+    end
+else
+    horizontalLimits = defaultAxisLimits(horizontalPlot,horizontalEdges);
+    if mirrorCylindrical
+        horizontalLimits = [-max(abs(horizontalLimits)) max(abs(horizontalLimits))];
+    end
+end
+
+if isfield(type,'zlim') && ~isempty(type.zlim)
+    verticalLimits = validateAxisLimits(type.zlim,'type.zlim');
+else
+    verticalLimits = defaultAxisLimits(verticalPlot,verticalEdges);
+end
+
+% Replace an earlier movie instead of appending to it.
+filename = char(type.filename);
+if exist(filename,'file')
+    delete(filename);
+end
+
+fig = figure('Color','w','Visible',type.visible);
+layout = tiledlayout(fig,numberPanels,1, ...
+    'TileSpacing','compact','Padding','compact');
+axesHandles = gobjects(numberPanels,1);
+for panelIndex = 1:numberPanels
+    axesHandles(panelIndex) = nexttile(layout,panelIndex);
+end
+linkaxes(axesHandles,'xy');
+
+for timeIndex = 1:length(obs.t)
+    for panelIndex = 1:numberPanels
+        ax = axesHandles(panelIndex);
+        cla(ax);
+        imagesc(ax,horizontalPlot,verticalPlot, ...
+            plottedEnergy(:,:,timeIndex,panelIndex)');
+        set(ax,'YDir','normal');
+        colormap(ax,type.colormap);
+        clim(ax,colorLimits(panelIndex,:));
+        colorbar(ax);
+
+        switch lower(char(type.axisMode))
+            case 'equal'
+                axis(ax,'equal');
+            case 'tight'
+                axis(ax,'tight');
+            case 'normal'
+                axis(ax,'normal');
+            otherwise
+                error('Unknown axisMode "%s". Use "normal", "equal", or "tight".', ...
+                    char(type.axisMode));
+        end
+
+        xlim(ax,horizontalLimits);
+        ylim(ax,verticalLimits);
+        box(ax,'on');
+        ylabel(ax,verticalLabel);
+        title(ax,sprintf('%s, t = %.3g s', ...
+            panelTitles{panelIndex},obs.t(timeIndex)));
+
+        if panelIndex == numberPanels
+            xlabel(ax,horizontalLabel);
+        else
+            set(ax,'XTickLabel',[]);
+        end
+
+        if isfield(type,'boundaries') && ~isempty(type.boundaries)
+            hold(ax,'on');
+            plotBoundaries(ax,type.boundaries,frame,horizontalCoordinate, ...
+                verticalCoordinate,isCylindricalRadius,mirrorCylindrical);
+            hold(ax,'off');
+        end
+    end
+
+    drawnow;
+    movieFrame = getframe(fig);
+    [imageData,colorMap] = rgb2ind(frame2im(movieFrame),256);
+    if timeIndex == 1
+        imwrite(imageData,colorMap,filename,'gif','LoopCount',Inf, ...
+            'DelayTime',type.delayTime);
     else
-        z = obs.y;
-    end
-end
-val = obs.energyDensity;
-
-% constants
-Nt = length(obs.t);
-n = 1+~obs.acoustics;
-
-% estimate cmax and make sure low values are not plotted
-if isempty(cmax)
-    cmax = squeeze(max(max(obs.energyDensity,[],1),[],2));
-    cmax = cmax(ceil(obs.Nt/2),:);
-    if cmax == 0
-        cmax = max(obs.energyDensity(:));
+        imwrite(imageData,colorMap,filename,'gif','WriteMode','append', ...
+            'DelayTime',type.delayTime);
     end
 end
 
-% plot total energy - loop on time
-figure; lappend = false;
-for i1=1:Nt
-    ax1 = subplot(n,1,1,'replace');
-    surf( ax1, x, z, val(:,:,i1,1)' );
-    view(2); shading flat; box on;
-    cb1 = colorbar; colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
-    set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z) max(z)],'XTick',[]);
-    title(cb1,'P energy')
-    title(ax1,['Total Energy Density, time t = ' num2str(obs.t(i1)) 's'])
-    if ~obs.acoustics
-        ax2 = subplot(n,1,2,'replace');
-        surf( ax2, x, z, val(:,:,i1,2)' );
-        view(2); shading flat; box on;
-        cb2 = colorbar; clim(ax2,[0 cmax(2)]);
-        cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:));
-        set(ax2,'XLim',[min(x) max(x)],'YLim',[min(z) max(z)], ...
-            'Position',[.13 .23 .6964 .3412]);
-        title(cb2,'S energy')
-        set(cb2,'position',[.8411 .2298 .05 .31]);
-    end
-    % export graphics
-    exportgraphics(gcf,'movieTotalEnergy.gif','Append',lappend);
-    lappend = true;
 end
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function coordinates = plottingCoordinates(values,edges,numberValues)
+if numel(values) == numberValues
+    coordinates = values;
+elseif numel(edges) == numberValues + 1
+    coordinates = (edges(1:end-1) + edges(2:end))/2;
+else
+    error('Observation coordinates do not match the energy-density dimensions.');
+end
+coordinates = coordinates(:)';
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function label = coordinateLabel(frame,coordinate)
+labels = {'x','y','z'};
+if strcmp(frame,'cylindrical')
+    labels = {'r','azimuth','z'};
+elseif strcmp(frame,'spherical')
+    labels = {'r','azimuth','elevation'};
+end
+label = labels{coordinate};
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function limits = defaultAxisLimits(values,edges)
+if numel(edges) >= 2 && all(isfinite(edges(:)))
+    limits = [min(edges(:)) max(edges(:))];
+else
+    limits = [min(values(:)) max(values(:))];
+end
+if limits(2) <= limits(1)
+    padding = max(0.5,0.5*abs(limits(1)));
+    limits = limits(1) + [-padding padding];
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function limits = validateAxisLimits(limits,name)
+if ~isnumeric(limits) || numel(limits) ~= 2 || ...
+        any(~isfinite(limits)) || limits(2) <= limits(1)
+    error('%s must contain two finite increasing values.',name);
+end
+limits = limits(:)';
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function limits = validateColorLimits(limits,numberPanels)
+if isnumeric(limits) && isvector(limits) && numel(limits) == 2
+    limits = validateAxisLimits(limits,'type.clim');
+    limits = repmat(limits,numberPanels,1);
+elseif isnumeric(limits) && isequal(size(limits),[numberPanels 2])
+    for panelIndex = 1:numberPanels
+        limits(panelIndex,:) = validateAxisLimits( ...
+            limits(panelIndex,:),'each row of type.clim');
+    end
+else
+    error('type.clim must be a two-element vector or a %d-by-2 array.', ...
+        numberPanels);
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function plotBoundaries(ax,boundaries,frame,horizontalCoordinate, ...
+        verticalCoordinate,isCylindricalRadius,mirrorCylindrical)
+for boundaryIndex = 1:numel(boundaries)
+    boundary = boundaries(boundaryIndex);
+    if strcmp(frame,'cartesian')
+        if boundary.dir == horizontalCoordinate
+            xline(ax,boundary.val,'w--','LineWidth',1.5);
+        elseif boundary.dir == verticalCoordinate
+            yline(ax,boundary.val,'w--','LineWidth',1.5);
+        end
+    elseif strcmp(frame,'cylindrical')
+        if boundary.dir == 3 && verticalCoordinate == 3
+            yline(ax,boundary.val,'w--','LineWidth',1.5);
+        elseif boundary.dir == 4 && isCylindricalRadius
+            xline(ax,boundary.val,'w--','LineWidth',1.5);
+            if mirrorCylindrical
+                xline(ax,-boundary.val,'w--','LineWidth',1.5);
+            end
+        end
+    end
+end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotDirectionalEnergy( obs, material, lambda, sensors, rmax )
@@ -300,7 +623,7 @@ for icap = 1 : numel(r)
         saveas(a,['Sensor_',num2str(icap),'_energy.png'])
     catch
         er = sprintf('The sensor %d has not been found the coords are: [%f %f %f]',icap,type.sensors(icap,:));
-        warning(er)
+        warning('%s',er)
     end
 end
 
