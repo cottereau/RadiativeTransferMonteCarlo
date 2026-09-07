@@ -2456,10 +2456,25 @@ classdef MaterialClass < handle
             if any(isnan(pdf))
                 warning('There is a NaN inside the probability density function')
             end
-            cdf = cumsum(pdf,"omitnan")*(pi/Nth);
-            ind = find(diff(cdf)>1e-8);
-            ind = unique([ind ind+1]);
-            invcdf = griddedInterpolant(cdf(ind),xth(ind));
+            % Build the scattering-angle CDF.
+            cdf = cumsum(pdf,"omitnan")*mean(diff(xth));
+
+            % Normalize the scattering-angle CDF.
+            cdfTotal = cdf(end);
+            if ~isfinite(cdfTotal) || cdfTotal <= 0
+                error('MaterialClass:prepareSigmaOne:InvalidCDF', ...
+                    'Could not build a valid scattering-angle CDF.');
+            end
+            cdf = cdf ./ cdfTotal;
+            cdf(1) = 0;
+            cdf(end) = 1;
+
+            % Remove repeated CDF values before constructing its inverse.
+            ind = find(diff(cdf)>0);
+            ind = unique([1 ind ind+1 Nth]);
+            [cdfUnique, idx] = unique(cdf(ind),'stable');
+            xthUnique = xth(ind);
+            invcdf = griddedInterpolant(cdfUnique,xthUnique(idx));
         end
         function centers = CreateSphereComposite(L,D,phi)
             %cria um composito de matriz m (prop1) e inclusao i (prop2)
