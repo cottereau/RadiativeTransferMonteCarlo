@@ -51,6 +51,12 @@ classdef MaterialClass < handle
         timeSteps               =  0; % time Steps : 0=small 1=large
 
     end
+    properties (Access = private)
+        % Cached Zoeppritz data for repeated elastic boundary interactions.
+        zoeppritzOutputCache = [];
+        zoeppritzAnglesCache = [];
+        zoeppritzCacheKey    = [];
+    end
     properties (SetAccess = private, Hidden = true)
         Type_def = {'isotropic'}; %the anisotropic should be implemented
         SpectralLaw_def = {'','exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersesphere','image','Imported'};
@@ -1667,8 +1673,7 @@ classdef MaterialClass < handle
             end
 
             % --- REFLECTION COEFFICIENTS ---
-            % Ideally, call this once and store 'out' in the object properties
-            [out, angles] = MaterialClass.Zoeppritz(obj);
+            [out, angles] = obj.getZoeppritzCached();
 
             % Helper for fast lookup
             lookup = @(data, ang) interp1(out.j1_deg, data, ang, 'linear', 'extrap');
@@ -1753,6 +1758,22 @@ classdef MaterialClass < handle
             o.ampSVSV = ampSV2SV;
             o.ampSVP  = ampSV2P;
             o.ampSHSH = ampSH2SH;
+        end
+
+        function [out, angles] = getZoeppritzCached(obj)
+            % Reuse the coefficients while the material properties remain unchanged.
+            cacheKey = [obj.vp obj.vs obj.rho obj.acoustics];
+
+            if isempty(obj.zoeppritzOutputCache) || ...
+                    isempty(obj.zoeppritzCacheKey) || ...
+                    ~isequaln(obj.zoeppritzCacheKey,cacheKey)
+                [obj.zoeppritzOutputCache,obj.zoeppritzAnglesCache] = ...
+                    MaterialClass.Zoeppritz(obj);
+                obj.zoeppritzCacheKey = cacheKey;
+            end
+
+            out = obj.zoeppritzOutputCache;
+            angles = obj.zoeppritzAnglesCache;
         end
     end
     methods(Static)

@@ -16,8 +16,8 @@ if ~mat.acoustics && isfield(geometry,'bnd')
     end
     
     if hasCyl
-        % Fetch reflection coefficients
-        [out_Z, ~] = MaterialClass.Zoeppritz(mat);
+        % Fetch the reflection coefficients cached on the material object.
+        [out_Z, ~] = mat.getZoeppritzCached();
         
         % Create fast interpolants for the coefficients (Linear is usually sufficient/fast)
         % Note: Input angles for Zoeppritz are in degrees
