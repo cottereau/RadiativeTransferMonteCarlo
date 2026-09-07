@@ -2,6 +2,11 @@ function P = propagateParticleSmallDt(mat,geometry,P,T)
 
 % choice of time sub-step
 T = T-mean(P.t);
+
+% no propagation is needed if the target time has already been reached
+if T <= 0
+    return
+end
 dt = min(0.01*min(mat.meanFreeTime(:)),T); % with 0.01, we miss scattering events with a rate of 1e-5
 Nt = ceil(T/dt);
 dt = T/Nt;
