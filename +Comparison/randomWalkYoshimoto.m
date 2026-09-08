@@ -25,8 +25,13 @@ end
 
 d = geometry.dimension;
 Np = source.numberParticles;
-t = observation.time;
-dt = mean(diff(t));
+t = observation.time(:).';
+if isempty(t) || any(~isfinite(t)) || any(t < 0) || any(diff(t) < 0)
+    error('Observation times must be finite, nonnegative and nondecreasing.');
+end
+timeSteps = diff([0 t]);
+maxTimeStep = max(timeSteps);
+
 if isfield(observation,'r')
     binR = observation.r;
 else
@@ -34,20 +39,26 @@ else
 end
 r = (binR(1:end-1)+binR(2:end))/2;  % sensor positions : radius
 
-if ~isempty(material.Sigma)
-    Sigma = material.Sigma;
-else
-    Sigma = prepareSigmaOne(material.sigma{:},d);
+% Prepare scattering properties when the function is called independently.
+needsPreparation = isempty(material.Sigma);
+if ~material.acoustics
+    needsPreparation = needsPreparation || isempty(material.P2P) || ...
+        isempty(material.S2S);
 end
+if needsPreparation
+    material = MaterialClass.prepareSigma(material,d);
+end
+Sigma = material.Sigma;
 
 if material.acoustics
     v = material.v;
     mft = 1/Sigma;  % mean free time
-    if dt>0.1*mft
+    if maxTimeStep>0.1*mft
         warning(['Ratio between time step dt and mean free time is large: ...' ...
             'try to decrease dt'])
     else
-        disp(['Ratio between dt and the mean free time is ' num2str(dt/mft)]);
+        disp(['Maximum ratio between dt and the mean free time is ' ...
+            num2str(maxTimeStep/mft)]);
     end
 
     energyDensity = zeros(length(r),length(t)); % energy density matrix
@@ -60,11 +71,12 @@ else
     Sigmap = sum(Sigma(1,:)); Sigmas = sum(Sigma(2,:));
     mft_PS = 1./sum(Sigma,2);  % mean free times of P & S waves
 
-    if dt>0.1*min(mft_PS)
+    if maxTimeStep>0.1*min(mft_PS)
         warning(['Ratio between time step dt and mean free time is large: ...' ...
             'try to decrease dt'])
     else
-        disp(['Ratio between dt and the mean free time is ' num2str(dt/min(mft_PS))]);
+        disp(['Maximum ratio between dt and the mean free time is ' ...
+            num2str(maxTimeStep/min(mft_PS))]);
     end
 
     % P-to-S & S-to-P conversion probabilities
@@ -145,18 +157,22 @@ end
 % Propagate particles
 for timeIdx = 1:length(t)
 
+    dt = timeSteps(timeIdx);
+
     % Calculate energy density/densities(P/S)
     if material.acoustics
 
-        positions = positions + v*dt.*dir; % update positions based on wave velocities
+        if dt > 0
+            positions = positions + v*dt.*dir; % update positions based on wave velocities
 
-        % Check for scatter_indsing
-        scatter_inds = rand(Np,1) < Sigma*dt; % Identify scattered particles
-        Nscatter = sum(scatter_inds);
+            % Check for scatter_indsing
+            scatter_inds = rand(Np,1) < Sigma*dt; % Identify scattered particles
+            Nscatter = sum(scatter_inds);
 
-        % Update directions for scattered particles
-        if Nscatter > 0
-            dir(scatter_inds,:) = updateDirections(dir(scatter_inds,:), invcdf, d);
+            % Update directions for scattered particles
+            if Nscatter > 0
+                dir(scatter_inds,:) = updateDirections(dir(scatter_inds,:), invcdf, d);
+            end
         end
 
         % Calculate distances from initial positions
@@ -167,61 +183,63 @@ for timeIdx = 1:length(t)
         energyDensity(:, timeIdx) = n(:)/Np./dV(:);  % update energy density
     else
 
-        positions = positions + (isPwave.*vp + ~isPwave.*vs).*dir*dt; % update positions
+        if dt > 0
+            positions = positions + (isPwave.*vp + ~isPwave.*vs).*dir*dt; % update positions
 
-        % Scattering probabilities for each particle
-        scattering_probability = zeros(Np, 1);
-        scattering_probability(isPwave)  = Sigmap*dt;  % P-wave scattering probability
-        scattering_probability(~isPwave) = Sigmas*dt;  % S-wave scattering probability
+            % Scattering probabilities for each particle
+            scattering_probability = zeros(Np, 1);
+            scattering_probability(isPwave)  = Sigmap*dt;  % P-wave scattering probability
+            scattering_probability(~isPwave) = Sigmas*dt;  % S-wave scattering probability
 
-        % Clip to avoid prob>1
-        scattering_probability = min(scattering_probability, 0.999999);
+            % Clip to avoid prob>1
+            scattering_probability = min(scattering_probability, 0.999999);
 
-        % Who scatters?
-        scatter_inds = rand(Np, 1) < scattering_probability;
-        Nscatter = sum(scatter_inds);
+            % Who scatters?
+            scatter_inds = rand(Np, 1) < scattering_probability;
+            Nscatter = sum(scatter_inds);
 
-        if Nscatter > 0
-            % Modes BEFORE scattering
-            wasP = isPwave(scatter_inds);       % Nscatter x 1 (logical)
+            if Nscatter > 0
+                % Modes BEFORE scattering
+                wasP = isPwave(scatter_inds);       % Nscatter x 1 (logical)
 
-            % Decide mode conversion for these particles
-            mode_conversion_probability = zeros(Nscatter, 1);
-            mode_conversion_probability(wasP)  = pPS;  % P->S
-            mode_conversion_probability(~wasP) = pSP;  % S->P
+                % Decide mode conversion for these particles
+                mode_conversion_probability = zeros(Nscatter, 1);
+                mode_conversion_probability(wasP)  = pPS;  % P->S
+                mode_conversion_probability(~wasP) = pSP;  % S->P
 
-            converted = rand(Nscatter, 1) < mode_conversion_probability;  % logical
+                converted = rand(Nscatter, 1) < mode_conversion_probability;  % logical
 
-            % Split into PP, PS, SP, SS (no for loop)
-            PP =  wasP & ~converted;   % P stays P
-            PS =  wasP &  converted;   % P -> S
-            SP = ~wasP &  converted;   % S -> P
-            SS = ~wasP & ~converted;   % S stays S
+                % Split into PP, PS, SP, SS (no for loop)
+                PP =  wasP & ~converted;   % P stays P
+                PS =  wasP &  converted;   % P -> S
+                SP = ~wasP &  converted;   % S -> P
+                SS = ~wasP & ~converted;   % S stays S
 
-            idx_scatter = find(scatter_inds);  % global indices of scattered particles
+                idx_scatter = find(scatter_inds);  % global indices of scattered particles
 
-            % Global indices for each channel
-            idx_PP = idx_scatter(PP);
-            idx_PS = idx_scatter(PS);
-            idx_SP = idx_scatter(SP);
-            idx_SS = idx_scatter(SS);
+                % Global indices for each channel
+                idx_PP = idx_scatter(PP);
+                idx_PS = idx_scatter(PS);
+                idx_SP = idx_scatter(SP);
+                idx_SS = idx_scatter(SS);
 
-            % Direction updates with the correct angular law
-            if ~isempty(idx_PP)
-                dir(idx_PP,:) = updateDirections(dir(idx_PP,:), invcdf_PP, d);
+                % Direction updates with the correct angular law
+                if ~isempty(idx_PP)
+                    dir(idx_PP,:) = updateDirections(dir(idx_PP,:), invcdf_PP, d);
+                end
+                if ~isempty(idx_PS)
+                    dir(idx_PS,:) = updateDirections(dir(idx_PS,:), invcdf_PS, d);
+                end
+                if ~isempty(idx_SP)
+                    dir(idx_SP,:) = updateDirections(dir(idx_SP,:), invcdf_SP, d);
+                end
+                if ~isempty(idx_SS)
+                    dir(idx_SS,:) = updateDirections(dir(idx_SS,:), invcdf_SS, d);
+                end
+
+                % Update modes AFTER scattering. Conversion toggles P<->S
+                isPwave(scatter_inds) = xor(wasP, converted);
             end
-            if ~isempty(idx_PS)
-                dir(idx_PS,:) = updateDirections(dir(idx_PS,:), invcdf_PS, d);
-            end
-            if ~isempty(idx_SP)
-                dir(idx_SP,:) = updateDirections(dir(idx_SP,:), invcdf_SP, d);
-            end
-            if ~isempty(idx_SS)
-                dir(idx_SS,:) = updateDirections(dir(idx_SS,:), invcdf_SS, d);
-            end
-
-            % Update modes AFTER scattering. Conversion toggles P<->S
-            isPwave(scatter_inds) = xor(wasP, converted);
         end
 
         % Calculate distances from initial positions
