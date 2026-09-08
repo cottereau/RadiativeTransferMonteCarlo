@@ -8,6 +8,24 @@ if ~isfield(geometry,'frame')
     geometry.frame = 'spherical'; % default frame is spherical
 end
 
+% Check that at most one frequency is provided.
+if ~isempty(material.Frequency) && ~isscalar(material.Frequency)
+    error('material.Frequency must be a scalar.');
+end
+
+% Check the inputs needed for deterministic acoustic attenuation.
+useAcousticAttenuation = acoustics && ~isempty(material.Q) && ...
+    isfinite(material.Q(1));
+if useAcousticAttenuation
+    if material.Q(1) <= 0
+        error('The acoustic quality factor Q must be positive.');
+    end
+    if isempty(material.Frequency)
+        error(['A finite quality factor Q was provided, but material.Frequency is empty. ', ...
+               'Please define material.Frequency before using Q-based attenuation.']);
+    end
+end
+
 % Check if user provided a single Q value for dissipation of both P and S waves
 if isprop(material,'Q') && ~isempty(material.Q) && ~material.acoustics
     if isscalar(material.Q)
@@ -165,8 +183,16 @@ else
         sum(times), sum(times)/60);
 end
 
+% Apply intrinsic attenuation deterministically to acoustic energies.
+E = double(E);
+if useAcousticAttenuation
+    omega = 2*pi*material.Frequency;
+    attenuation = reshape(exp(-omega*t/material.Q(1)),1,1,Nt,1);
+    E = E .* attenuation;
+end
+
 % energy density as a function of [x1 x2 t]
-obs.energyDensity = (1./(d1'*(d2*obs.N))).*double(E);
+obs.energyDensity = (1./(d1'*(d2*obs.N))).*E;
 
 % correc the normalizations to get an energy density
 if obs.d == 3
@@ -196,7 +222,7 @@ else
 end
 
 % energy as a function of [t]
-obs.energy = squeeze(sum(sum(double(E),1),2)) / obs.N;
+obs.energy = squeeze(sum(sum(E,1),2)) / obs.N;
 
     % -----------------------------------------------------------------
     % Nested function: called by afterEach on the DataQueue.

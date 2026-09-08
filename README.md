@@ -329,7 +329,15 @@ material.Q = 100;       % for acoustic waves
 material.Q = [200 100]; % for elastic waves: [QP QS]
 ```
 
-Intrinsic attenuation is modeled by stochastic killing of particles during propagation. For a time step `dt`, particles are removed with probability
+For acoustic waves, intrinsic attenuation is applied deterministically to the estimated energy at each observation time:
+
+```text
+E(t) = E_without_attenuation(t) * exp(-omega*t/Q)
+```
+
+This avoids the additional Monte Carlo variance that would result from randomly removing acoustic particles.
+
+For elastic waves, intrinsic attenuation is modeled by stochastic killing of particles during propagation because P and S waves can have different quality factors. For a time step `dt`, particles are removed with probability
 
 ```text
 pKill = 1 - exp(-omega*dt/Q)

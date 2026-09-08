@@ -33,28 +33,19 @@ if ~mat.acoustics && isfield(geometry,'bnd')
     end
 end
 
-% intrinsic attenuation parameters
+% intrinsic attenuation parameters for elastic waves
 Qval = Inf;
 
-if isprop(mat,'Q') && ~isempty(mat.Q)
+if ~mat.acoustics && isprop(mat,'Q') && ~isempty(mat.Q)
     Qval = mat.Q(:);
 end
 
-if mat.acoustics
-
+if isscalar(Qval)
     QP = Qval(1);
-    QS = QP;
-
+    QS = Qval(1);
 else
-
-    if isscalar(Qval)
-        QP = Qval(1);
-        QS = Qval(1);
-    else
-        QP = Qval(1);
-        QS = Qval(2);
-    end
-
+    QP = Qval(1);
+    QS = Qval(2);
 end
 
 useQ = isfinite(QP) || isfinite(QS);
@@ -66,7 +57,7 @@ if useQ
                'Please define mat.Frequency before using Q-based attenuation.']);
     end
 
-    omega = 2*pi*mat.Frequency(1);
+    omega = 2*pi*mat.Frequency;
 
     if isfinite(QP)
         pKillP = 1 - exp(-omega * dt / QP);
@@ -106,22 +97,12 @@ for i1 = 1:Nt
     
         kill = false(P.N,1);
     
-        if mat.acoustics
+        if pKillP > 0
+            kill(p) = rand(nnz(p),1) < pKillP;
+        end
     
-            if pKillP > 0
-                kill(alive) = rand(nnz(alive),1) < pKillP;
-            end
-    
-        else
-    
-            if pKillP > 0
-                kill(p) = rand(nnz(p),1) < pKillP;
-            end
-    
-            if pKillS > 0
-                kill(s) = rand(nnz(s),1) < pKillS;
-            end
-    
+        if pKillS > 0
+            kill(s) = rand(nnz(s),1) < pKillS;
         end
     
         if any(kill)
