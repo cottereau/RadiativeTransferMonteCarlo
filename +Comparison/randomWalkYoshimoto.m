@@ -85,15 +85,6 @@ else
 
     energyDensity = zeros(length(r),length(t),2); % energy density matrix
 
-    % Set the mode portions at the source : true = P (explosion), false = S
-    if strcmpi(source.polarization,'P')
-        isPwave = true(Np,1);
-    elseif strcmpi(source.polarization,'S')
-        isPwave = false(Np,1);
-    else
-        error('Source polarization must be ''P'' or ''S''.');
-    end
-
     % For subsequent scattering angle samplings
     invcdf_PP = scatteringParameters(material.sigma{1,1}, d);
     invcdf_PS = scatteringParameters(material.sigma{1,2}, d);
@@ -101,45 +92,13 @@ else
     invcdf_SS = scatteringParameters(material.sigma{2,2}, d);
 end
 
-% Initialize particles (directions)
-if d==2
-    theta = 2*pi*rand(Np,1); % Angle in [0, 2π)
-    dir = [cos(theta) sin(theta)]; % Direction vectors in 2D
-elseif d==3
-    phi = 2*pi*rand(Np,1);
-    theta = acos(-1+2*rand(Np,1));
-    dir = [sin(theta).*cos(phi) sin(theta).*sin(phi) cos(theta)];
+% Initialize particles consistently with the radiative transfer solver.
+P = initializeParticle(Np,d,material.acoustics,source);
+positions = P.x(:,1:d);
+dir = P.dir(:,1:d);
+if ~material.acoustics
+    isPwave = P.p;
 end
-
-% Initialize particles (positions)
-if ~isfield(source,'radial') || isempty(source.radial)
-    radius = abs(randn(Np,1)*source.lambda/2);
-else
-    Rmax = source.radial.GridVectors{1}(end);
-    invcdfsource = inverseCDF(source.radial,d,Rmax);
-    radius = invcdfsource(rand(Np,1));
-end
-
-% Default source position
-if ~isfield(source,'position')
-        source.position = zeros(1,d);
-end
-
-if d==2
-    if numel(source.position) ~= 2
-        error('For this 2D problem, the source position should have 2 components');
-    end
-    positions = source.position + radius.*[cos(theta) sin(theta)];
-elseif d==3
-    if numel(source.position) ~= 3
-        error('For this 3D problem, the source position should have 3 components');
-    end
-    positions = source.position + ...
-        radius.*[sin(theta).*cos(phi) sin(theta).*sin(phi) cos(theta)];
-end
-
-% initial positions of the particles (source)
-initialPositions = positions;
 
 if d==2
     dV = pi*(binR(2:end).^2 - binR(1:end-1).^2);
@@ -175,8 +134,8 @@ for timeIdx = 1:length(t)
             end
         end
 
-        % Calculate distances from initial positions
-        distances = sqrt(sum((positions-initialPositions).^2, 2));
+        % Calculate radial distances from the origin.
+        distances = sqrt(sum(positions.^2,2));
         
         % Calculate energy density
         n = histcounts(distances, binR); % counts of particles in each spatial bin
@@ -242,8 +201,8 @@ for timeIdx = 1:length(t)
             end
         end
 
-        % Calculate distances from initial positions
-        distances = sqrt(sum((positions-initialPositions).^2, 2));
+        % Calculate radial distances from the origin.
+        distances = sqrt(sum(positions.^2,2));
 
         % Histograms
         nP = histcounts(distances(isPwave),  binR);
@@ -306,21 +265,6 @@ cdf = cumsum(pdf)*(pi/Nth);
 ind = find(diff(cdf)>1e-12);
 ind = unique([ind ind+1]);
 invcdf = griddedInterpolant(cdf(ind),xth(ind));
-end
-
-% compute the cumulative distribution radial function corresponding to a
-% given (positive) function to draw randomly from it
-function invcdf = inverseCDF(f,d,Rmax)
-Nth = 10000;
-xth = linspace(0,Rmax,Nth);
-intF = trapz(xth,(xth.^(d-1)).*f(xth));
-pdf = (xth.^(d-1)).*f(xth)/intF;
-cdf = cumsum(pdf)*mean(diff(xth));
-cdf(1) = 0;
-cdf(end) = 1;
-ind = find(diff(cdf)>0);
-ind = unique([ind ind+1]);
-invcdf = griddedInterpolant(cdf(ind),xth(ind),'linear','nearest');
 end
 
 function dir_new = updateDirections(dir_old, invcdf, d)
