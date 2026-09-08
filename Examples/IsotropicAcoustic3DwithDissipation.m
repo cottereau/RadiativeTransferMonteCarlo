@@ -15,7 +15,7 @@ source = struct('numberParticles', 1e6, ...
 material = MaterialClass.preset(1);
 material.Frequency = 10; % Hz
 
-% Quality factor
+% intrinsic attenuation
 material.Q = 100;
 
 observation = struct('x', 0:0.1:10, ...

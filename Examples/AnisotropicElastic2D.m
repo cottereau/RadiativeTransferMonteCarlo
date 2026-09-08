@@ -9,30 +9,33 @@ disp(['Testing ' titlecase ' ...']);
 
 geometry = struct( 'dimension', 2 );
 
-source = struct( 'numberParticles', 1e6, ...
-    'position', [0 0], ...
-    'polarization', 'P', ...
-    'lambda', 0.002 );
+source = struct('numberParticles', 5e6, ...
+                'position', [0 0], ...
+                'polarization', 'P', ...
+                'lambda', 0.002);
 
-% The following setup generates a random medium favoring
-% forward scattering (large value for the normalized frequency)
-freq = 10; % in Hz
-material = MaterialClass( geometry, ...
-    freq, ...
-    false, ...            % true for acoustics
-    [6 6/sqrt(3)], ...    % defines the velocity of pressure waves and the shear waves
-    [0.2 0.2 0.], ...     % defines the coefficients of variation of lambda, mu (Lamé coefficients) and rho (density), respectively.
-    [0.1 0. 0.], ...      % defines the correlation coefficient between (lambda,mu), (lambda,rho), and (mu,rho), respectively
-    'exp', ...            % defines the autocorrelation function
-    10);                 % defines the correlation length
+% Random medium properties
+freq = 2; % in Hz
+material = MaterialClass(geometry, ...
+    freq, ...            % frequency
+    false, ...           % true for acoustics  
+    [6 6/sqrt(3)], ...   % velocities of pressure and shear waves
+    [0.1 0.1 0.05], ...  % coefficients of variation of lambda, mu (Lamé coefficients) and rho (density)
+    [0. 0. 0.], ...         % correlation coefficients between (lambda,mu), (lambda,rho), and (mu,rho)
+    'exp', ...           % autocorrelation function
+    10);                 % correlation length
+
 material = MaterialClass.prepareSigma( material, geometry.dimension );
 
-observation = struct('x', 0:0.1:20, ... % size of bins in space
-    'y', [-pi pi], ...
-    'directions', [0 pi], ...
-    'time', 0:0.01:10 );
+% No intrinsic attenuation
+material.Q = [Inf Inf];
 
-inds = [20 50 80]; % index of the desired observation points
+observation = struct('x',0:1:10, ...
+                     'y',[-pi pi], ...
+                     'directions',[0 pi], ...
+                     'time',0:0.01:1.5);
+
+inds = [6 7 8]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( geometry, source, material, observation );

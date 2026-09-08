@@ -12,25 +12,29 @@ source = struct( 'numberParticles', 1e6, ...
                  'polarization', 'P', ...
                  'lambda', 0.002 );
 
-% The following setup favors a stochastic scattering regime
-freq = 10; % in Hz
+% Random medium properties
+freq = 50; % in Hz
 material = MaterialClass( geometry, ...
-    freq, ...
+    freq, ...             % frequency
     false, ...            % true for acoustics
-    [6 6/sqrt(3)], ...    % defines the velocity of pressure waves and the shear waves
-    [0.8 0.8 0.], ...     % defines the coefficients of variation of lambda, mu (Lamé coefficients) and rho (density), respectively.
-    [0.1 0. 0.], ...      % defines the correlation coefficient between (lambda,mu), (lambda,rho), and (mu,rho), respectively
-    'exp', ...            % defines the autocorrelation function
-    0.1);                 % defines the correlation length
+    [6 6/sqrt(3)], ...    % velocities of pressure and shear waves
+    [0.1 0.1 0.05], ...   % coefficients of variation of lambda, mu (Lamé coefficients) and rho (density)
+    [0. 0. 0.], ...       % correlation coefficients between (lambda,mu), (lambda,rho), and (mu,rho)
+    'exp', ...            % autocorrelation function
+    0.1);                 % correlation length
+
 material = MaterialClass.prepareSigma( material, geometry.dimension );
 
-observation = struct('x', 0:0.1:20, ... % size of bins in space
+% No intrinsic attenuation
+material.Q = [Inf Inf];
+
+observation = struct('x', 0:0.1:10, ... % size of bins in space
                      'y', [-pi pi], ...
                      'z', [-pi/2 pi/2], ...
                      'directions', [0 pi], ...
-                     'time', 0:0.01:10 );
+                     'time', 0:0.01:1.5 );
 
-inds = [20 50 80]; % index of the desired observation points
+inds = [20 40 60]; % index of the desired observation points
 
 % running our code, Monte Carlo-based
 obs = radiativeTransfer( geometry, source, material, observation );

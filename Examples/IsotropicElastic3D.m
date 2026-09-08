@@ -14,6 +14,9 @@ source = struct( 'numberParticles', 1e6, ...
 
 material = MaterialClass.preset(3);
 
+% No intrinsic attenuation
+material.Q = [Inf Inf];
+
 observation = struct('x', 0:0.1:20, ... % size of bins in space
                      'y', [-pi pi], ...
                      'z', [-pi/2 pi/2], ...

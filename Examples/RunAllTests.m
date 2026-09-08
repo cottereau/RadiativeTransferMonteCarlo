@@ -29,7 +29,7 @@
 % 
 clc
 close all
-clear all
+clearvars
 %% 
 % do not run ''by parts''
 % this script is a a kind of non regression tests
