@@ -18,8 +18,8 @@ function [E,E_diff] = analyticalPaasschens(material,observation,geometry)
 
 d = geometry.dimension;
 v = material.v;
-t = observation.time;
-r = (observation.x(1:end-1)+observation.x(2:end))/2;
+t = observation.time(:).';
+r = ((observation.x(1:end-1)+observation.x(2:end))/2).';
 
 % dissipation
 Q = Inf;
@@ -52,10 +52,12 @@ a = t/meanFreeTime;
 % b (normalized distance)  : r*Sigma/v
 b = r*Sigma/v;
 
-[m,n] = size(a);
-if m>n, a=a'; end
-[m,n] = size(b);
-if m<n, b=b'; end
+% At t = 0, the point-source solution is a Dirac distribution and has no
+% finite value at the radial bin centers. Evaluate the formulas only for
+% strictly positive times and leave the corresponding t = 0 column at zero.
+positiveTime = t > 0;
+aPositive = a(positiveTime);
+E = zeros(length(r),length(t));
 
 % Gaussian pulse used to define a Dirac delta function
 width = 0.0005; % Width of the Gaussian pulse
@@ -63,21 +65,36 @@ deltaFunction = @(x,w) exp(-x.^2/(2*w^2))/(sqrt(2*pi)*w);
 H = @(x) x>=0; % Modified Heviside function
 
 if d==2
-    E = (Sigma/v)^2 .* ...
-        (1/2/pi * 1./b.^2 .* exp(-a) .* deltaFunction(a./b-1,width) + ...
-         1/2/pi * 1./a .* real((1-(b./a).^2).^(-0.5)) .* exp(-a) .* exp(real(sqrt(a.^2-b.^2))) .* H(a./b-1) );
+    if any(positiveTime)
+        E(:,positiveTime) = (Sigma/v)^2 .* ...
+            (1/2/pi * 1./b.^2 .* exp(-aPositive) .* deltaFunction(aPositive./b-1,width) + ...
+             1/2/pi * 1./aPositive .* real((1-(b./aPositive).^2).^(-0.5)) .* ...
+             exp(-aPositive) .* exp(real(sqrt(aPositive.^2-b.^2))) .* ...
+             H(aPositive./b-1) );
+    end
 elseif d==3
     G = @(x) exp(x).*sqrt(1+2.026./x);
-    E = (Sigma/v)^3 .* ...
-        (1/4/pi * 1./b.^3 .* exp(-a) .* deltaFunction(a./b-1,width) + ...
-         real((1-(b./a).^2).^(1/8)).*exp(-a).*G(a.*(1-(b./a).^2).^(3/4))./(4*pi/3*a).^(3/2).*H(a./b-1) );
+    if any(positiveTime)
+        E(:,positiveTime) = (Sigma/v)^3 .* ...
+            (1/4/pi * 1./b.^3 .* exp(-aPositive) .* deltaFunction(aPositive./b-1,width) + ...
+             real((1-(b./aPositive).^2).^(1/8)).*exp(-aPositive).* ...
+             G(aPositive.*(1-(b./aPositive).^2).^(3/4))./ ...
+             (4*pi/3*aPositive).^(3/2).*H(aPositive./b-1) );
+    end
 else
     disp('Dimension "d" should be either 2 or 3 !')
 end
 
-if nargout==2
-    E_diff = (Sigma/v)^d ./ (4*pi/d*a).^(d/2) .* exp(-d/4*b.^2./a);
+if nargout > 1
+    E_diff = zeros(size(E));
+    if any(positiveTime)
+        E_diff(:,positiveTime) = (Sigma/v)^d ./ ...
+            (4*pi/d*aPositive).^(d/2) .* ...
+            exp(-d/4*b.^2./aPositive);
+    end
 end
 
 E = E .* absorptionFactor;
-E_diff = E_diff .* absorptionFactor;
+if nargout > 1
+    E_diff = E_diff .* absorptionFactor;
+end
