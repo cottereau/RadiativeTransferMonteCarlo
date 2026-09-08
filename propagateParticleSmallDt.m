@@ -432,8 +432,13 @@ for i1 = 1:Nt
                                 % Handle normal incidence singularity
                                 mask_sing = axis_len < 1e-6;
                                 if any(mask_sing)
-                                    % Arbitrary perp if normal incidence
-                                    axis_vec(mask_sing, :) = cross(d_new(mask_sing,:), repmat([1 0 0], sum(mask_sing), 1), 2);
+                                    % Select a reference axis that is not parallel to d_new.
+                                    normalDirections = d_new(mask_sing,:);
+                                    [~,referenceIndex] = min(abs(normalDirections),[],2);
+                                    referenceAxis = zeros(size(normalDirections));
+                                    referenceAxis(sub2ind(size(referenceAxis), ...
+                                        (1:size(referenceAxis,1))',referenceIndex)) = 1;
+                                    axis_vec(mask_sing,:) = cross(normalDirections,referenceAxis,2);
                                 end
                                 axis_vec = axis_vec ./ vecnorm(axis_vec, 2, 2);
                                 P.perp(g_idx, :) = cross(axis_vec, d_new, 2);
@@ -450,7 +455,18 @@ for i1 = 1:Nt
                             % Decompose into SV and SH
                             % Plane of incidence normal (SH direction): axis = d x n
                             axis_inc = cross(d_s, n_s, 2);
-                            axis_inc = axis_inc ./ vecnorm(axis_inc, 2, 2);
+                            axis_len = vecnorm(axis_inc, 2, 2);
+                            mask_sing = axis_len < 1e-6;
+                            if any(mask_sing)
+                                % Select a reference axis that is not parallel to d_s.
+                                normalDirections = d_s(mask_sing,:);
+                                [~,referenceIndex] = min(abs(normalDirections),[],2);
+                                referenceAxis = zeros(size(normalDirections));
+                                referenceAxis(sub2ind(size(referenceAxis), ...
+                                    (1:size(referenceAxis,1))',referenceIndex)) = 1;
+                                axis_inc(mask_sing,:) = cross(normalDirections,referenceAxis,2);
+                            end
+                            axis_inc = axis_inc ./ vecnorm(axis_inc,2,2);
                             
                             % Project polarization onto SH axis
                             sh_comp = dot(p_s, axis_inc, 2);

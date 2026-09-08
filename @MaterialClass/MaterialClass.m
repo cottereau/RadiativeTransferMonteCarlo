@@ -1622,9 +1622,12 @@ classdef MaterialClass < handle
                 nearNormal = norm_eSH < eps;
 
                 if any(nearNormal)
-                    % Pick arbitrary tangent [1 0 0] projected on plane
+                    % Select the coordinate axis least aligned with the normal.
                     nUnit = n(:).';
-                    t = repmat([1 0 0], sum(nearNormal), 1);
+                    [~,referenceIndex] = min(abs(nUnit));
+                    referenceAxis = zeros(size(nUnit));
+                    referenceAxis(referenceIndex) = 1;
+                    t = repmat(referenceAxis,sum(nearNormal),1);
                     t = t - (t * nUnit.') * nUnit;
                     eSH(nearNormal,:)    = t;
                     norm_eSH(nearNormal) = vecnorm(t, 2, 2);
