@@ -1,84 +1,112 @@
 %% MaterialClass
-% Class to deal with Differential Scattering Cross-Sections (DSCS)
-%
-%
-% MaterialClass ()
-%
-% See also
-%
-%
+% Store the physical, statistical, scattering, and transport properties of
+% an acoustic or elastic medium. The class calculates the differential
+% scattering cross-sections (DSCSs) required by the radiative transfer
+% Monte Carlo solver for material parameter fluctuations and polycrystals.
 classdef MaterialClass < handle
     properties
-        % Required Properties
-        d               int8    = 3; % dimension
-        %mat             struct  = struct.empty % PSDF parameter
-        type            char    = 'isotropic'
-        acoustics
+        % Wave physics and material description
+        d                    int8   = 3;          % spatial dimension
+        scatteringModel      char   = 'parameterFluctuations' % DSCS model
+        correlationStructure char   = 'isotropic' % spatial correlation structure
+        acoustics                                 % true: acoustic; false: elastic
 
-        v
-        vp
-        vs
-        rho
-        Frequency
-        Q  = Inf;       % Quality factor. Default: no intrinsic attenuation;
+        v                                         % acoustic-wave velocity [m/s]
+        vp                                        % P-wave velocity [m/s]
+        vs                                        % S-wave velocity [m/s]
+        rho                                       % mass density [kg/m^3]
+        Frequency                                 % carrier frequency [Hz]
+        Q = Inf;                                  % quality factor(s); Inf means no intrinsic attenuation
+
+        % Coefficients of variation: [kappa rho] for acoustics or
+        % [lambda mu rho] for elasticity (dimensionless).
         coefficients_of_variation
+
+        % Cross-correlation coefficients: corr(kappa,rho) for acoustics or
+        % [corr(lambda,mu) corr(lambda,rho) corr(mu,rho)] for elastic waves.
         correlation_coefficients
 
-        SpectralLaw     char    = ''; % PSDF name
-        SpectralParam   struct  = struct.empty % PSDF parameter
+        SpectralLaw          char   = '';          % PSDF/correlation-model name
+        SpectralParam        struct = struct.empty % model-specific PSDF parameters
+        CorrelationLength           = [];          % correlation length [m]
 
-        CorrelationLength       = []; % correlation length
+        % Polycrystal description
+        singleCrystal        struct = struct.empty % single-crystal stiffness matrix and density
+        TPCF                 struct = struct.empty % polycrystal two-point correlation function and spectrum
 
+        % Scattering and transport properties
+        sigma                cell   = cell.empty; % differential scattering cross-section(s) [1/s]
+        Sigma                                     % total scattering cross-section(s) [1/s]
+        Sigmapr                                   % forward-weighted cross-section(s) [1/s]
+        invcdf                                    % inverse scattering-angle CDF(s)
+        Diffusivity             double = [];      % diffusivity [m^2/s]
+        meanFreeTime            double = [];      % mean free time(s) [s]
+        meanFreePath            double = [];      % mean free path(s) [m]
+        transportMeanFreeTime   double = [];      % transport mean free time(s) [s]
+        transportMeanFreePath   double = [];      % transport mean free path(s) [m]
+        g                       double = [];      % scattering anisotropy factor (dimensionless)
+        P2P                                       % P-to-P scattering probability
+        S2S                                       % S-to-S scattering probability
 
-        sigma           cell    = cell.empty; % Differential Scattering Cross-Sections
+        % Spatial and spectral correlation functions
+        Phi                           = [];       % normalized PSDF or function handle
+        k                     double  = [];       % wavenumber sampling vector
+        R                             = [];       % correlation function or function handle
+        r                     double  = [];       % lag-distance sampling vector
 
-        Sigma
-        Sigmapr
-        invcdf
-        Diffusivity             double = [];
-        meanFreeTime            double = [];
-        meanFreePath            double = [];
-        transportMeanFreeTime   double = [];
-        transportMeanFreePath   double = [];
-        g                       double = [];
-        P2P
-        S2S
-
-        Phi                     = []; % power spectral density / function_handle
-        k               double  = []; % wavenumber vector
-        R                       = []; % Correlation / function_handle
-        r               double  = []; % r vector
-        timeSteps               =  0; % time Steps : 0=small 1=large
+        % Propagation-algorithm selector: 0 = small time steps; 1 = large time steps
+        timeSteps                     = 0;
 
     end
     properties (Access = private)
-        % Cached Zoeppritz data for repeated elastic boundary interactions.
+        % Cached Zoeppritz amplitude and energy coefficients versus incidence angle
         zoeppritzOutputCache = [];
+        % Cached functions giving reflected and transmitted wave angles
         zoeppritzAnglesCache = [];
+        % Material properties used to determine whether the cache is still valid
         zoeppritzCacheKey    = [];
     end
     properties (SetAccess = private, Hidden = true)
-        Type_def = {'isotropic'}; %the anisotropic should be implemented
-        SpectralLaw_def = {'','exp','power_law','gaussian','triangular','low_pass','VonKarman','monodispersesphere','image','Imported'};
+        % Valid values accepted by the scatteringModel property set method
+        ScatteringModel_def = {'parameterFluctuations','polycrystal'};
+        % Valid values accepted by the correlationStructure property set method
+        CorrelationStructure_def = {'isotropic','anisotropic'};
+        % Valid values accepted by the SpectralLaw property set method
+        SpectralLaw_def = {'','exp','power_law','gaussian','triangular', ...
+            'low_pass','VonKarman','monodispersesphere','image','Imported'};
     end
     methods
         function obj = MaterialClass(geometry,freq,acoustics, ...
                 v,coefficients_of_variation,correlation_coefficients, ...
                 acf,lc)
             %% MaterialClass
-            % MaterialClass contructor
+            % Construct an acoustic or elastic material whose scattering is
+            % caused by random fluctuations of its material parameters.
             %
             % Syntax:
-            %   newobj = MaterialClass (  );
+            %   obj = MaterialClass()
+            %   obj = MaterialClass(geometry,freq,acoustics,v, ...
+            %       coefficients_of_variation,correlation_coefficients,acf,lc)
             %
             % Inputs:
-            %     mat : material structure
-            %     d   : dimension of the problem
+            %   geometry : structure containing geometry.dimension
+            %   freq     : carrier frequency [Hz]
+            %   acoustics: true for acoustic waves; false for elastic waves
+            %   v        : acoustic velocity or elastic velocities [Vp Vs] [m/s]
+            %   coefficients_of_variation : [kappa rho] for acoustics or
+            %                 [lambda mu rho] for elasticity
+            %   correlation_coefficients : corr(kappa,rho) for acoustics or
+            %                 [corr(lambda,mu) corr(lambda,rho) corr(mu,rho)]
+            %   acf      : PSDF/correlation-model name
+            %   lc       : correlation length [m]
+            %
+            % Output:
+            %   obj      : configured MaterialClass object
 
             if nargin ~=0
                 if geometry.dimension==1
-                    warning(['Total scattering cross-sections for 1D case are to be ' ...
-                        'implemented in future releases of the code'])
+                    warning(['Waves in 1D random media are localized and ' ...
+                             'the RTT is not valid in this regime'])
                 end
 
                 obj.d = geometry.dimension;
@@ -137,9 +165,17 @@ classdef MaterialClass < handle
                 newobj = reshape(newobj,size(obj));
             end
         end
-        %% GET AND SET METHODS
-        function set.type(obj,newvalue)
-            obj.type = validatestring(newvalue,obj.Type_def); %#ok<MCSUP>
+        %% PROPERTY SET METHODS
+        % MATLAB calls these methods automatically when the corresponding
+        % property is assigned. Each method validates the requested value
+        % and stores its canonical spelling.
+        function set.scatteringModel(obj,newvalue)
+            obj.scatteringModel = validatestring( ...
+                newvalue,obj.ScatteringModel_def); %#ok<MCSUP>
+        end
+        function set.correlationStructure(obj,newvalue)
+            obj.correlationStructure = validatestring( ...
+                newvalue,obj.CorrelationStructure_def); %#ok<MCSUP>
         end
         function set.SpectralLaw(obj,newvalue)
             obj.SpectralLaw = validatestring(newvalue,obj.SpectralLaw_def); %#ok<MCSUP>
@@ -161,28 +197,38 @@ classdef MaterialClass < handle
             % and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
             % doi: 10.1016/S0165-2125(96)00021-2
 
-            % get the power spectral density function
-            if isempty(obj.Phi)
-                obj.getPSDF;
-            end
+            switch obj.scatteringModel
+                case 'parameterFluctuations'
+                    % Get the power spectral density function used by the
+                    % generic material parameter fluctuation model.
+                    if isempty(obj.Phi)
+                        obj.getPSDF;
+                    end
 
-            switch obj.type
-                case 'isotropic'
-                    obj.calcSigmaIsotropic;
-                case 'anisotropic'
-                    obj.calcSigmaAnisotropic;
+                    switch obj.correlationStructure
+                        case 'isotropic'
+                            obj.calcSigmaIsotropicCorrelation;
+                        case 'anisotropic'
+                            obj.calcSigmaAnisotropicCorrelation;
+                        otherwise
+                            error('Correlation structure not supported.')
+                    end
+
+                case 'polycrystal'
+                    obj.calcSigmaPolycrystal;
+
                 otherwise
-                    error('DSCS type not supported')
+                    error('Scattering model not supported.')
             end
         end
-        function calcSigmaIsotropic(obj)
-            %% calcSigmaIsotropic
+        function calcSigmaIsotropicCorrelation(obj)
+            %% calcSigmaIsotropicCorrelation
             % Compute the normalized differential scattering cross-sections
-            % based on statistics of the fluctuating material parameters
+            % based on the statistics of the fluctuating material parameters
             % of the wave equation for isotropic PSDF
             %
             % Syntax:
-            %   newobj = calcSigmaIsotropic( );
+            %   newobj = calcSigmaIsotropicCorrelation( );
             %
             % Inputs:
             %
@@ -196,14 +242,15 @@ classdef MaterialClass < handle
             % In Ryzhik et al, the power spectral density functions for 
             % lambda and mu are related to their respective reciprocals.
             % In our code, we consider lambda and mu fluctuations instead.
-            % The crossed PSDFs containing rho will thus change sign 
-            % compared to the original formulas in the reference.
+            % The cross PSDFs containing rho will thus change sign compared 
+            % to the original formulas in the reference.
             %
-            % The 2D elastic formulas correspond to the P-SV reduction of the
-            % Ryzhik et al. elastic RTE and are consistent with the Born-scattering
-            % expressions in Sato et al. (2012), Chapter 4.
+            % The 2D elastic formulas correspond to the P-SV reduction of 
+            % Ryzhik et al. elastic RTE and are consistent with the 
+            % Born-scattering expressions in Sato et al. (2012), Chapter 4.
 
             switch obj.acoustics
+                % Acoustic waves
                 case 1
                     
                     omega = 2*pi*obj.Frequency;
@@ -214,7 +261,7 @@ classdef MaterialClass < handle
 
                     switch obj.d
                         case 1
-                            error('\sigma for 1D not implemented')
+                            error('Waves in 1D random media are localized!')
                         case 2
                             % 2D ACOUSTICS
                             %
@@ -235,12 +282,13 @@ classdef MaterialClass < handle
 
                         case 3
                             % 3D ACOUSTICS
-                            % [Ryzhik et al, 1996; Eq. (1.3)]
+                            % Ryzhik et al, Eq. (1.3)
                             obj.sigma = {@(th) (pi/2)*omega*zeta^3*(cos(th).^2*delta_rr^2 + ...
                                 2*cos(th)*rho_kr*delta_kk*delta_rr + delta_kk^2) ...
                                 .*obj.Phi(zeta.*sqrt(2*(1-cos(th))))};
                     end
                 
+                % Elastic waves
                 case 0
 
                     % Correlation inputs are direct physical fractional 
@@ -252,7 +300,7 @@ classdef MaterialClass < handle
                 
                     delta_ll = obj.coefficients_of_variation(1); % CV of lambda
                     delta_mm = obj.coefficients_of_variation(2); % CV of mu
-                    delta_rr = obj.coefficients_of_variation(3); % CV of density
+                    delta_rr = obj.coefficients_of_variation(3); % CV of rho
                 
                     rho_lm   = obj.correlation_coefficients(1);  % corr(lambda,mu)
                     rho_lr   = obj.correlation_coefficients(2);  % corr(lambda,rho)
@@ -260,9 +308,9 @@ classdef MaterialClass < handle
 
                     switch obj.d
                         case 1
-                            error('\sigma for 1D not implemented')
+                            error('Waves in 1D random media are localized')
                         case 2
-                        % 2D P-SV ELASTICS
+                        % 2D P-SV Elastics
                         %
                         % Note:
                         % Phi must be the 2D Ryzhik-normalized spectrum:
@@ -315,7 +363,7 @@ classdef MaterialClass < handle
                         obj.sigma = {sigmaPP, sigmaPS; ...
                                      sigmaSP, sigmaSS};
                         case 3
-                            % 3D ELASTICS
+                            % 3D Elastics
                             %
                             % Note:
                             % Phi must be the 3D Ryzhik-normalized spectrum:
@@ -330,7 +378,7 @@ classdef MaterialClass < handle
                             % sigma{2,1}: S -> P
                             % sigma{2,2}: S -> S
 
-                            % [Ryzhik et al; Eq. (1.3)] and [Turner, 1998; Eq. (3)]
+                            % [Ryzhik et al, Eq. (1.3)] and [Turner, 1998, Eq. (3)]
                             sigmaPP = @(th) (pi/2)*omega*zetaP^3* ...
                                 ( (1-2/K^2)^2*delta_ll^2 + 4*(1/K^2-2/K^4)*rho_lm*delta_ll*delta_mm*cos(th).^2 ...
                                 + (4/K^4)*delta_mm^2*cos(th).^4 + delta_rr^2*cos(th).^2 ...
@@ -338,17 +386,17 @@ classdef MaterialClass < handle
                                 - (4/K^2)*rho_mr*delta_mm*delta_rr*cos(th).^3 ) ...
                                 .*obj.Phi(zetaP.*sqrt(2*(1-cos(th))));
 
-                            %  Ryzhik et al; Eqs. (4.56), (1.20), (1.22)
+                            %  Ryzhik et al, Eqs. (4.56), (1.20), (1.22)
                             sigmaPS = @(th) (pi/2)*K*omega*zetaP^3* ...
                                 ( K^2*delta_rr^2 + 4*delta_mm^2*cos(th).^2 - 4*K*rho_mr*delta_mm*delta_rr*cos(th) )...
                                 .*(1-cos(th).^2).*obj.Phi(zetaP.*sqrt(1+K^2-2*K*cos(th)));
 
-                            %  Ryzhik et al; Eqs. (4.56), (1.20), (1.21)
+                            %  Ryzhik et al, Eqs. (4.56), (1.20), (1.21)
                             sigmaSP = @(th) (pi/4/K^3)*omega*zetaS^3* ...
                                 ( delta_rr^2 + (4/K^2)*delta_mm^2*cos(th).^2 - (4/K)*rho_mr*delta_mm*delta_rr*cos(th) ) ...
                                 .*(1-cos(th).^2).*obj.Phi(zetaS.*sqrt(1+1/K^2-2/K*cos(th)));
 
-                            % Ryzhik et al; Eq. (4.54)
+                            % Ryzhik et al, Eq. (4.54)
                             sigmaSS_TT = @(th) (pi/4)*omega*zetaS^3*delta_rr^2*(1+cos(th).^2)...
                                 .*obj.Phi(zetaS.*sqrt(2*(1-cos(th))));
                             sigmaSS_GG = @(th) (pi/4)*omega*zetaS^3*delta_mm^2*(4*cos(th).^4-3*cos(th).^2+1)...
@@ -363,14 +411,14 @@ classdef MaterialClass < handle
                     end
             end
         end
-        function calcSigmaAnisotropic(obj)
-            %% calcSigmaAnisotropic
+        function calcSigmaAnisotropicCorrelation(~)
+            %% calcSigmaAnisotropicCorrelation
             % Compute the normalized differential scattering cross-sections
             % based on statistics of the fluctuating material parameters
             % of the wave equation for anisotropic PSDF
             %
             % Syntax:
-            %   newobj = calcSigmaAnisotropic (  );
+            %   newobj = calcSigmaAnisotropicCorrelation (  );
             %
             % Inputs:
             %
@@ -382,7 +430,152 @@ classdef MaterialClass < handle
             % doi: 10.1016/S0165-2125(96)00021-2
 
 
-            error('Not implemented')
+            error('Not implemented yet')
+        end
+        function calcSigmaPolycrystal(obj)
+            %% calcSigmaPolycrystal
+            % Calculate the four 3D polycrystal differential scattering
+            % cross-sections required by the radiative-transfer solver.
+            %
+            % The spatial cross-sections (Omega) follow the generalized 
+            % Weaver framework. Multiplication by the incident phase velocity 
+            % gives the time-based operators stored in obj.sigma. 
+            % MaterialClass.prepareSigma subsequently calculates
+            % Sigma, inverse angular CDFs, and the mean free quantities.
+
+            if obj.d ~= 3
+                error('MaterialClass:PolycrystalDimension', ...
+                      ['The polycrystal scattering model currently requires ', ...
+                       'd = 3.']);
+            end
+            if isempty(obj.acoustics) || obj.acoustics
+                error('MaterialClass:PolycrystalElasticOnly', ...
+                      'The polycrystal scattering model requires elastic waves.');
+            end
+            validateattributes(obj.Frequency, {'numeric'}, ...
+                {'real','finite','scalar','positive'}, ...
+                 'MaterialClass.calcSigmaPolycrystal', 'Frequency');
+
+            if ~isscalar(obj.singleCrystal) || ...
+               ~isfield(obj.singleCrystal,'rho') || ...
+               ~isfield(obj.singleCrystal,'C')
+                  error('MaterialClass:InvalidSingleCrystal', ...
+                        'singleCrystal must be a scalar structure containing rho and C.');
+            end
+
+            density = obj.singleCrystal.rho;
+            Cloc = obj.singleCrystal.C;
+            validateattributes(density, {'numeric'}, ...
+                {'real','finite','scalar','positive'}, ...
+                'MaterialClass.calcSigmaPolycrystal', 'singleCrystal.rho');
+            if ~isnumeric(Cloc) || ~isreal(Cloc) || ...
+                    ~isequal(size(Cloc),[6 6]) || any(~isfinite(Cloc),'all')
+                error('MaterialClass:InvalidSingleCrystalStiffness', ...
+                    'singleCrystal.C must be a finite, real 6-by-6 matrix.');
+            end
+            if ~isscalar(obj.TPCF) || ~isfield(obj.TPCF,'spectrum') || ...
+                    ~isa(obj.TPCF.spectrum,'function_handle')
+                error('MaterialClass:InvalidPolycrystalTPCF', ...
+                    'TPCF.spectrum must be a function handle of wavenumber q.');
+            end
+
+            % Corrected Kube-Turner directional inner products
+            [L, M, N] = MaterialClass.InnerProducts(Cloc);
+
+            % Calculate Voigt velocities unless the user prescribed them
+            if isempty(obj.vp) && isempty(obj.vs)
+                C = 0.5*(Cloc + Cloc.');
+                normalSum = C(1,1) + C(2,2) + C(3,3);
+                normalCrossSum = C(1,2) + C(1,3) + C(2,3);
+                shearSum = C(4,4) + C(5,5) + C(6,6);
+                cP = (3*normalSum + 2*normalCrossSum + 4*shearSum)/15;
+                cS = (normalSum - normalCrossSum + 3*shearSum)/15;
+                if cP <= 0 || cS <= 0
+                    error('MaterialClass:NonPositiveVoigtModulus', ...
+                          'The Voigt P- and S-wave moduli must be positive.');
+                end
+                obj.vp = sqrt(cP/density);
+                obj.vs = sqrt(cS/density);
+            else
+                velocities = [obj.vp obj.vs];
+                if numel(velocities) ~= 2 || any(~isfinite(velocities)) || ...
+                   any(velocities <= 0)
+                     error('MaterialClass:InvalidPolycrystalVelocities', ...
+                           'Prescribed phase velocities must be positive [Vp Vs].');
+                end
+            end
+            obj.rho = density;
+
+            vP = obj.vp;
+            vS = obj.vs;
+            omega = 2*pi*obj.Frequency;
+            kp = omega/vP;
+            ks = omega/vS;
+            etaTilde = obj.TPCF.spectrum;
+
+            % GSD (grain size distribution) averages are more expensive 
+            % than closed-form spectra.
+            % Evaluate them once over the complete wavenumber-transfer
+            % interval needed at this frequency, then use a linear lookup
+            % while constructing and integrating the scattering operators.
+            if isfield(obj.TPCF,'model') && ...
+                    any(strcmp(obj.TPCF.model, ...
+                    {'Arguelles','Sha','ShengKhazaie'}))
+                % For q = |k_scattered - k_incident|, the maximum occurs at
+                % backscattering (theta = pi), where q = k_incident+k_scattered.
+                % Across PP, PS, SP, and SS scattering, qmax = 2*max(kp,ks).
+                maximumTransferWavenumber = 2*max(kp,ks);
+                transferWavenumber = linspace(0,maximumTransferWavenumber,4097);
+                spectralValue = etaTilde(transferWavenumber);
+                spectralInterpolant = griddedInterpolant(transferWavenumber,spectralValue,'linear','nearest');
+                etaTilde = @(q) spectralInterpolant(abs(q));
+            end
+
+            mu = @(theta) cos(theta);
+            IPpp = @(theta) L.L0 + L.L1.*mu(theta).^2 + L.L2.*mu(theta).^4;
+            IPps = @(theta) M.M0 + M.M1.*mu(theta).^2 - IPpp(theta);
+            IPsp = IPps;
+            IPss = @(theta) N.N0 + N.N1.*mu(theta).^2 - 2*(M.M0 + M.M1.*mu(theta).^2) + IPpp(theta);
+
+            qpp = @(theta) kp.*sqrt(max(0,2*(1-mu(theta))));
+            qps = @(theta) sqrt(max(0,kp^2 + ks^2 - 2*kp*ks.*mu(theta)));
+            qsp = qps;
+            qss = @(theta) ks.*sqrt(max(0,2*(1-mu(theta))));
+
+            prefactorPP = pi*omega^4/(4*density^2*vP^8);
+            prefactorPS = pi*omega^4/(4*density^2*vP^3*vS^5);
+            prefactorSP = pi*omega^4/(8*density^2*vS^3*vP^5);
+            prefactorSS = pi*omega^4/(8*density^2*vS^8);
+
+            OmegaPP = @(theta) prefactorPP.*IPpp(theta).*etaTilde(qpp(theta));
+            OmegaPS = @(theta) prefactorPS.*IPps(theta).*etaTilde(qps(theta));
+            OmegaSP = @(theta) prefactorSP.*IPsp(theta).*etaTilde(qsp(theta));
+            OmegaSS = @(theta) prefactorSS.*IPss(theta).*etaTilde(qss(theta));
+
+            obj.sigma = {@(theta) vP.*OmegaPP(theta), ...
+                         @(theta) vP.*OmegaPS(theta); ...
+                         @(theta) vS.*OmegaSP(theta), ...
+                         @(theta) vS.*OmegaSS(theta)};
+
+            % Check vectorization, finiteness, and physical non-negativity
+            theta = linspace(0,pi,1001);
+            for incident = 1:2
+                for scattered = 1:2
+                    value = obj.sigma{incident,scattered}(theta);
+                    if ~isnumeric(value) || ~isreal(value) || ...
+                            ~isequal(size(value),size(theta)) || ...
+                            any(~isfinite(value))
+                        error('MaterialClass:InvalidPolycrystalDSCS', ...
+                             ['Each polycrystal DSCS must return a finite, ', ...
+                              'real array with the same size as theta.']);
+                    end
+                    tolerance = 1e-10*max(1,max(abs(value)));
+                    if any(value < -tolerance)
+                        error('MaterialClass:NegativePolycrystalDSCS', ...
+                            'A polycrystal differential cross-section is negative.');
+                    end
+                end
+            end
         end
         function getPSDF(obj)
             % Compute the normalized power spectral density function to use
@@ -429,7 +622,7 @@ classdef MaterialClass < handle
                 end
             end
 
-            % warning: these are for 3D: formulas should depend on dimensionality
+            % warning: these are only for 3D (formulas depend on the dimension)
                     switch obj.SpectralLaw
                         case 'exp'
                             obj.Exponential(obj.CorrelationLength);
@@ -1092,14 +1285,14 @@ classdef MaterialClass < handle
             end
 
             % =========================================================
-            % 1-D branch: vector input
+            % 1D branch: vector input
             % =========================================================
             if isvector(I)
               error('Not implemented')
             end
 
             % =========================================================
-            % 2-D / 3-D branch
+            % 2D / 3D branch
             % =========================================================
             [nx, ny, nz] = size(I);
             if nz == 1
@@ -1767,16 +1960,259 @@ classdef MaterialClass < handle
             % Reuse the coefficients while the material properties remain unchanged.
             cacheKey = [obj.vp obj.vs obj.rho obj.acoustics];
 
-            if isempty(obj.zoeppritzOutputCache) || ...
-                    isempty(obj.zoeppritzCacheKey) || ...
+            if isempty(obj.zoeppritzOutputCache) || isempty(obj.zoeppritzCacheKey) || ...
                     ~isequaln(obj.zoeppritzCacheKey,cacheKey)
-                [obj.zoeppritzOutputCache,obj.zoeppritzAnglesCache] = ...
-                    MaterialClass.Zoeppritz(obj);
+                [obj.zoeppritzOutputCache,obj.zoeppritzAnglesCache] = MaterialClass.Zoeppritz(obj);
                 obj.zoeppritzCacheKey = cacheKey;
             end
 
             out = obj.zoeppritzOutputCache;
             angles = obj.zoeppritzAnglesCache;
+        end
+    end
+    methods(Static)
+        function material = polycrystal3D(geometry,frequency,crystalInput, ...
+                tpcfInput,tpcfParameter,phaseVelocities)
+            %% polycrystal3D
+            % Create a 3D elastic MaterialClass object for a polycrystal.
+            %
+            % Monodisperse exponential or spherical TPCF:
+            %   material = MaterialClass.polycrystal3D(geometry,frequency, ...
+            %       crystalInput,'exp',correlationLength)
+            %   material = MaterialClass.polycrystal3D(geometry,frequency, ...
+            %       crystalInput,'spherical',grainDiameter)
+            %
+            % Grain size distributions (lognormal, Gamma, Weibull, or
+            % normal truncated at zero):
+            %   material = MaterialClass.polycrystal3D(geometry,frequency, ...
+            %       crystalInput,'ShengKhazaie',grainSizeDistribution)
+            %
+            % User-defined dimensional spectral TPCF etaTilde(q):
+            %   material = MaterialClass.polycrystal3D(geometry,frequency, ...
+            %       crystalInput,etaTilde)
+            %
+            % In either form, an optional final [Vp Vs] input overrides the
+            % Voigt velocities calculated from the single-crystal stiffness.
+
+            if nargin < 6, phaseVelocities = []; end
+            if nargin < 5, tpcfParameter = []; end
+
+            if ~isstruct(geometry) || ~isfield(geometry,'dimension') || ...
+                    ~isscalar(geometry.dimension) || geometry.dimension ~= 3
+                error('MaterialClass:PolycrystalGeometry', ...
+                      'MaterialClass.polycrystal3D requires a 3D geometry.');
+            end
+            validateattributes(frequency, {'numeric'}, ...
+                {'real','finite','scalar','positive'}, ...
+                 'MaterialClass.polycrystal3D', 'frequency');
+
+            if ischar(crystalInput) || (isstring(crystalInput) && isscalar(crystalInput))
+                crystal = MaterialClass.singleCrystalProperties(crystalInput);
+            elseif isstruct(crystalInput) && isscalar(crystalInput) && ...
+                    isfield(crystalInput,'rho') && isfield(crystalInput,'C')
+                crystal = crystalInput;
+                if ~isfield(crystal,'name'), crystal.name = 'Custom'; end
+                if ~isfield(crystal,'symmetry')
+                    crystal.symmetry = 'unspecified';
+                end
+                if ~isfield(crystal,'constants')
+                    crystal.constants = struct();
+                end
+            else
+                error('MaterialClass:InvalidSingleCrystalInput', ...
+                    ['crystalInput must be a material name or a scalar ', ...
+                     'structure containing rho and C.']);
+            end
+
+            if isa(tpcfInput,'function_handle')
+                if nargin > 5
+                    error('MaterialClass:TooManyCustomTPCFInputs', ...
+                         ['With a user-defined spectral TPCF, append at most ', ...
+                          'one optional [Vp Vs] input.']);
+                end
+                phaseVelocities = tpcfParameter;
+                TPCF = struct('model','userDefined', ...
+                              'parameters',struct(), ...
+                              'spectrum',tpcfInput);
+            elseif ischar(tpcfInput) || (isstring(tpcfInput) && isscalar(tpcfInput))
+                if isempty(tpcfParameter)
+                    error('MaterialClass:MissingTPCFParameter', ...
+                          'The selected TPCF model requires a model parameter.');
+                end
+                TPCF = MaterialClass.PolycrystalTPCF(tpcfInput,tpcfParameter);
+            else
+                error('MaterialClass:InvalidPolycrystalTPCFInput', ...
+                     ['tpcfInput must be a model name or a function handle ', ...
+                      'for the dimensional spectral TPCF.']);
+            end
+
+            if ~isempty(phaseVelocities)
+                if ~isnumeric(phaseVelocities) || ...
+                        ~isreal(phaseVelocities) || ...
+                        numel(phaseVelocities) ~= 2 || ...
+                        any(~isfinite(phaseVelocities)) || ...
+                        any(phaseVelocities <= 0)
+                    error('MaterialClass:InvalidPolycrystalVelocities', ...
+                        'phaseVelocities must be positive [Vp Vs].');
+                end
+                phaseVelocities = reshape(phaseVelocities,1,2);
+            end
+
+            material = MaterialClass();
+            material.d = geometry.dimension;
+            material.acoustics = false;
+            material.Frequency = frequency;
+            material.scatteringModel = 'polycrystal';
+            material.correlationStructure = 'isotropic';
+            material.singleCrystal = crystal;
+            material.rho = crystal.rho;
+            material.TPCF = TPCF;
+            if ~isempty(phaseVelocities)
+                material.vp = phaseVelocities(1);
+                material.vs = phaseVelocities(2);
+            end
+
+            % Construct only the differential scattering cross-sections.
+            % prepareSigma is called through the normal solver pathway.
+            material.CalcSigma;
+        end
+        function material = singleCrystalProperties(materialName)
+            %% singleCrystalProperties
+            % Return named single-crystal density and elastic properties.
+            %
+            % Material names are case-insensitive. Spaces, hyphens, and
+            % underscores are ignored. The returned structure contains the
+            % canonical name, symmetry, density [kg/m^3], independent
+            % constants [Pa], and 6-by-6 Voigt stiffness matrix C [Pa].
+            % The property database was adapted from the material list
+            % developed by Ningyue Sheng during his PhD research.
+
+            if ~(ischar(materialName) || ...
+                    (isstring(materialName) && isscalar(materialName)))
+                error('MaterialClass:InvalidSingleCrystalName', ...
+                    ['materialName must be a character vector or a ', ...
+                     'scalar string.']);
+            end
+
+            key = lower(strtrim(char(materialName)));
+            key = regexprep(key,'[\s_-]',''); % Remove spaces, underscores, and hyphens
+
+            switch key
+                % cubic material
+                case {'al','aluminum','aluminium'}
+                    material = MaterialClass.cubicSingleCrystal('Aluminum',2700,108,62,28.3);
+                case {'cr','chromium'}
+                    material = MaterialClass.cubicSingleCrystal('Chromium',7150,348,67,100);
+                case {'nb','niobium'}
+                    material = MaterialClass.cubicSingleCrystal('Niobium',8570,245,132,28.4);
+                case {'pt','platinum'}
+                    material = MaterialClass.cubicSingleCrystal('Platinum',21450,347,251,76.5);
+                case {'fe','afe','alphafe','alphairon','ironalpha','ferrite'}
+                    material = MaterialClass.cubicSingleCrystal('Alpha iron',7800,231,135,115);
+                case {'la','lanthanum','lanthanium'}
+                    material = MaterialClass.cubicSingleCrystal('Lanthanum',6145,34.5,20.4,18);
+                case {'ni','nickel'}
+                    material = MaterialClass.cubicSingleCrystal('Nickel',8900,247,153,122);
+                case {'au','gold'}
+                    material = MaterialClass.cubicSingleCrystal('Gold',19300,191,162,42.2);
+                case {'ag','silver'}
+                    material = MaterialClass.cubicSingleCrystal('Silver',10490,122,92,45.5);
+                case {'cobaltcubic','cubiccobalt','fccco','cofcc'}
+                    material = MaterialClass.cubicSingleCrystal('Cobalt (cubic)',8900,242,160,128);
+                case {'cu','copper'}
+                    material = MaterialClass.cubicSingleCrystal('Copper',8960,168.4,121.4,75.39);
+                case {'pb','lead'}
+                    material = MaterialClass.cubicSingleCrystal('Lead',11340,48.8,41.4,14.8);
+                case {'gfe','gammafe','gammairon','irongamma','austenite'}
+                    material = MaterialClass.cubicSingleCrystal('Gamma iron',8000,154,122,77);
+                case {'k','potassium'}
+                    material = MaterialClass.cubicSingleCrystal('Potassium',890,3.71,3.15,1.88);
+                case {'li','lithium'}
+                    material = MaterialClass.cubicSingleCrystal('Lithium',534,13.4,11.3,9.6);
+                case {'inconel','inconnel'}
+                    material = MaterialClass.cubicSingleCrystal('Inconel',8260,234.6,145.9,126.2);
+                % hexagonal material
+                case {'ti','ati','alphati','titanium','alphatitanium','titaniumalpha'}
+                    material = MaterialClass.hexagonalSingleCrystal('Alpha titanium',4500,170,92,70,192,52);
+                case {'zr','zirconium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Zirconium',6490,136,78,68,163,40);
+                case {'be','beryllium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Beryllium',1850,292.3,26.7,14,336.4,162.5);
+                case {'cd','cadmium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Cadmium',8650,114.1,41,40.3,49.9,19);
+                case {'cobalthexagonal','hexagonalcobalt','cobalthex','hcpco','cohcp'}
+                    material = MaterialClass.hexagonalSingleCrystal('Cobalt (hexagonal)',8900,295,159,111,335,71);
+                case {'gd','gadolinium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Gadolinium',7900,66.7,25,21.3,71.9,20.7);
+                case {'ho','holmium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Holmium',8800,76.5,25.6,21,79.6,25.9);
+                case {'mg','magnesium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Magnesium',1738,59.3,25.7,21.4,61.5,16.4);
+                case {'nd','neodymium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Neodymium',7010,54.8,24.6,16.6,60.9,15);
+                case {'re','rhenium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Rhenium',21020,616,273,206,683,161);
+                case {'ru','ruthenium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Ruthenium',12200,563,188,168,624,181);
+                case {'sc','scandium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Scandium',3000,99.3,39.7,29.4,107,27.7);
+                case {'tb','terbium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Terbium',8300,67.9,24.3,23,72.2,21.4);
+                case {'tl','thallium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Thallium',11710,40.8,35.4,29,52.8,7.26);
+                case {'y','yttrium'}
+                    material = MaterialClass.hexagonalSingleCrystal('Yttrium',4472,77.9,29.2,20,76.9,24.3);
+                case {'zn','zinc'}
+                    material = MaterialClass.hexagonalSingleCrystal('Zinc',7133,165,31.1,50,61.8,39.6);
+                case {'co','cobalt'}
+                    error('MaterialClass:AmbiguousCobalt', ...
+                         ['Cobalt is available in cubic and hexagonal forms. ', ...
+                          'Use ''cobaltCubic'' or ''cobaltHexagonal''.']);
+                otherwise
+                    error('MaterialClass:UnknownSingleCrystal', ...
+                         ['Unknown material "%s". Examples are ''Al'', ', ...
+                          '''alphaIron'', ''Cu'', ''Ni'', ''Ti'', and ''Zr''.'], ...
+                        char(materialName));
+            end
+        end
+    end
+    methods(Static, Access=private)
+        [L,M,N] = InnerProducts(Cloc)
+        TPCF = PolycrystalTPCF(modelName,modelParameter)
+        function material = cubicSingleCrystal(name,rho,c11,c12,c44)
+            % Construct a cubic single-crystal property structure
+            scale = 1e9;
+            c11 = c11*scale;
+            c12 = c12*scale;
+            c44 = c44*scale;
+            C = [c11 c12 c12 0   0   0; ...
+                 c12 c11 c12 0   0   0; ...
+                 c12 c12 c11 0   0   0; ...
+                 0   0   0   c44 0   0; ...
+                 0   0   0   0   c44 0; ...
+                 0   0   0   0   0   c44];
+            constants = struct('c11',c11,'c12',c12,'c44',c44);
+            material = struct('name',name,'symmetry','cubic', ...
+                'rho',rho,'constants',constants,'C',C);
+        end
+        function material = hexagonalSingleCrystal( ...
+                name,rho,c11,c12,c13,c33,c44)
+            % Construct a hexagonal single-crystal property structure
+            scale = 1e9;
+            c11 = c11*scale;
+            c12 = c12*scale;
+            c13 = c13*scale;
+            c33 = c33*scale;
+            c44 = c44*scale;
+            c66 = 0.5*(c11-c12);
+            C = [c11 c12 c13 0   0   0; ...
+                 c12 c11 c13 0   0   0; ...
+                 c13 c13 c33 0   0   0; ...
+                 0   0   0   c44 0   0; ...
+                 0   0   0   0   c44 0; ...
+                 0   0   0   0   0   c66];
+            constants = struct('c11',c11,'c12',c12,'c13',c13,'c33',c33,'c44',c44,'c66',c66);
+            material = struct('name',name,'symmetry','hexagonal','rho',rho,'constants',constants,'C',C);
         end
     end
     methods(Static)
@@ -1816,8 +2252,8 @@ classdef MaterialClass < handle
             %   MaterialClass.Zoeppritz( mat );
             %
             % Inputs:
-            %  mat: MaterialClass object or a vector of MaterialClass
-            %  object.
+            %  mat: scalar elastic MaterialClass object. The exterior
+            %       medium is currently hard-coded as air.
             %
             % Output: The method return the coefficients of transmission
             % and reflection or only reflection
@@ -1869,42 +2305,10 @@ classdef MaterialClass < handle
                 angles.Tsh = @(theta1) asind(sind(theta1) / vs1 * vs2);
 
             else
-                % here we should make a combination of all the material
-                % interfaces and evaluate...
-                error("Not implemented")
-                % angles
-                j1_deg = linspace(0,90,181);
-
-                if(mat.acoustics)
-                    error("This dont work for acoustic material")
-                end
-
-                vp1  = mat(1).vp;
-                vs1  = mat(1).vs;
-                rho1 = mat(1).rho;
-
-                vp2  = mat(2).vp;
-                vs2  = mat(2).vs;
-                rho2 = mat(2).rho;
-
-                if vs2 == 0
-                    out = MaterialClass.ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
-                else
-                    out = MaterialClass.ZoeppritzSolid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
-                end
-
-                o.Rsh   = @(z)interp1(j1_deg,out.E_Rsh,z);
-                o.Tsh   = @(z)interp1(j1_deg,out.E_Tsh,z);
-
-                o.Rpp   = @(z)interp1(j1_deg,out.E_Rpp ,z);
-                o.Rpsv  = @(z)interp1(j1_deg,out.E_Rpsv,z);
-                o.Tpp   = @(z)interp1(j1_deg,out.E_Tpp ,z);
-                o.Tpsv  = @(z)interp1(j1_deg,out.E_Tpsv,z);
-
-                o.Rsvp   = @(z)interp1(j1_deg,out.E_Rsp  ,z);
-                o.Rsvsv = @(z)interp1(j1_deg,out.E_Rsvsv,z);
-                o.Tsvp   = @(z)interp1(j1_deg,out.E_Tsp  ,z);
-                o.Tsvsv = @(z)interp1(j1_deg,out.E_Tsvsv,z);
+                error('MaterialClass:MaterialInterfacesNotImplemented', ...
+                    ['Zoeppritz currently accepts only one material and ', ...
+                     'models its interface with air. Interfaces between ', ...
+                     'multiple user-defined materials are not implemented.']);
             end
         end
         out = ZoeppritzFluid(j1_deg,vp1,vs1,rho1,vp2,vs2,rho2);
@@ -2045,7 +2449,7 @@ classdef MaterialClass < handle
             % Theory (Torquato, "Random Heterogeneous Materials", 2002):
             %   S2(r) = < I(x) I(x+r) >
             %         = IFFT( |FFT(I)|^2 ) / N_voxels      (Wiener-Khinchin)
-            % The 3D map is then radially averaged to give the 1-D function S2(r).
+            % The 3D map is then radially averaged to give the 1D function S2(r).
             %
             % Syntax:
             %   [r_axis, S2_radial, S2_map, phi_vol, std_vol] = ...
@@ -2418,17 +2822,30 @@ classdef MaterialClass < handle
             if mat.acoustics
                 [mat.Sigma,mat.Sigmapr,mat.invcdf] = MaterialClass.prepareSigmaOne(mat.sigma{1},d);
 
-                % Diffusion coefficient m²/s (Eq. (5.12), Ryzhik et al, 1996)
-                mat.Diffusivity = mat.v^2/(double(d)*(mat.Sigma-mat.Sigmapr));
+                if mat.Sigma == 0
+                    % Homogeneous acoustic medium: propagation is ballistic.
+                    mat.meanFreeTime = Inf;
+                    mat.meanFreePath = Inf;
+                    mat.transportMeanFreeTime = Inf;
+                    mat.transportMeanFreePath = Inf;
 
-                mat.meanFreeTime = 1/mat.Sigma;
-                mat.meanFreePath = mat.v * mat.meanFreeTime;
+                    % Diffusivity and scattering anisotropy are undefined
+                    % when no normalized scattering phase function exists.
+                    mat.Diffusivity = NaN;
+                    mat.g = NaN;
+                else
+                    % Diffusion coefficient m²/s (Eq. (5.12), Ryzhik et al, 1996)
+                    mat.Diffusivity = mat.v^2/(double(d)*(mat.Sigma-mat.Sigmapr));
 
-                mat.transportMeanFreePath = double(d) * mat.Diffusivity / mat.v;
-                mat.transportMeanFreeTime = mat.transportMeanFreePath/mat.v;
+                    mat.meanFreeTime = 1/mat.Sigma;
+                    mat.meanFreePath = mat.v * mat.meanFreeTime;
 
-                % anisotropy coefficient (characterizes scattering directionality)
-                mat.g = 1 - mat.meanFreePath/mat.transportMeanFreePath;
+                    mat.transportMeanFreePath = double(d) * mat.Diffusivity / mat.v;
+                    mat.transportMeanFreeTime = mat.transportMeanFreePath/mat.v;
+
+                    % anisotropy coefficient (characterizes scattering directionality)
+                    mat.g = 1 - mat.meanFreePath/mat.transportMeanFreePath;
+                end
 
                 % the two lines below are just for homogenization of the propagation
                 % code between acoustics and elastics
@@ -2436,46 +2853,92 @@ classdef MaterialClass < handle
                 mat.vs = 0;
             else
                 mat.Sigma = zeros(2);
+                mat.Sigmapr = zeros(2);
                 mat.invcdf = cell(2);
 
                 [mat.Sigma(1,1),mat.Sigmapr(1,1),mat.invcdf{1,1}] = MaterialClass.prepareSigmaOne(mat.sigma{1,1},d);
                 [mat.Sigma(1,2),mat.Sigmapr(1,2),mat.invcdf{1,2}] = MaterialClass.prepareSigmaOne(mat.sigma{1,2},d);
                 [mat.Sigma(2,1),mat.Sigmapr(2,1),mat.invcdf{2,1}] = MaterialClass.prepareSigmaOne(mat.sigma{2,1},d);
                 [mat.Sigma(2,2),mat.Sigmapr(2,2),mat.invcdf{2,2}] = MaterialClass.prepareSigmaOne(mat.sigma{2,2},d);
-                mat.meanFreeTime = 1./sum(mat.Sigma,2);
+                SigmaP = mat.Sigma(1,1) + mat.Sigma(1,2);
+                SigmaS = mat.Sigma(2,1) + mat.Sigma(2,2);
+                mat.meanFreeTime = 1./[SigmaP SigmaS];
                 mat.meanFreePath = [mat.vp mat.vs].' .* mat.meanFreeTime;
 
-                K = mat.vp/mat.vs;
-                % Transport mean free paths of P & S waves
-                tmfp_P = (mat.vp*(mat.Sigma(2,2)+mat.Sigma(2,1)-mat.Sigmapr(2,2)) + mat.vs*mat.Sigmapr(1,2) )...
-                                  /( (mat.Sigma(1,1)+mat.Sigma(1,2)-mat.Sigmapr(1,1))*(mat.Sigma(2,2)+mat.Sigma(2,1)-mat.Sigmapr(2,2))- mat.Sigmapr(1,2)*mat.Sigmapr(2,1) );
-                tmfp_S = (mat.vs*(mat.Sigma(1,1)+mat.Sigma(1,2)-mat.Sigmapr(1,1)) + mat.vp*mat.Sigmapr(2,1) )...
-                                  /( (mat.Sigma(1,1)+mat.Sigma(1,2)-mat.Sigmapr(1,1))*(mat.Sigma(2,2)+mat.Sigma(2,1)-mat.Sigmapr(2,2))- mat.Sigmapr(1,2)*mat.Sigmapr(2,1) );
-                mat.transportMeanFreePath = [tmfp_P tmfp_S]';
-                mat.transportMeanFreeTime = mat.transportMeanFreePath / [mat.vp mat.vs].';
+                % Safe same-mode probabilities for rows having no scattering
+                mat.P2P = 1;
+                mat.S2S = 1;
+                if SigmaP > 0
+                    mat.P2P = mat.Sigma(1,1)/SigmaP;
+                end
+                if SigmaS > 0
+                    mat.S2S = mat.Sigma(2,2)/SigmaS;
+                end
 
-                % partial diffusion coefficients of P & S waves
-                Dp = mat.vp*tmfp_P/d;
-                Ds = mat.vs*tmfp_S/d;
-                % Diffusion coefficient m²/s (Eqs. (5.42) & (5.46), Ryzhik et al, 1996)
-                mat.Diffusivity = double((Dp+2*K^3*Ds)/(1+2*K^3));
+                if all([SigmaP SigmaS] == 0)
+                    % Homogeneous elastic medium: neither mode scatters
+                    mat.transportMeanFreePath = [Inf; Inf];
+                    mat.transportMeanFreeTime = [Inf; Inf];
+                    mat.Diffusivity = NaN;
+                elseif any([SigmaP SigmaS] == 0)
+                    % One ballistic mode prevents use of the coupled
+                    % two-mode diffusion approximation
+                    mat.transportMeanFreePath = [NaN; NaN];
+                    mat.transportMeanFreeTime = [NaN; NaN];
+                    mat.Diffusivity = NaN;
+                else
+                    K = mat.vp/mat.vs;
+                    % Transport (diffusion) mean free paths of P & S waves
+                    tmfp_P = (mat.vp*(mat.Sigma(2,2)+mat.Sigma(2,1)-mat.Sigmapr(2,2)) + mat.vs*mat.Sigmapr(1,2) )...
+                                      /( (mat.Sigma(1,1)+mat.Sigma(1,2)-mat.Sigmapr(1,1))*(mat.Sigma(2,2)+mat.Sigma(2,1)-mat.Sigmapr(2,2))- mat.Sigmapr(1,2)*mat.Sigmapr(2,1) );
+                    tmfp_S = (mat.vs*(mat.Sigma(1,1)+mat.Sigma(1,2)-mat.Sigmapr(1,1)) + mat.vp*mat.Sigmapr(2,1) )...
+                                      /( (mat.Sigma(1,1)+mat.Sigma(1,2)-mat.Sigmapr(1,1))*(mat.Sigma(2,2)+mat.Sigma(2,1)-mat.Sigmapr(2,2))- mat.Sigmapr(1,2)*mat.Sigmapr(2,1) );
+                    mat.transportMeanFreePath = [tmfp_P tmfp_S]';
+                    mat.transportMeanFreeTime = mat.transportMeanFreePath ./ ...
+                        [mat.vp mat.vs].';
 
-                mat.P2P = mat.Sigma(1,1)/sum(mat.Sigma(1,:),2);
-                mat.S2S = mat.Sigma(2,2)/sum(mat.Sigma(2,:),2);
+                    % partial diffusion coefficients of P & S waves
+                    Dp = mat.vp*tmfp_P/d;
+                    Ds = mat.vs*tmfp_S/d;
+                    % Diffusion coefficient m²/s (Eqs. (5.42) & (5.46), Ryzhik et al, 1996)
+                    mat.Diffusivity = double((Dp+2*K^3*Ds)/(1+2*K^3));
+                end
             end
         end
         function [Sigma,Sigma_prime,invcdf] = prepareSigmaOne(sigma,d)
-            Nth = 1e6;
-            xth = linspace(0,pi,Nth);
             if d==2
                 Sigma = 2*integral(sigma,0,pi);
                 Sigma_prime = 2*integral(@(th)sigma(th).*cos(th),0,pi);
-                sigmaNorm = @(th) (2/Sigma)*sigma(th);
             elseif d==3
                 Sigma = 2*pi*integral(@(th)sigma(th).*sin(th),0,pi);
                 Sigma_prime = 2*pi*integral(@(th)sigma(th).*sin(th).*cos(th),0,pi);
+            else
+                error('MaterialClass:prepareSigmaOne:InvalidDimension', ...
+                    'The scattering preparation requires d = 2 or d = 3.');
+            end
+
+            if ~isfinite(Sigma) || Sigma < 0
+                error('MaterialClass:prepareSigmaOne:InvalidSigma', ...
+                    'The integrated scattering cross-section must be finite and nonnegative.');
+            end
+
+            if Sigma == 0
+                % There is no angular probability distribution to invert.
+                % This placeholder is never sampled because the associated
+                % mean free time is infinite.
+                Sigma_prime = 0;
+                invcdf = @(probability) zeros(size(probability));
+                return
+            end
+
+            if d==2
+                sigmaNorm = @(th) (2/Sigma)*sigma(th);
+            else
                 sigmaNorm = @(th) (2*pi/Sigma)*sin(th).*sigma(th);
             end
+
+            Nth = 1e6;
+            xth = linspace(0,pi,Nth);
             pdf = sigmaNorm(xth);
             if any(isnan(pdf))
                 warning('There is a NaN inside the probability density function')
@@ -2561,8 +3024,8 @@ classdef MaterialClass < handle
             %
             % Inputs:
             %   centers  – n-by-d array of object centres (d = 1, 2, or 3)
-            %   DD       – object diameter (or length for 1-D)
-            %   L        – box size: scalar (1-D), 1x2 (2-D), or 1x3 (3-D)
+            %   DD       – object diameter (or length for 1D)
+            %   L        – box size: scalar (1D), 1x2 (2D), or 1x3 (3D)
 
             dim = size(centers, 2);
             n = size(centers,1);
@@ -2641,8 +3104,8 @@ classdef MaterialClass < handle
         function h = PlotVoxel(M, resolution, slice_index)
             %% PlotVoxel  Visualise a voxelised/pixelised microstructure.
             %
-            % For a 2-D binary array the full image is shown.
-            % For a 3-D binary volume an XY cross-section is shown.
+            % For a 2D binary array the full image is shown.
+            % For a 3D binary volume an XY cross-section is shown.
             %
             % Syntax:
             %   MaterialClass.PlotVoxel(M, resolution)
@@ -2658,7 +3121,7 @@ classdef MaterialClass < handle
 
             nd = ndims(M);
             if nd == 2 || (nd == 3 && size(M, 3) == 1)
-                % ---- 2-D image ----
+                % ---- 2D image ----
                 [nx, ny] = size(M);
                 x_ax = (0:ny-1) * resolution;
                 y_ax = (0:nx-1) * resolution;
@@ -2672,7 +3135,7 @@ classdef MaterialClass < handle
                 title(sprintf('2D microstructure  (\\phi = %.4f)', phi));
                 colorbar('Ticks', [0.25 0.75], 'TickLabels', {'matrix','inclusion'});
             else
-                % ---- 3-D volume — one XY slice ----
+                % ---- 3D volume — one XY slice ----
                 [nx, ny, nz] = size(M);
                 if nargin < 3 || isempty(slice_index)
                     slice_index = round(nz / 2);

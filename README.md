@@ -189,13 +189,18 @@ Available fields:
 | `aperture`        | char, optional                  | Plane-source aperture: `'rectangle'` (default) or `'circle'`.                                 |
 | `polarization` | char, elastic only | Initial wave mode for elastic simulations. Use `'P'` (default) for compressional-wave particles or `'S'` for shear-wave particles. |
 
+Despite its historical name, `source.lambda` is a source-packet width, not
+the physical wavelength. For a single-frequency elastic calculation, the
+physical wavelengths are `vp/freq` and `vs/freq`; frequency enters the
+frequency-dependent scattering and attenuation operators.
+
 For a point source, `source.direction` can be:
 
 | Value                  | Meaning                                                                                                    |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `'uniform'` (default) | Isotropic source direction.                                                                                |
 | `'outgoing'`           | Initial propagation direction is aligned with the initial particle position relative to the source center. |
-| `'upper'`              | Isotropic source over the upper hemisphere.                                                                |
+| `'upper'`              | Isotropic source over the upper hemisphere. In 3D, the finite-width initial source packet is also confined to the upper half-space, allowing its center to lie on a lower boundary at `z = 0`. |
 
 A disk source is a plane wave with a circular aperture. Particle positions
 are sampled uniformly over a disk of radius `source.extent`, centered at
@@ -241,6 +246,13 @@ Materials are created with
 material = MaterialClass(geometry, freq, acoustics, v, cv, corr, acf, lc);
 ```
 
+`material.scatteringModel` identifies how the DSCS is constructed. Its default
+is `'parameterFluctuations'`; the `polycrystal3D` selects
+`'polycrystal'` automatically. `material.correlationStructure` describes the
+directional structure of the correlation statistics and is currently
+`'isotropic'`. The future `'anisotropic'` option refers to direction-dependent
+correlation structure, not merely to angle-dependent scattering.
+
 where:
 
 | Argument / field | Description                                                                                                                            |
@@ -272,6 +284,142 @@ corr = [corr_lambda_mu, corr_lambda_rho, corr_mu_rho]; % mutual correlation coef
 ```
 
 where `lambda` and `mu` are Lamé coefficients. The code uses direct fluctuations of `lambda`, `mu`, and `rho`.
+
+### User-Defined Differential Scattering Cross Sections
+
+Elastic scattering operators can be supplied directly before calling the solver:
+
+```matlab
+material.sigma = {sigmaPP, sigmaPS; ...
+                  sigmaSP, sigmaSS};
+obs = radiativeTransfer(geometry, source, material, observation);
+```
+
+Rows identify the incident mode and columns identify the scattered mode. Each
+entry must be a vectorized function handle of the scattering angle `theta` in
+radians. The operator unit is inverse time, and its angular integral is the
+Poisson scattering rate used by the random walk. If a model provides a spatial
+differential cross section `OmegaIJ` in inverse length, convert it with
+
+```matlab
+sigmaIJ = @(theta) velocityIncident .* OmegaIJ(theta);
+```
+
+### Homogeneous Media
+
+Zero material-property fluctuations are valid inputs. For example, use
+`[0 0]` for the compressibility and density coefficients of variation in an
+acoustic medium, or `[0 0 0]` for the Lamé-parameter and density coefficients
+of variation in an elastic medium. The resulting differential and total
+scattering cross-sections are zero, while the mean free times and paths are
+infinite. Particles therefore propagate ballistically, with any prescribed
+boundary interactions and intrinsic attenuation still applied.
+
+The solver reports this case once at the beginning of a run. An exactly zero
+user-defined DSCS channel is also accepted, allowing mode conversion to be
+disabled without introducing an artificial small scattering rate.
+
+### 3-D Polycrystals
+
+`MaterialClass.polycrystal3D` creates a ready-to-use elastic material. It
+implements the generalized Weaver framework, uses the validated
+Kube-Turner inner products in `@MaterialClass/InnerProducts.m`, and collapses the two
+degenerate shear polarizations into the solver's S mode:
+
+```matlab
+frequency = 5e6;
+a = 50e-6;
+
+% Names and symbols are case-insensitive: 'Al', 'aluminum', and
+% 'ALUMINIUM' are equivalent, for example.
+material = MaterialClass.polycrystal3D( ...
+    geometry,frequency,'alphaIron','exp',a);
+obs = radiativeTransfer(geometry,source,material,observation);
+```
+
+The exponential parameter `a` is the decay length scale in
+`eta(r)=exp(-r/a)`. The resulting dimensional spectral TPCF uses the
+`(2*pi)^(-3)` based on our Fourier convention. The selected TPCF is stored in
+`material.TPCF`, while the single-crystal data are stored in
+`material.singleCrystal`.
+
+The available 3-D polycrystal TPCF models are:
+
+| Model | Parameter | Description |
+| --- | --- | --- |
+| `'exp'` or `'exponential'` | Correlation length `a` | `eta(r)=exp(-r/a)` |
+| `'spherical'` | Grain diameter `D` | Spherical grains of the same diameter |
+| `'Arguelles'` | GSD structure | Exponential kernel averaged over the GSD (Poisson statistics) |
+| `'Sha'` | GSD structure | Spherical kernel averaged over the GSD (spherical grains) |
+| `'ShengKhazaie'` or `'SK'` | GSD structure | Volume-weighted spherical kernel averaged over the GSD |
+
+The canonical stored model name is `ShengKhazaie`. Model names supplied by
+the user are case-insensitive. For the Arguelles model, the exponential
+kernel is `exp(-2*r/D)`; consequently, its zero-width GSD limit is the
+existing exponential model with `a=D/2`.
+
+The GSD-dependent models accept lognormal, Gamma, Weibull, and
+truncated-normal diameter distributions. All four use the same input fields:
+
+```matlab
+grainSizeDistribution = struct( ...
+    'type','gamma', ...
+    'meanDiameter',100e-6, ...
+    'standardDeviation',35e-6);
+
+material = MaterialClass.polycrystal3D( ...
+    geometry,frequency,'alphaIron', ...
+    'ShengKhazaie',grainSizeDistribution);
+```
+
+Set `type` to `'lognormal'`, `'gamma'`, `'weibull'`, or
+`'truncatedNormal'`. Spaces, hyphens, underscores, and capitalization in the
+distribution name are ignored. The specified mean and standard deviation
+always describe the final positive diameter distribution. In the
+truncated-normal case, the code calculates the parameters of an underlying
+Gaussian conditioned on `D > 0`; consequently, its coefficient of variation
+must be smaller than one.
+
+These models evaluate the spectral TPCF directly using moment-weighted
+diameter quadrature. They do not first sample the real-space TPCF and therefore
+require neither a lag-distance grid nor a Fourier-transform cutoff. The
+quadrature is constructed once with the material and does not run for every
+Monte Carlo particle.
+
+`MaterialClass.singleCrystalProperties` returns the named material as one
+structure containing its name, symmetry, density, 6-by-6 stiffness
+matrix in [Pa], and independent stiffness constants:
+
+```matlab
+crystal = MaterialClass.singleCrystalProperties('alphaIron');
+```
+
+A custom single-crystal structure containing at least `rho` and `C` can be
+supplied in place of the name. A user-defined dimensional spectral TPCF is
+also accepted directly:
+
+```matlab
+etaTilde = @(q) myPolycrystalSpectrum(q);
+material = MaterialClass.polycrystal3D( ...
+    geometry,frequency,crystal,etaTilde);
+```
+
+The `polycrystal3D` method calculates only the differential operators stored in `material.sigma`.
+The `radiativeTransfer` preparation then calculates the 2-by-2 total
+cross-section matrix `material.Sigma`, its inverse angular CDFs, and the P- and
+S-wave mean free times and paths.
+
+`Examples/PolycrystalElastic3D.m` is a complete bounded case study (without
+conisdering the surface (Rayleigh) mode). It uses a compact P-wave point 
+source in a 3 mm diameter by 3 mm long cylindrical alpha-iron sample. 
+From the repository root, run:
+
+```matlab
+run('Examples/PolycrystalElastic3D.m')
+```
+
+Additional grain-size distribution families can be added independently of
+the TPCF kernel and of the general random-parameter spectra described below.
 
 ### Autocorrelation and Power Spectral Density Models
 
