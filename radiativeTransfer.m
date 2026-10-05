@@ -1,5 +1,7 @@
 function obs = radiativeTransfer( geometry, source, material, observation )
 
+simulationTimer = tic;
+
 % physics
 d = geometry.dimension;
 acoustics = material.acoustics;
@@ -28,7 +30,7 @@ end
 
 % Check if user provided a single Q value for dissipation of both P and S waves
 if isprop(material,'Q') && ~isempty(material.Q) && ~material.acoustics
-    if isscalar(material.Q)
+    if isscalar(material.Q) && isfinite(material.Q)
         warning(['Only one quality factor was provided for an elastic simulation. ', ...
                  'The same value Q = %g will be used for both P and S waves.'], material.Q);
     end
@@ -51,6 +53,9 @@ particlesPerPacket(end) = Ntotal - Npk*(Np-1);
 % prepare scattering cross sections
 material = MaterialClass.prepareSigma( material, d );
 
+printSimulationSummary(geometry,source,material,Ntotal,Np, ...
+    hasParallelToolbox);
+
 % Pre-calculate properties of E so workers know what to allocate
 szE = size(E);
 classE = class(E);
@@ -62,8 +67,6 @@ if hasParallelToolbox
     % =====================================================================
     % PARALLEL EXECUTION (PARFOR)
     % =====================================================================
-    fprintf('Parallel Computing Toolbox detected. Running on multiple workers\n');
-
     % This sends 'material' and 'geometry' to workers ONLY ONCE.
     cMaterial = parallel.pool.Constant(material);
     cGeometry = parallel.pool.Constant(geometry);
@@ -89,6 +92,11 @@ if hasParallelToolbox
 
         % initialize particles
         P = initializeParticle( Npacket, d, acoustics, source );
+
+        % The propagation loop starts at it = 2. Record the normalized
+        % initial condition in the first frame (t = 0+, after injection).
+        E_local(:,:,1,:) = observeTime( geoLocal, acoustics, ...
+            P.x, P.p, P.dir, bins, ibins, vals, P.alive );
 
         % loop on time
         if matLocal.timeSteps == 0
@@ -119,19 +127,22 @@ else
     % =====================================================================
     % SERIAL EXECUTION (FOR)
     % =====================================================================
-    fprintf('Parallel Computing Toolbox NOT found. Running in serial mode\n');
-
     times = zeros(1, Np);
-    tic; % Start overall timer
+    serialTimer = tic;
 
     % loop on packages of particles
     for ip = 1:Np
-        tic; % Start iteration timer
+        packetTimer = tic;
 
         Npacket = particlesPerPacket(ip);
 
         % initialize particles
         P = initializeParticle( Npacket, d, acoustics, source );
+
+        % The propagation loop starts at it = 2. Record the normalized
+        % initial condition in the first frame (t = 0+, after injection).
+        E(:,:,1,:) = E(:,:,1,:) + observeTime( geometry, acoustics, ...
+            P.x, P.p, P.dir, bins, ibins, vals, P.alive );
 
         % NOTE: In serial, we do NOT need E_local.
         % We can write directly to E, saving memory and overhead.
@@ -159,12 +170,12 @@ else
         % end of loop on packages
 
         % Store iteration time
-        times(ip) = toc;
+        times(ip) = toc(packetTimer);
 
         % Calculate estimates every 10 iterations or at start
         if ip == 1 || mod(ip, 10) == 0
             avg_time = mean(times(1:ip));
-            elapsed = toc;
+            elapsed = toc(serialTimer);
             remaining_iterations = Np - ip;
             estimated_remaining = avg_time * remaining_iterations;
             estimated_total = elapsed + estimated_remaining;
@@ -179,8 +190,6 @@ else
 
         % end of loop on packages
     end
-    fprintf('Total elapsed time: %.2f s (%.2f min)\n\n', ...
-        sum(times), sum(times)/60);
 end
 
 % Apply intrinsic attenuation deterministically to acoustic energies.
@@ -224,6 +233,9 @@ end
 % energy as a function of [t]
 obs.energy = squeeze(sum(sum(E,1),2)) / obs.N;
 
+fprintf('Radiative Transfer Monte Carlo simulation completed in %.2f s.\n\n', ...
+    toc(simulationTimer));
+
     % -----------------------------------------------------------------
     % Nested function: called by afterEach on the DataQueue.
     % Shares parNp, parDone, parTstart with the parent workspace.
@@ -239,3 +251,139 @@ obs.energy = squeeze(sum(sum(E,1),2)) / obs.N;
     end
 
 end % radiativeTransfer
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function printSimulationSummary(geometry,source,material,Ntotal,Npackets, ...
+        hasParallelToolbox)
+
+physics = 'elastic';
+if material.acoustics
+    physics = 'acoustic';
+end
+
+scatteringModel = material.scatteringModel;
+if strcmpi(scatteringModel,'parameterFluctuations')
+    scatteringModel = 'material-parameter fluctuations';
+end
+
+correlationModel = material.SpectralLaw;
+if strcmpi(material.scatteringModel,'polycrystal') && ~isempty(material.TPCF)
+    correlationModel = material.TPCF.model;
+elseif isempty(correlationModel) && ~isempty(material.sigma)
+    correlationModel = 'user-defined DSCS';
+end
+if isempty(correlationModel)
+    correlationModel = 'not specified';
+end
+
+sourceType = 'point';
+if isfield(source,'type') && ~isempty(source.type)
+    sourceType = char(source.type);
+end
+if ~material.acoustics
+    polarization = 'P';
+    if isfield(source,'polarization') && ~isempty(source.polarization)
+        polarization = char(source.polarization);
+    end
+    sourceType = sprintf('%s, initially %s polarized',sourceType,polarization);
+end
+
+sourcePosition = [0 0 0];
+if isfield(source,'position') && ~isempty(source.position)
+    sourcePosition = source.position;
+end
+
+sourceDirection = 'isotropic';
+if isfield(source,'direction') && ~isempty(source.direction)
+    if isnumeric(source.direction)
+        sourceDirection = mat2str(source.direction,6);
+    else
+        sourceDirection = char(source.direction);
+        if strcmpi(sourceDirection,'upper')
+            sourceDirection = 'upper hemisphere';
+        end
+    end
+end
+
+fprintf('\n------------------------------------------------------------\n');
+fprintf('Radiative Transfer Monte Carlo simulation\n');
+fprintf('  Problem               : %d-D %s, %s coordinates\n', ...
+    geometry.dimension,physics,geometry.frame);
+fprintf('  Scattering model      : %s\n',scatteringModel);
+fprintf('  Correlation structure : %s\n',material.correlationStructure);
+fprintf('  Correlation model     : %s\n',correlationModel);
+if isempty(material.Frequency)
+    fprintf('  Frequency             : not specified\n');
+else
+    fprintf('  Frequency             : %.6g Hz\n',material.Frequency);
+end
+if material.acoustics
+    fprintf('  Wave velocity         : %.6g m/s\n',material.v);
+else
+    fprintf('  Wave velocities       : Vp = %.6g m/s, Vs = %.6g m/s\n', ...
+        material.vp,material.vs);
+end
+fprintf('  Source type           : %s\n',sourceType);
+fprintf('  Source position       : %s m\n',mat2str(sourcePosition,6));
+fprintf('  Source direction      : %s\n',sourceDirection);
+if isfield(source,'lambda') && ~isempty(source.lambda)
+    fprintf('  Source spatial width  : %.6g m\n',source.lambda);
+end
+fprintf('  Particles             : %d in %d packets\n',Ntotal,Npackets);
+
+if ~isfield(geometry,'bnd') || isempty(geometry.bnd)
+    fprintf('  Boundaries            : none (unbounded medium)\n');
+else
+    boundaryType = 'reflective';
+    if isfield(geometry.bnd,'type')
+        specifiedTypes = {geometry.bnd.type};
+        specifiedTypes = specifiedTypes(~cellfun('isempty',specifiedTypes));
+        if ~isempty(specifiedTypes) && all(strcmpi(specifiedTypes{1},specifiedTypes))
+            boundaryType = lower(specifiedTypes{1});
+        elseif ~isempty(specifiedTypes)
+            boundaryType = 'mixed';
+        end
+    end
+    fprintf('  Boundaries            : %d %s\n', ...
+        numel(geometry.bnd),boundaryType);
+end
+
+if isempty(material.Q) || all(isinf(material.Q(:)))
+    fprintf('  Intrinsic attenuation : none\n');
+elseif material.acoustics
+    fprintf('  Intrinsic attenuation : Q = %.6g\n',material.Q(1));
+elseif isscalar(material.Q)
+    fprintf('  Intrinsic attenuation : Qp = Qs = %.6g\n',material.Q);
+else
+    fprintf('  Intrinsic attenuation : Qp = %.6g, Qs = %.6g\n', ...
+        material.Q(1),material.Q(2));
+end
+
+if all(material.Sigma(:) == 0)
+    fprintf('No volume scattering detected: the medium is homogeneous.\n');
+    fprintf(['Particles will propagate ballistically; boundary interactions ', ...
+        'and intrinsic attenuation remain active.\n']);
+end
+
+if material.acoustics
+    fprintf('  Acoustic mean free time          : %.6g s\n', ...
+        material.meanFreeTime);
+    fprintf('  Acoustic mean free path          : %.6g m\n', ...
+        material.meanFreePath);
+    fprintf('  Acoustic transport mean free time: %.6g s\n', ...
+        material.transportMeanFreeTime);
+    fprintf('  Acoustic transport mean free path: %.6g m\n', ...
+        material.transportMeanFreePath);
+else
+    fprintf('  P and S mean free times          : %.6g s, %.6g s\n', ...
+        material.meanFreeTime);
+    fprintf('  P and S mean free paths          : %.6g m, %.6g m\n', ...
+        material.meanFreePath);
+    fprintf('  P and S transport mean free times: %.6g s, %.6g s\n', ...
+        material.transportMeanFreeTime);
+    fprintf('  P and S transport mean free paths: %.6g m, %.6g m\n', ...
+        material.transportMeanFreePath);
+end
+fprintf('------------------------------------------------------------\n\n');
+
+end
