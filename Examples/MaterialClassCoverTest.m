@@ -125,8 +125,48 @@ mAc3 = MaterialClass.prepareSigma(mAc2.copyobj(), 3);
 [nPass, nFail] = runTest('Diffusivity positive', nPass, nFail, ...
     @() assert(mAc3.Diffusivity > 0));
 
-%% 9. CalcLc
-fprintf('\n=== 9. CalcLc ===\n');
+mEl3 = MaterialClass.prepareSigma(mEl2.copyobj(), 3);
+[nPass, nFail] = runTest('elastic transport mean free times', ...
+    nPass, nFail, @() testElasticTransportMeanFreeTimes(mEl3));
+
+%% 9. HOMOGENEOUS MEDIA
+fprintf('\n=== 9. HOMOGENEOUS MEDIA ===\n');
+
+zeroSigma = @(angle) zeros(size(angle));
+[zeroTotal, zeroFirstMoment, zeroInverseCDF] = ...
+    MaterialClass.prepareSigmaOne(zeroSigma,3);
+[nPass, nFail] = runTest('zero scattering operator', nPass, nFail, ...
+    @() testZeroScatteringOperator( ...
+        zeroTotal,zeroFirstMoment,zeroInverseCDF));
+
+homogeneousAcoustic = MaterialClass( ...
+    geo,freq,true,vAc,[0 0],0,'exp',lc);
+homogeneousAcoustic = MaterialClass.prepareSigma(homogeneousAcoustic,3);
+[nPass, nFail] = runTest('homogeneous acoustic material', nPass, nFail, ...
+    @() testHomogeneousAcoustic(homogeneousAcoustic));
+
+homogeneousElastic = MaterialClass( ...
+    geo,freq,false,[vp vs],[0 0 0],[0 0 0],'exp',lc);
+homogeneousElastic = MaterialClass.prepareSigma(homogeneousElastic,3);
+[nPass, nFail] = runTest('homogeneous elastic material', nPass, nFail, ...
+    @() testHomogeneousElastic(homogeneousElastic));
+
+% Exact zero mode-conversion channels are also valid when same-mode
+% scattering remains active.
+noConversionElastic = MaterialClass();
+noConversionElastic.d = 3;
+noConversionElastic.acoustics = false;
+noConversionElastic.vp = vp;
+noConversionElastic.vs = vs;
+isotropicSigma = @(angle) ones(size(angle));
+noConversionElastic.sigma = {isotropicSigma,zeroSigma; ...
+                             zeroSigma,isotropicSigma};
+noConversionElastic = MaterialClass.prepareSigma(noConversionElastic,3);
+[nPass, nFail] = runTest('zero mode-conversion channels', nPass, nFail, ...
+    @() testZeroModeConversion(noConversionElastic));
+
+%% 10. CalcLc
+fprintf('\n=== 10. CalcLc ===\n');
 
 mLc = MaterialClass(); mLc.d = 3;
 mLc.Exponential(lc);
@@ -146,6 +186,72 @@ function testExp(mP, lc)
     m.SpectralLaw = 'exp';
     m.Exponential(lc);
     assert(m.Phi(1) > 0);
+end
+
+function testZeroScatteringOperator(Sigma,SigmaPrime,inverseCDF)
+    if Sigma ~= 0 || SigmaPrime ~= 0
+        error('An exactly zero DSCS must have zero angular integrals.');
+    end
+    probabilities = [0 0.5 1];
+    if any(inverseCDF(probabilities) ~= 0)
+        error('The zero-DSCS inverse-CDF placeholder is invalid.');
+    end
+end
+
+function testElasticTransportMeanFreeTimes(material)
+    velocities = [material.vp; material.vs];
+    expectedTimes = material.transportMeanFreePath ./ velocities;
+
+    if ~isequal(size(material.transportMeanFreeTime),[2 1])
+        error('Elastic transport mean free times must be a 2-by-1 vector.');
+    end
+
+    relativeError = norm(material.transportMeanFreeTime-expectedTimes) / ...
+        norm(expectedTimes);
+    if relativeError >= 1e-12
+        error('The transport-time relative error is too large: %e', ...
+            relativeError);
+    end
+end
+
+function testHomogeneousAcoustic(material)
+    if material.Sigma ~= 0 || material.Sigmapr ~= 0
+        error('A homogeneous acoustic material must have Sigma = 0.');
+    end
+    if ~isinf(material.meanFreeTime) || ~isinf(material.meanFreePath)
+        error('A homogeneous acoustic material must have infinite free scales.');
+    end
+    if ~isnan(material.Diffusivity) || ~isnan(material.g)
+        error('Diffusivity and g must be undefined without scattering.');
+    end
+end
+
+function testHomogeneousElastic(material)
+    if any(material.Sigma ~= 0,'all') || any(material.Sigmapr ~= 0,'all')
+        error('A homogeneous elastic material must have Sigma = 0.');
+    end
+    if any(~isinf(material.meanFreeTime)) || ...
+            any(~isinf(material.meanFreePath))
+        error('A homogeneous elastic material must have infinite free scales.');
+    end
+    if material.P2P ~= 1 || material.S2S ~= 1
+        error('Safe same-mode placeholders must be used without scattering.');
+    end
+    if ~isnan(material.Diffusivity)
+        error('Diffusivity must be undefined without scattering.');
+    end
+end
+
+function testZeroModeConversion(material)
+    if material.Sigma(1,2) ~= 0 || material.Sigma(2,1) ~= 0
+        error('The zero mode-conversion rates were not preserved.');
+    end
+    if material.P2P ~= 1 || material.S2S ~= 1
+        error('Particles must retain their modes when conversion rates vanish.');
+    end
+    if any(~isfinite(material.meanFreeTime))
+        error('Same-mode scattering must retain finite mean free times.');
+    end
 end
 
 function testPower(mP, lc)

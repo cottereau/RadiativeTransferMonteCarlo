@@ -40,10 +40,15 @@ switch source.type
         if isfield(source,'direction') && strcmp(source.direction,'outgoing')
             theta = theta0;
             phi = phi0;
-            % isotropic source over hemisphere in +z direction
         elseif isfield(source,'direction') && strcmp(source.direction,'upper')
-            theta = 2*pi*rand(N,1);
+            % Sample propagation directions uniformly over the +z
+            % hemisphere. For a 3-D finite-width point source, also sample
+            % its initial positions in that hemisphere; otherwise a source
+            % centered at z = 0 would put half its packet outside the domain.
             phi   = acos(rand(N,1));   % cos(phi) uniform over [0,1]
+            if d==3
+                phi0 = acos(rand(N,1)); % initial position has z >= source z
+            end
         end
         dir = [cos(theta).*sin(phi) sin(theta).*sin(phi) cos(phi)];
         perp = [-sin(theta) cos(theta) zeros(N,1)];

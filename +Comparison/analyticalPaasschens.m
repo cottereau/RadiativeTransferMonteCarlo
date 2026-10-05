@@ -16,6 +16,8 @@ function [E,E_diff] = analyticalPaasschens(material,observation,geometry)
     % in 3D : E : 4*pi*r^2*E*dr
 % E_diff : diffusion approximation (same normalization used here)
 
+comparisonTimer = tic;
+
 d = geometry.dimension;
 v = material.v;
 t = observation.time(:).';
@@ -34,6 +36,18 @@ if isfinite(Q)
 else
     absorptionFactor = ones(size(t));
 end
+
+fprintf('\n------------------------------------------------------------\n');
+fprintf(['Comparison method: Paasschens (1997) analytical solution ', ...
+    'for isotropic scattering\n']);
+fprintf('  Physics               : %d-D acoustic\n',d);
+fprintf('  Domain                : unbounded\n');
+if isfinite(Q)
+    fprintf('  Intrinsic attenuation : Q = %.6g\n',Q);
+else
+    fprintf('  Intrinsic attenuation : none\n');
+end
+fprintf('------------------------------------------------------------\n\n');
 
 % Note : Equivalent Paasschens absorption length:
 % la = v*Q/omega
@@ -98,3 +112,6 @@ E = E .* absorptionFactor;
 if nargout > 1
     E_diff = E_diff .* absorptionFactor;
 end
+
+fprintf('Paasschens analytical solution completed in %.2f s.\n\n', ...
+    toc(comparisonTimer));

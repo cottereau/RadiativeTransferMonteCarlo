@@ -13,6 +13,8 @@ function energyDensity = randomWalkYoshimoto(geometry, source, material, observa
 
 % Note : this code works only for isotropic scatter_indsing
 
+comparisonTimer = tic;
+
 % default: no movie
 % Normalize "movie" to a logical flag
 if nargin < 5, movie = false; end
@@ -51,33 +53,40 @@ end
 Sigma = material.Sigma;
 
 if material.acoustics
-    v = material.v;
     mft = 1/Sigma;  % mean free time
-    if maxTimeStep>0.1*mft
-        warning(['Ratio between time step dt and mean free time is large: ...' ...
-            'try to decrease dt'])
-    else
-        disp(['Maximum ratio between dt and the mean free time is ' ...
-            num2str(maxTimeStep/mft)]);
-    end
+    maximumTimeStepRatio = maxTimeStep/mft;
+else
+    mft_PS = 1./sum(Sigma,2);  % mean free times of P & S waves
+    maximumTimeStepRatio = maxTimeStep/min(mft_PS);
+end
 
+if material.acoustics
+    physics = 'acoustic';
+else
+    physics = 'elastic';
+end
+fprintf('\n------------------------------------------------------------\n');
+fprintf('Comparison method: Yoshimoto (2000) Monte Carlo\n');
+fprintf('  Problem              : %d-D %s\n',d,physics);
+fprintf('  Particles            : %d\n',Np);
+fprintf('  Maximum dt/tau       : %.6g\n',maximumTimeStepRatio);
+fprintf('------------------------------------------------------------\n\n');
+
+if maximumTimeStepRatio > 0.1
+    warning(['Ratio between the time step and the shortest mean free ', ...
+        'time is large (dt/tau = %.6g); try decreasing the time step.'], ...
+        maximumTimeStepRatio);
+end
+
+if material.acoustics
+    v = material.v;
     energyDensity = zeros(length(r),length(t)); % energy density matrix
 
     % For subsequent scattering angle samplings
     invcdf = scatteringParameters(material.sigma{1},d);
-
 else
     vp = material.vp; vs = material.vs;
     Sigmap = sum(Sigma(1,:)); Sigmas = sum(Sigma(2,:));
-    mft_PS = 1./sum(Sigma,2);  % mean free times of P & S waves
-
-    if maxTimeStep>0.1*min(mft_PS)
-        warning(['Ratio between time step dt and mean free time is large: ...' ...
-            'try to decrease dt'])
-    else
-        disp(['Maximum ratio between dt and the mean free time is ' ...
-            num2str(maxTimeStep/min(mft_PS))]);
-    end
 
     % P-to-S & S-to-P conversion probabilities
     pPS = 1-material.P2P;
@@ -247,6 +256,9 @@ if strcmpi(movie,'true')
     close(videoObj);
     close(fig);
 end
+
+fprintf('Yoshimoto Monte Carlo completed in %.2f s.\n\n', ...
+    toc(comparisonTimer));
 
 end
 
