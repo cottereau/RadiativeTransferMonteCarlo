@@ -110,9 +110,15 @@ grid on;
 │   ├── mainAcoustics.m       # Acoustic wave examples
 │   ├── mainElastics.m        # Elastic wave examples
 │   └── RunAllTests.m         # Run all validation comparisons
-├── @MaterialClass/           # Material properties and scattering cross-sections
+├── @MaterialClass/           # Material properties, scattering cross-sections, Zoeppritz coefficients
+├── +TMatrix/                 # Exact sphere scattering (SpectralLaw 'tmatrix', spheres only)
 ├── +Comparison/              # Comparison functions against literature
-├── AddRTMCLib.m              # Setup and path configuration
+├── solver/                   # Particle initialization, propagation, observation, sources
+├── postprocessing/           # Plotting and export of energy diagnostics
+├── interfaceWaves/           # Rayleigh, Scholte and Stoneley interface-wave models
+├── lamb/                     # Lamb (half-space Green's function) engine and studies
+├── tests/                    # Validation gates of the Lamb engine and solver benchmarks
+├── AddRTMCLib.m              # Setup and path configuration (adds all subfolders)
 └── radiativeTransfer.m       # Main solver
 ```
 
