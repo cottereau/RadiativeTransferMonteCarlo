@@ -4,3 +4,6 @@
 *.gif
 *.png
 *.mat
+/documentacao
+*.log
+*.mem
