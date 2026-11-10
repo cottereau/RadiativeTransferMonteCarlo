@@ -1,0 +1,716 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,bm}
+\usepackage{booktabs}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue]{hyperref}
+
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\Res}{\operatorname*{Res}}
+\newcommand{\sgn}{\operatorname{sgn}}
+\newcommand{\RE}{\operatorname{Re}}
+\newcommand{\IM}{\operatorname{Im}}
+\newtheorem{remark}{Remark}
+
+\title{Extended Lamb's Problem in the \texorpdfstring{$f$--$k$}{f-k} Domain:\\
+Boundary-Condition Systems and Energy Partition (2D and 3D)}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+%======================================================================
+\section{Conventions}
+%======================================================================
+
+\paragraph{Scope.} Sections~\ref{sec:conv-start}--\ref{sec:leaky} treat the 2D P--SV line-source
+problem, which gives the building blocks. Section~\ref{sec:3d} extends the formulation to 3D with a
+point force of arbitrary direction and an arbitrary moment tensor (any $3\times3$ $\mathbf M$; symmetric in the seismic case). It
+reuses the 2D matrices unchanged.
+
+\paragraph{Geometry.}\label{sec:conv-start} Two-dimensional P--SV (plane strain) problem with a line source
+parallel to $y$. The interface is $z=0$, with $z$ positive downward. The \emph{solid}
+(medium~1: $\rho_1,\alpha_1,\beta_1$, $\mu_1=\rho_1\beta_1^2$, $\lambda_1=\rho_1\alpha_1^2-2\mu_1$)
+always occupies $z>0$. The upper half-space $z<0$ is either solid~2
+($\rho_2,\alpha_2,\beta_2$) or an inviscid fluid ($\rho_f,\alpha_f$, $\lambda_f=\rho_f\alpha_f^2$).
+The source is at $(x,z)=(0,z_s)$, with $z_s=h>0$ (Cases~1--2) or $z_s=-h<0$ (Case~3).
+
+\paragraph{Transforms.} Time dependence $e^{-\ii\omega t}$ (suppressed). Horizontal Fourier transform
+\begin{equation}
+  \tilde f(k,z)=\int_{-\infty}^{\infty} f(x,z)\,e^{-\ii kx}\,\dd x,
+  \qquad
+  f(x,z)=\frac{1}{2\pi}\int_{-\infty}^{\infty}\tilde f(k,z)\,e^{\ii kx}\,\dd k ,
+\end{equation}
+so that $\partial_x\to\ii k$. Tildes are dropped from here on.
+
+\paragraph{Potentials.} $\mathbf u=\nabla\phi+\nabla\times(\psi\,\hat{\mathbf y})$, i.e.
+\begin{equation}
+  u_x=\partial_x\phi-\partial_z\psi,\qquad u_z=\partial_z\phi+\partial_x\psi,
+\end{equation}
+with $(\nabla^2+k_\alpha^2)\phi=0$, $(\nabla^2+k_\beta^2)\psi=0$ away from the source, and
+$k_m=\omega/c_m$ for $c_m\in\{\alpha,\beta,\alpha_f\}$.
+
+\paragraph{Vertical wavenumbers (Riemann sheet).}
+\begin{equation}
+  \nu_m(k)=\sqrt{k^2-k_m^2},\qquad \RE\nu_m\ge 0,\quad \IM\nu_m\le 0 ,
+  \label{eq:branch}
+\end{equation}
+so $e^{-\nu_m z}$ is outgoing/decaying for $z\to+\infty$ and $e^{+\nu_m z}$ for $z\to-\infty$.
+For $|k|<k_m$: $\nu_m=-\ii\gamma_m$, $\gamma_m=\sqrt{k_m^2-k^2}>0$.
+In MATLAB this branch is obtained with \texttt{nu = -1i*sqrt(km\^{}2 - k.\^{}2)}.
+We also use
+\begin{equation}
+  \Gamma_j(k)=2k^2-k_{\beta j}^2,\qquad
+  R(k)=\Gamma_1^2-4k^2\nu_{\alpha1}\nu_{\beta1}\quad\text{(Rayleigh function)}.
+\end{equation}
+
+\paragraph{Plane-wave fields in the $f$--$k$ domain.}
+Using $\lambda k_\alpha^2=\rho\omega^2-2\mu k_\alpha^2$ and $\nu_\alpha^2=k^2-k_\alpha^2$,
+\begin{align}
+  \sigma_{zz}&=\mu\,\Gamma\,\phi+2\ii\mu k\,\partial_z\psi, &
+  \sigma_{xz}&=\mu\bigl(2\ii k\,\partial_z\phi-\Gamma\,\psi\bigr), &
+  \sigma_{xx}&=-\lambda k_\alpha^2\phi+2\ii\mu k\,u_x .
+\end{align}
+For $\phi=a\,e^{s\nu_\alpha z}$, $\psi=b\,e^{s\nu_\beta z}$ with $s=\mp1$ (down-/up-going):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+ & $s=-1$ (field $\propto e^{-\nu z}$) & $s=+1$ (field $\propto e^{+\nu z}$)\\
+\midrule
+$u_x$ & $\ii k\,a+\nu_\beta b$ & $\ii k\,a-\nu_\beta b$\\
+$u_z$ & $-\nu_\alpha a+\ii k\,b$ & $\nu_\alpha a+\ii k\,b$\\
+$\sigma_{zz}$ & $\mu\Gamma a-2\ii\mu k\nu_\beta b$ & $\mu\Gamma a+2\ii\mu k\nu_\beta b$\\
+$\sigma_{xz}$ & $-2\ii\mu k\nu_\alpha a-\mu\Gamma b$ & $2\ii\mu k\nu_\alpha a-\mu\Gamma b$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Fluid ($\mu=0$, $\psi=0$): $u_z=s\,\nu_f\,a$, $\sigma_{zz}=-p=-\rho_f\omega^2 a$,
+$\sigma_{xz}=0$.
+
+%======================================================================
+\section{Source representations}
+%======================================================================
+
+The 2D Green's function $G$ of $(\nabla^2+k_m^2)G=-\delta(x)\delta(z-z_s)$ is
+\begin{equation}
+  G(x,z)=\tfrac{\ii}{4}H_0^{(1)}(k_m r)
+  \quad\Longleftrightarrow\quad
+  \tilde G(k,z)=\frac{e^{-\nu_m|z-z_s|}}{2\nu_m}.
+\end{equation}
+
+\paragraph{Explosive (P) line source in a solid or pressure source in a fluid} of strength $\Phi_0$:
+\begin{equation}
+  \phi^0=\Phi_0\,\frac{e^{-\nu_\alpha|z-z_s|}}{2\nu_\alpha},\qquad \psi^0=0 .
+\end{equation}
+
+\paragraph{Vertical line force $F\hat{\mathbf z}$ in a solid (classical Lamb load).}
+Writing $F\hat{\mathbf z}\,\delta=\nabla(-F\partial_z g)+\nabla\times(-F\partial_x g\,\hat{\mathbf y})$,
+with $\nabla^2 g=-\delta$, the static parts cancel in $\mathbf u$ for $z\ne z_s$, and
+\begin{equation}
+  \phi^0=\frac{F}{2\rho\omega^2}\,\sgn(z-z_s)\,e^{-\nu_\alpha|z-z_s|},\qquad
+  \psi^0=-\frac{\ii kF}{2\rho\omega^2\nu_\beta}\,e^{-\nu_\beta|z-z_s|}.
+\end{equation}
+
+\paragraph{Incident amplitudes at the interface.}
+For a source in the solid ($z_s=h$) the field travelling toward $z=0$ is
+$\phi^0=P^0e^{+\nu_\alpha z}$, $\psi^0=S^0e^{+\nu_\beta z}$ for $0\le z<h$; the field leaving
+the source downward is $\phi^0=P_d^0e^{-\nu_\alpha z}$, $\psi^0=S_d^0e^{-\nu_\beta z}$ for $z>h$:
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Source & $P^0$ & $S^0$ & $P^0_d$ & $S^0_d$\\
+\midrule
+Explosion & $\dfrac{\Phi_0e^{-\nu_\alpha h}}{2\nu_\alpha}$ & $0$
+          & $\dfrac{\Phi_0e^{\nu_\alpha h}}{2\nu_\alpha}$ & $0$\\
+Vertical force & $-\dfrac{Fe^{-\nu_\alpha h}}{2\rho\omega^2}$ & $-\dfrac{\ii kFe^{-\nu_\beta h}}{2\rho\omega^2\nu_\beta}$
+               & $\dfrac{Fe^{\nu_\alpha h}}{2\rho\omega^2}$ & $-\dfrac{\ii kFe^{\nu_\beta h}}{2\rho\omega^2\nu_\beta}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+For a pressure source in the fluid ($z_s=-h$): toward the interface
+$\phi^0=P_f^0e^{-\nu_f z}$ with $P_f^0=\Phi_0e^{-\nu_f h}/(2\nu_f)$ ($-h<z\le0$); away from it
+$\phi^0=U_f^0e^{+\nu_f z}$ with $U_f^0=\Phi_0e^{\nu_f h}/(2\nu_f)$ ($z<-h$).
+
+\begin{remark}
+$e^{+\nu h}$ grows for evanescent $k$, but $P_d^0,S_d^0,U_f^0$ are used only in flux integrals
+restricted to $|k|<k_m$, where $|e^{\nu h}|=1$. Never evaluate them outside that window.
+\end{remark}
+
+%======================================================================
+\section{Boundary-condition systems \texorpdfstring{$\mathbf M(k,\omega)\,\mathbf x=\mathbf S$}{M x = S}}
+%======================================================================
+
+The scattered fields are
+\begin{align}
+  z>0\ \text{(solid 1)}:&\quad \phi_1=A_1e^{-\nu_{\alpha1}z},\quad \psi_1=B_1e^{-\nu_{\beta1}z},\\
+  z<0\ \text{(solid 2)}:&\quad \phi_2=A_2e^{+\nu_{\alpha2}z},\quad \psi_2=B_2e^{+\nu_{\beta2}z},\\
+  z<0\ \text{(fluid)}:&\quad \phi_f=A_fe^{+\nu_{f}z}.
+\end{align}
+In every case $\mathbf M$ depends only on the interface; the source enters through $\mathbf S$ only.
+
+\subsection{Case 1: solid--solid, welded contact, source in solid 1}
+
+Continuity of $u_x,u_z,\sigma_{zz},\sigma_{xz}$ at $z=0$ with the total field in medium~1 being
+incident plus reflected. Unknowns $\mathbf x=[A_1,\,B_1,\,A_2,\,B_2]^{\mathsf T}$ (reflected P, SV;
+transmitted P, SV):
+\begin{equation}
+\underbrace{\begin{bmatrix}
+ \ii k & \nu_{\beta1} & -\ii k & \nu_{\beta2}\\[2pt]
+ -\nu_{\alpha1} & \ii k & -\nu_{\alpha2} & -\ii k\\[2pt]
+ \mu_1\Gamma_1 & -2\ii\mu_1k\nu_{\beta1} & -\mu_2\Gamma_2 & -2\ii\mu_2k\nu_{\beta2}\\[2pt]
+ -2\ii\mu_1k\nu_{\alpha1} & -\mu_1\Gamma_1 & -2\ii\mu_2k\nu_{\alpha2} & \mu_2\Gamma_2
+\end{bmatrix}}_{\mathbf M_1}
+\begin{bmatrix}A_1\\ B_1\\ A_2\\ B_2\end{bmatrix}
+=
+-\begin{bmatrix}
+ \ii k\,P^0-\nu_{\beta1}S^0\\
+ \nu_{\alpha1}P^0+\ii k\,S^0\\
+ \mu_1\Gamma_1P^0+2\ii\mu_1k\nu_{\beta1}S^0\\
+ 2\ii\mu_1k\nu_{\alpha1}P^0-\mu_1\Gamma_1S^0
+\end{bmatrix}.
+\label{eq:case1}
+\end{equation}
+Rows: $u_x$, $u_z$, $\sigma_{zz}$, $\sigma_{xz}$. The dispersion relation
+$\Delta_1(k)\equiv\det\mathbf M_1=0$ with $k>\max(k_{\beta1},k_{\beta2})$ real is the
+\emph{Stoneley} equation. A true (non-leaky) Stoneley root exists only for a limited range of
+contrasts (roughly $\beta_1\approx\beta_2$); otherwise the root is leaky (see
+Section~\ref{sec:leaky}).
+
+\subsection{Case 2: solid--fluid, source in the solid}
+
+Conditions at $z=0$: (i) $u_z^{s}=u_z^{f}$, (ii) $\sigma_{zz}^{s}=-p$, (iii) $\sigma_{xz}^{s}=0$.
+Unknowns $\mathbf x=[A_1,\,B_1,\,A_f]^{\mathsf T}$:
+\begin{equation}
+\underbrace{\begin{bmatrix}
+ -\nu_{\alpha} & \ii k & -\nu_f\\[2pt]
+ \mu\Gamma & -2\ii\mu k\nu_{\beta} & \rho_f\omega^2\\[2pt]
+ -2\ii\mu k\nu_{\alpha} & -\mu\Gamma & 0
+\end{bmatrix}}_{\mathbf M_2}
+\begin{bmatrix}A_1\\ B_1\\ A_f\end{bmatrix}
+=
+-\begin{bmatrix}
+ \nu_{\alpha}P^0+\ii k\,S^0\\
+ \mu\Gamma P^0+2\ii\mu k\nu_{\beta}S^0\\
+ 2\ii\mu k\nu_{\alpha}P^0-\mu\Gamma S^0
+\end{bmatrix}
+\label{eq:case2}
+\end{equation}
+(solid subscript $1$ dropped). Expanding along the third column,
+\begin{equation}
+  \Delta_2(k)\equiv\det\mathbf M_2
+  =\mu^2\Bigl[\nu_f\,R(k)+\frac{\rho_f}{\rho}\,k_\beta^4\,\nu_\alpha\Bigr],
+  \label{eq:scholte}
+\end{equation}
+and $\Delta_2=0$ with $k>\max(k_\beta,k_f)$ real is the \emph{Scholte} equation. A true Scholte root
+always exists.
+
+\subsection{Case 3: solid--fluid, source in the fluid}
+
+Same interface conditions. Unknowns $\mathbf x=[A_1,\,B_1,\,A_f]^{\mathsf T}$ (transmitted P, SV into the
+solid; reflected P in the fluid). The incident fluid field $P_f^0e^{-\nu_fz}$ has
+$u_z=-\nu_fP_f^0$ and $\sigma_{zz}=-\rho_f\omega^2P_f^0$, which gives
+\begin{equation}
+\mathbf M_2
+\begin{bmatrix}A_1\\ B_1\\ A_f\end{bmatrix}
+=
+\begin{bmatrix}
+ -\nu_f\,P_f^0\\
+ -\rho_f\omega^2\,P_f^0\\
+ 0
+\end{bmatrix}.
+\label{eq:case3}
+\end{equation}
+The matrix is the same as in Case~2, so the poles (Scholte, leaky Rayleigh) are the same.
+Only their excitation differs. This is a statement of source--receiver reciprocity.
+
+%======================================================================
+\section{Degeneration to the free surface (Lamb/Rayleigh)}
+%======================================================================
+
+\paragraph{Matrix level.} With $\rho_f=0$, $\mathbf M_2$ becomes block lower-triangular:
+\begin{equation}
+\mathbf M_2\big|_{\rho_f=0}=
+\begin{bmatrix}
+ -\nu_\alpha & \ii k & -\nu_f\\
+ \mu\Gamma & -2\ii\mu k\nu_\beta & 0\\
+ -2\ii\mu k\nu_\alpha & -\mu\Gamma & 0
+\end{bmatrix}
+=\begin{bmatrix}
+ \ast & -\nu_f\\
+ \mathbf M_{\mathrm{FS}} & \mathbf 0
+\end{bmatrix},
+\qquad
+\mathbf M_{\mathrm{FS}}=
+\begin{bmatrix}
+ \mu\Gamma & -2\ii\mu k\nu_\beta\\
+ -2\ii\mu k\nu_\alpha & -\mu\Gamma
+\end{bmatrix}.
+\end{equation}
+Rows 2--3 decouple into the traction-free system
+$\mathbf M_{\mathrm{FS}}[A_1,B_1]^{\mathsf T}=\mathbf S_{2:3}$
+($\sigma_{zz}=\sigma_{xz}=0$ at $z=0$). Row~1 then only gives the passive fluid motion $A_f$,
+which carries no energy because its flux is proportional to $\rho_f$
+(Section~\ref{sec:energy}). Also,
+\begin{equation}
+  \det\mathbf M_{\mathrm{FS}}=-\mu^2\bigl[\Gamma^2-4k^2\nu_\alpha\nu_\beta\bigr]=-\mu^2R(k),
+\end{equation}
+which is consistent with \eqref{eq:scholte}: $\Delta_2\to\mu^2\nu_fR(k)$ as $\rho_f\to0$. The zeros of
+$\Delta_2$ in the solid sheet therefore tend to the Rayleigh root $R(k_R)=0$, $k_R=\omega/c_R$.
+
+\paragraph{Pole level (weak loading).} Let $\varepsilon=\rho_f/\rho$. Expanding
+\eqref{eq:scholte} about $k_R$:
+\begin{equation}
+  k_p=k_R+\delta k,\qquad
+  \delta k=-\,\varepsilon\,\frac{k_\beta^4\,\nu_\alpha(k_R)}{\nu_f(k_R)\,R'(k_R)}+O(\varepsilon^2).
+  \label{eq:dk}
+\end{equation}
+\begin{itemize}
+  \item \emph{Fast fluid}, $\alpha_f>c_R$ ($k_f<k_R$): $\nu_f(k_R)$ is real, so $\delta k$ is real.
+  The pole is a true (real) Scholte pole near $k_R$. As $\varepsilon\to0$ it tends continuously to
+  the Rayleigh pole, and so does its share of the energy.
+  \item \emph{Slow fluid}, $\alpha_f<c_R$ ($k_f>k_R$, e.g.\ water on rock, or $\alpha_f\to0$):
+  $\nu_f(k_R)$ is imaginary, $\delta k$ is complex, and the pole is a \emph{leaky Rayleigh} pole,
+  $k_L=a+\ii b$ with $b>0$, on the sheet $\RE\nu_f<0$. It radiates into the fluid over the leakage
+  length $1/(2b)$. For $\alpha_f\to0$, $\nu_f(k_R)\simeq-\ii\omega/\alpha_f$ and
+  $b\propto\rho_f\alpha_f$. The controlling small parameter is the fluid impedance
+  $Z_f=\rho_f\alpha_f$.
+  \item The real Scholte pole $k_{\mathrm{Sch}}>k_f$ goes to $\infty$ as $\alpha_f\to0$, and its
+  energy vanishes.
+  \item \emph{Non-uniform limit.} In the slow-fluid route, the energy partition at infinite range
+  sends the leaky-Rayleigh energy to the fluid P wave for every $Z_f>0$. The free-surface partition
+  is recovered only for ranges $r\ll1/(2b)$. On the real axis inside the fluid window, the leaky pole
+  appears as a Lorentzian peak of half-width $b$ in $|D_{\mathrm P_f}|^2$ and in
+  $\IM\mathcal S$. The quadrature must resolve that peak with nodes graded at $a\pm b\,10^{j}$;
+  otherwise it is missed \emph{on both sides} of the energy balance, and the balance still closes.
+  The pole is located with real-axis Newton steps $k\leftarrow a-\Delta(a)/\Delta'(a)$,
+  $a\leftarrow\RE k$, which are exact to $O(b^2)$ because $\Delta$ is analytic inside the window.
+  We report the peak energy as \emph{quasi-trapped}. For $\rho_f=\alpha_f=10^{-6}$ this gives
+  $b\approx1.8\times10^{-13}$ ($\omega=\beta=1$), and the Miller--Pursey partition is recovered
+  to $10^{-2}\,\%$.
+  \item Case~3 in this limit: $\mathbf S\propto(\nu_f,\rho_f\omega^2,0)^{\mathsf T}P_f^0$, and
+  $A_1,B_1\to0$. The fluid sees a rigid wall and no energy enters the solid.
+\end{itemize}
+
+%======================================================================
+\section{Energy partition}
+\label{sec:energy}
+%======================================================================
+
+\subsection{Flux density}
+
+For $e^{-\ii\omega t}$ fields, the time-averaged energy flux is
+$\langle\mathcal P_j\rangle=-\tfrac12\RE(\sigma_{ij}\dot u_i^{*})$, i.e.
+\begin{equation}
+  \boxed{\ \langle\mathcal P_j\rangle=\frac{\omega}{2}\,\IM\bigl(\sigma_{ij}\,u_i^{*}\bigr)\ }
+\end{equation}
+(power per unit length of the line source). Energy is quadratic, so the partition must be computed
+at infinity, where the far fields of the different wave types separate and their cross terms vanish.
+Squaring the individual terms of a contour decomposition at finite range does not give a valid
+partition.
+
+\subsection{Contour decomposition of the wavefield}
+
+For $x>0$ the inverse transform is closed in the upper half $k$-plane. Using Cramer's rule,
+$\mathbf x(k)=\operatorname{adj}\mathbf M\,\mathbf S/\Delta(k)$, and
+\begin{equation}
+  \mathbf u(x,z)=
+  \underbrace{\ii\sum_{p}\Res_{k=k_p}\bigl[\mathbf u(k,z)\bigr]e^{\ii k_px}}_{\text{interface waves, }O(1)\text{ in }x}
+  \;+\;
+  \underbrace{\frac{1}{2\pi}\sum_{m}\int_{\mathcal B_m}\mathbf u(k,z)\,e^{\ii kx}\,\dd k}_{\text{body/head waves, }O(r^{-1/2})},
+  \label{eq:contour}
+\end{equation}
+where $\mathcal B_m$ are the branch cuts from $k_m$ ($m=\alpha_1,\beta_1,\alpha_2,\beta_2$ or $f$).
+The sum includes only poles on the physical sheet \eqref{eq:branch}. For a lossless medium these are
+real, with $k_p>\max_m k_m$. As $\omega\to\omega+\ii0$ the pole $+k_p$ lies at $k_p+\ii0$
+(outgoing to $x>0$) and $-k_p$ lies at $-k_p-\ii0$.
+
+\paragraph{Residue (numerically stable form).} Let $\mathbf r,\bm\ell$ be the right and left null
+vectors of $\mathbf M(k_p)$. Then
+\begin{equation}
+  \Res_{k=k_p}\mathbf M^{-1}=\frac{\mathbf r\,\bm\ell^{\mathsf T}}{\bm\ell^{\mathsf T}\mathbf M'(k_p)\,\mathbf r},
+  \qquad
+  \Res_{k=k_p}\mathbf x=\frac{\mathbf r\,\bigl(\bm\ell^{\mathsf T}\mathbf S(k_p)\bigr)}{\bm\ell^{\mathsf T}\mathbf M'(k_p)\,\mathbf r},
+  \label{eq:res}
+\end{equation}
+which is equivalent to $\operatorname{adj}\mathbf M(k_p)\mathbf S(k_p)/\Delta'(k_p)$. $\mathbf M'$ can be
+evaluated analytically or by a centred difference. The incident field has no pole, so only the
+scattered amplitudes contribute.
+
+\subsection{Interface-wave power (pole)}
+
+For $x>0$ the interface-wave field has amplitudes
+$\mathbf x^{\mathrm{IW}}=\ii\,\Res_{k_p}\mathbf x$ and phase $e^{\ii k_px}$. At the pole all $\nu_m$
+are real and positive. The horizontal power through a vertical plane is
+\begin{equation}
+  W_{\mathrm{IW}}^{+}=\frac{\omega}{2}\int_{-\infty}^{\infty}
+  \IM\bigl(\sigma_{xx}u_x^{*}+\sigma_{xz}u_z^{*}\bigr)\,\dd z ,
+  \label{eq:WIW}
+\end{equation}
+with fields from the table in Section~1, $k\to k_p$, and $a,b\to$ the entries of
+$\mathbf x^{\mathrm{IW}}$. In the fluid, use $\sigma_{xx}=-\rho_f\omega^2\phi_f$ and
+$\sigma_{xz}=0$. Every product is of the form $e^{-(\nu_m+\nu_n)|z|}$, so the integral can be done
+analytically: $\int_0^\infty e^{-(\nu_m+\nu_n)z}\dd z=(\nu_m+\nu_n)^{-1}$. For $x<0$,
+$W_{\mathrm{IW}}^{-}$ follows in the same way from $-k_p$ with amplitude $-\ii\Res_{-k_p}\mathbf x$. For a
+symmetric source (explosion, vertical force), $W_{\mathrm{IW}}^{-}=W_{\mathrm{IW}}^{+}$, and
+\begin{equation}
+  W_{\mathrm{IW}}=W_{\mathrm{IW}}^{+}+W_{\mathrm{IW}}^{-}.
+\end{equation}
+
+\subsection{Body-wave power (real axis / branch cuts)}
+
+The body waves are the branch-cut integrals in \eqref{eq:contour}. Their power is obtained without
+evaluating those integrals. Take the vertical flux through the horizontal planes $z=\pm Z$, which lie
+beyond the source and outside the evanescent interface-wave layer, and apply Parseval's theorem
+$\int|f|^2\dd x=\tfrac1{2\pi}\int|\tilde f|^2\dd k$:
+\begin{equation}
+  \int_{-\infty}^{\infty}\langle\mathcal P_z\rangle\,\dd x
+  =\frac{\omega}{2}\,\frac{1}{2\pi}\int_{-\infty}^{\infty}
+  \IM\bigl(\sigma_{xz}u_x^{*}+\sigma_{zz}u_z^{*}\bigr)\,\dd k .
+\end{equation}
+For a single plane wave of amplitude $D$ (P, SV, or fluid P, travelling away from the interface),
+substituting the table of Section~1 gives
+\begin{equation}
+  \boxed{\ \mathcal E_m(k)=\tfrac12\,\rho\,\omega^3\,\RE\bigl(\ii\nu_m\bigr)
+  =\begin{cases}\tfrac12\rho\omega^3\sqrt{k_m^2-k^2}, & |k|<k_m\\ 0,& |k|>k_m\end{cases}\ }
+  \label{eq:Em}
+\end{equation}
+per unit $|D|^2$. For propagating waves the up/down and P/S cross terms vanish, so the fluxes add.
+Hence
+\begin{equation}
+  W_{\mathrm{body}}=\frac{1}{2\pi}\sum_{m}\int_{-k_m}^{k_m}\mathcal E_m(k)\,\bigl|D_m(k)\bigr|^2\,\dd k ,
+  \label{eq:Wbody}
+\end{equation}
+with the outgoing amplitudes $D_m$ listed below. Direct and reflected waves are added coherently
+because they cannot be separated in the far field.
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Case & Region & Wave $m$ & $D_m$ (with $\rho$ of that medium in $\mathcal E_m$)\\
+\midrule
+1 & $z>h$ (solid 1) & P$_1$, S$_1$ & $P_d^0+A_1$,\quad $S_d^0+B_1$\\
+1 & $z<0$ (solid 2) & P$_2$, S$_2$ & $A_2$,\quad $B_2$\\
+2 & $z>h$ (solid)   & P, S       & $P_d^0+A_1$,\quad $S_d^0+B_1$\\
+2 & $z<0$ (fluid)   & P$_f$      & $A_f$\\
+3 & $z<-h$ (fluid)  & P$_f$      & $U_f^0+A_f$\\
+3 & $z>0$ (solid)   & P, S       & $A_1$,\quad $B_1$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Poles lie outside every window $|k|<k_m$, so \eqref{eq:Wbody} has no pole singularities. It does
+have integrable inverse-square-root singularities at \emph{every} branch point $k_n\le k_m$ inside the
+window. The window endpoint contributes the $1/\nu_m$ Weyl factor. An interior point $k_n<k_m$ gives,
+for example, the grazing-P $\to$ SV conversion at $k=k_{\alpha1}$ inside the S window, which is the
+head-wave contribution. Split each window at all branch points $0<k_{n_1}<\dots<k_m$, and on each
+segment $[k_a,k_b]$ substitute
+\begin{equation}
+  k^2=k_a^2+(k_b^2-k_a^2)\sin^2 t,\qquad t\in[0,\tfrac{\pi}{2}]
+  \qquad(k=k_b\sin t\ \text{if}\ k_a=0),
+  \label{eq:subst}
+\end{equation}
+which regularises both endpoints; then apply Gauss--Legendre quadrature in $t$. Plain midpoint
+or trapezoid rules in $k$ or $\theta$ converge erratically, with errors of order $10^{-3}$. With
+$k=k_m\sin\theta$, \eqref{eq:Wbody} also gives the angular radiation pattern $\dd W/\dd\theta$.
+
+\subsection{Partition percentages and energy-balance check}
+
+\begin{equation}
+  W_{\mathrm{tot}}=W_{\mathrm{body}}+W_{\mathrm{IW}},\qquad
+  \eta_m=100\,\frac{W_m}{W_{\mathrm{tot}}}\ [\%],\qquad
+  \eta_{\mathrm{IW}}=100\,\frac{W_{\mathrm{IW}}}{W_{\mathrm{tot}}}\ [\%].
+\end{equation}
+\paragraph{Independent check (vertical force).} The power delivered by the source is
+$W_{\mathrm{src}}=\tfrac12\RE(F^{*}\dot u_z)=\tfrac{\omega}{2}\IM\bigl(F^{*}u_z(0,h)\bigr)$.
+By the Sokhotski--Plemelj formula, $(k-k_p\mp\ii0)^{-1}=\mathrm{PV}\,(k-k_p)^{-1}\pm\ii\pi\delta(k-k_p)$,
+which gives
+\begin{equation}
+  W_{\mathrm{src}}=\frac{\omega}{2}\left[\frac{1}{2\pi}\,\mathrm{PV}\!\!\int_{-\infty}^{\infty}
+  \IM\bigl(F^{*}u_z(k,h)\bigr)\dd k
+  \;+\;\RE\Bigl(F^{*}\Res_{k=k_p}u_z(k,h)\Bigr)\right]
+  \label{eq:Wsrc}
+\end{equation}
+(both poles $\pm k_p$ included). The second term equals $W_{\mathrm{IW}}$ and the first equals
+$W_{\mathrm{body}}$. The code must satisfy $W_{\mathrm{src}}=W_{\mathrm{tot}}$ to quadrature accuracy.
+For the explosive source the analogous check uses the injected volume and the pressure at the source.
+
+\paragraph{Verified reference values.} These values come from a numerical evaluation of this
+formulation in the free-surface limit, with a vertical force and a Poisson solid
+($\alpha=\sqrt3\,\beta$, $c_R=0.9194\,\beta$). The energy balance \eqref{eq:Wsrc} closes to a relative
+error of about $10^{-8}$:
+\begin{center}
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+$k_\beta h$ & P [\%] & S [\%] & Rayleigh [\%] & comment\\
+\midrule
+$0$   & 21.94 & 29.13 & 48.93 & same at every $\omega$ (no other length scale)\\
+$0.4$ & 20.34 & 26.89 & 52.77 & \\
+$1.2$ & 17.48 & 20.68 & 61.83 & \\
+$3$   &  3.18 & 25.91 & 70.91 & \\
+$9$   & 12.52 & 87.19 &  0.29 & Rayleigh excitation $\sim e^{-2\nu_\beta(k_R)h}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+The dependence on depth is not monotonic because $W_{\mathrm{src}}$ changes with $h$ through
+interference with the surface reflection.
+
+%======================================================================
+\section{Leaky poles}
+\label{sec:leaky}
+%======================================================================
+
+Complex poles on non-physical sheets (the leaky Rayleigh wave in Case~2/3 when $\alpha_f>c_R$, and
+leaky Stoneley waves in Case~1) radiate continuously into body waves. They are \emph{not} trapped
+energy. Their energy is already counted in \eqref{eq:Wbody}, as a peak of $|D_m(k)|^2$ near
+$\RE k_p$. Report them, if needed, as a sub-partition of $W_{\mathrm{body}}$. They must not be added
+to $W_{\mathrm{IW}}$.
+
+%======================================================================
+\section{Three-dimensional formulation: point force and general moment tensor}
+\label{sec:3d}
+%======================================================================
+
+\subsection{Transform and local frame}
+
+The source is at $(0,0,z_s)$. We use the double Fourier transform
+\begin{equation}
+  \tilde f(k_x,k_y,z)=\iint f\,e^{-\ii(k_xx+k_yy)}\,\dd x\,\dd y,\qquad
+  f(x,y,z)=\frac{1}{4\pi^2}\iint \tilde f\,e^{\ii(k_xx+k_yy)}\,\dd k_x\,\dd k_y ,
+\end{equation}
+with polar wavenumbers $k_x=k\cos\varphi$, $k_y=k\sin\varphi$ ($k\ge0$) and the local frame
+\begin{equation}
+  \hat{\mathbf l}=(\cos\varphi,\sin\varphi,0)^{\mathsf T},\qquad
+  \hat{\mathbf t}=(-\sin\varphi,\cos\varphi,0)^{\mathsf T},\qquad \hat{\mathbf z}.
+\end{equation}
+For fixed $(k,\varphi)$ every field varies horizontally only as $e^{\ii k\,\hat{\mathbf l}\cdot\mathbf x}$.
+The problem therefore splits exactly into:
+\begin{itemize}
+  \item a \textbf{P--SV problem} in the vertical plane $(\hat{\mathbf l},\hat{\mathbf z})$. It is the 2D
+  problem of Sections~1--5 with $u_x\to u_L=\mathbf u\cdot\hat{\mathbf l}$ and
+  $\sigma_{xz}\to\sigma_{Lz}$, and \emph{the matrices $\mathbf M_1,\mathbf M_2$ are unchanged};
+  \item an \textbf{SH problem} for $u_T=\mathbf u\cdot\hat{\mathbf t}$. With
+  $u_T=C\,e^{s\nu_\beta z}$: $\sigma_{zT}=s\,\mu\,\nu_\beta\,C$ and $\sigma_{LT}=\ii k\mu\,C$.
+\end{itemize}
+The 3D Weyl identity has the same kernel as in 2D:
+\begin{equation}
+  g_m=\frac{e^{\ii k_mR}}{4\pi R}
+  \quad\Longleftrightarrow\quad
+  \hat g_m(k,z)=\frac{e^{-\nu_m|z-z_s|}}{2\nu_m}.
+\end{equation}
+
+\subsection{Source representation}
+
+The whole-space Green's tensor ($u_i=G_{ij}F_j$) is
+\begin{equation}
+  G_{ij}=\frac{1}{\rho\omega^2}\Bigl[k_\beta^2\,\delta_{ij}\,g_\beta+\partial_i\partial_j\bigl(g_\beta-g_\alpha\bigr)\Bigr].
+\end{equation}
+A point force $\mathbf F$ (any direction) radiates $u_i=G_{ij}F_j$. A moment tensor $\mathbf M$ (any
+$3\times3$ matrix; symmetric in the seismic case) radiates
+$u_i=M_{pq}\,\partial G_{ip}/\partial\xi_q=-M_{pq}\,\partial_qG_{ip}$. For each wave type define the
+(bilinear) wave vector
+\begin{equation}
+  \bm\kappa_m^{\epsilon}=\bigl(\ii k\cos\varphi,\ \ii k\sin\varphi,\ -\epsilon\,\nu_m\bigr)^{\mathsf T},
+  \qquad \epsilon=\sgn(z-z_s),\qquad
+  \bm\kappa_m\!\cdot\bm\kappa_m=-k_m^2 .
+\end{equation}
+For $z\neq z_s$ the direct field is $\tilde{\mathbf u}^0=c_P\,\bm\kappa_\alpha\,\hat g_\alpha+\mathbf w\,\hat g_\beta$, where
+\begin{align}
+  \text{force:}\quad
+  c_P&=-\frac{\bm\kappa_\alpha\!\cdot\mathbf F}{\rho\omega^2}, &
+  \mathbf w&=\frac{1}{\rho\omega^2}\Bigl[k_\beta^2\,\mathbf F+\bm\kappa_\beta\,(\bm\kappa_\beta\!\cdot\mathbf F)\Bigr],
+  \label{eq:srcF}\\
+  \text{moment:}\quad
+  c_P&=\frac{\bm\kappa_\alpha^{\mathsf T}\mathbf M\,\bm\kappa_\alpha}{\rho\omega^2}, &
+  \mathbf w&=-\frac{1}{\rho\omega^2}\Bigl[k_\beta^2\,\mathbf M\bm\kappa_\beta+\bm\kappa_\beta\,(\bm\kappa_\beta^{\mathsf T}\mathbf M\,\bm\kappa_\beta)\Bigr],
+  \label{eq:srcM}
+\end{align}
+with every $\bm\kappa$ evaluated at the same $\epsilon$. Here $\mathbf w$ is transverse
+($\bm\kappa_\beta\!\cdot\mathbf w=0$). Projecting onto the potentials of Section~1 and onto the SH
+displacement gives
+\begin{equation}
+  \boxed{\ \Pi^{\epsilon}=\frac{c_P}{2\nu_\alpha},\qquad
+  \Sigma^{\epsilon}=\frac{w_z}{2\ii k\,\nu_\beta},\qquad
+  H^{\epsilon}=\frac{\mathbf w\cdot\hat{\mathbf t}}{2\nu_\beta}\ }
+  \label{eq:PSH}
+\end{equation}
+so that $\phi^0=\Pi^\epsilon e^{-\nu_\alpha|z-z_s|}$, $\psi^0=\Sigma^\epsilon e^{-\nu_\beta|z-z_s|}$ and
+$u_T^0=H^\epsilon e^{-\nu_\beta|z-z_s|}$. For a source in the solid ($z_s=h$),
+\begin{equation}
+  (P^0,S^0,C^0)=(\Pi^{-}e^{-\nu_\alpha h},\ \Sigma^{-}e^{-\nu_\beta h},\ H^{-}e^{-\nu_\beta h}),\qquad
+  (P^0_d,S^0_d,C^0_d)=(\Pi^{+}e^{\nu_\alpha h},\ \Sigma^{+}e^{\nu_\beta h},\ H^{+}e^{\nu_\beta h}).
+\end{equation}
+$P^0,S^0$ enter $\mathbf S$ in \eqref{eq:case1}--\eqref{eq:case2} unchanged, and $C^0$ enters the SH
+system below.
+
+\paragraph{Consistency.} (i) With $\mathbf F=F\hat{\mathbf z}$ these formulas reproduce the 2D
+vertical-force table. (ii) For $\mathbf M=M_0\mathbf I$ they give $\mathbf w=\mathbf 0$ and
+$c_P=-M_0/(\lambda+2\mu)$, i.e.\ the explosion with $\Phi_0=-M_0/(\lambda+2\mu)$.
+(iii) \emph{Source in the fluid} (Case~3, $z_s=-h$): only the P terms survive, with
+$\rho\to\rho_f$ and $\alpha\to\alpha_f$:
+$c_P=-\bm\kappa_f\!\cdot\mathbf F/(\rho_f\omega^2)$ or
+$\bm\kappa_f^{\mathsf T}\mathbf M\bm\kappa_f/(\rho_f\omega^2)$, $P_f^0=\Pi_f^{+}e^{-\nu_fh}$, and
+$U_f^0=\Pi_f^{-}e^{\nu_fh}$.
+
+\paragraph{Azimuthal structure.} $\Pi,\Sigma,H$ are trigonometric polynomials in $\varphi$ of degree
+$\le1$ for a force and $\le2$ for a moment tensor. These are the azimuthal orders $m=0,\pm1,\pm2$ of
+the cylindrical theory. Hence $|D|^2$ has degree $\le4$, and the uniform trapezoidal rule in
+$\varphi$ with $N_\varphi\ge5$ nodes is \emph{exact}. Cartesian displacement components have degree
+$\le3$.
+
+\subsection{SH boundary conditions}
+
+The unknowns are $C_1$ (reflected SH, $e^{-\nu_{\beta1}z}$) and $C_2$ (transmitted SH, $e^{+\nu_{\beta2}z}$).
+\begin{align}
+  \text{Case 1:}&\quad
+  \begin{bmatrix}1 & -1\\ -\mu_1\nu_{\beta1} & -\mu_2\nu_{\beta2}\end{bmatrix}
+  \begin{bmatrix}C_1\\ C_2\end{bmatrix}=-\begin{bmatrix}C^0\\ \mu_1\nu_{\beta1}C^0\end{bmatrix},
+  \qquad \Delta_{\mathrm{SH}}=-(\mu_1\nu_{\beta1}+\mu_2\nu_{\beta2}),\\
+  \text{Case 2 and free surface:}&\quad \sigma_{zT}=0\ \Rightarrow\ C_1=C^0\quad\text{(total reflection)},\\
+  \text{Case 3:}&\quad C_1\equiv0\quad\text{(a fluid source radiates no SH)}.
+\end{align}
+$\Delta_{\mathrm{SH}}\neq0$ on the physical sheet, so two half-spaces carry \emph{no} SH interface wave.
+Love waves need a layer. SH energy is therefore always body-wave energy.
+
+\subsection{Energy partition in 3D}
+
+By Parseval, $\iint|f|^2\dd x\,\dd y=\frac{1}{4\pi^2}\iint|\tilde f|^2\dd^2k$. The flux densities
+\eqref{eq:Em} still apply per unit $|{\rm potential}|^2$ for P and SV. For SH, per unit
+$|C|^2$, the flux density is
+\begin{equation}
+  \mathcal E_{\mathrm{SH}}(k)=\tfrac12\,\omega\,\mu\,\RE(\ii\nu_\beta).
+\end{equation}
+
+\paragraph{Body waves.}
+\begin{equation}
+  \boxed{\ W_m=\frac{1}{4\pi^2}\int_0^{2\pi}\!\!\dd\varphi\int_0^{k_m}\mathcal E_m(k)\,
+  \bigl|D_m(k,\varphi)\bigr|^2\,k\,\dd k\ },
+  \qquad m\in\{\mathrm P_1,\mathrm{SV}_1,\mathrm{SH}_1,\mathrm P_2,\mathrm{SV}_2,\mathrm{SH}_2,\mathrm P_f\},
+  \label{eq:Wbody3}
+\end{equation}
+with $D_m$ from the table of Section~\ref{sec:energy} plus
+$D_{\mathrm{SH}_1}=C_d^0+C_1$ (Cases~1,~2) and $D_{\mathrm{SH}_2}=C_2$ (Case~1).
+Integrate in $k$ with \eqref{eq:subst} and in $\varphi$ with the exact trapezoidal rule.
+
+\paragraph{Interface wave.} The pole $k_p$ does not depend on $\varphi$ because the medium is isotropic.
+A residue in $k$ followed by stationary phase in $\varphi$ gives the far field
+\begin{equation}
+  \mathbf u^{\mathrm{IW}}(r,\theta,z)\simeq
+  \ii\,\sqrt{\frac{k_p}{2\pi r}}\;e^{\ii(k_pr-\pi/4)}\;
+  \Res_{k=k_p}\tilde{\mathbf u}(k,\varphi=\theta,z),
+\end{equation}
+and the power through a cylinder $r\to\infty$ is
+\begin{equation}
+  \boxed{\ W_{\mathrm{IW}}=\frac{k_p}{2\pi}\int_0^{2\pi}\mathcal W^{+}_{\mathrm{2D}}(\varphi)\,\dd\varphi\ },
+  \label{eq:WIW3}
+\end{equation}
+where $\mathcal W^{+}_{\mathrm{2D}}(\varphi)$ is \eqref{eq:WIW} evaluated in the $(\hat{\mathbf l},\hat{\mathbf z})$
+plane with amplitudes $\Res_{k_p}\mathbf x(k,\varphi)$. The $u_\theta$ terms decay as $r^{-3/2}$ and
+drop out.
+
+\paragraph{Source work (independent check, force or moment).}
+\begin{equation}
+  W_{\mathrm{src}}=\frac{\omega}{2}\,\IM\,\mathcal S[\mathbf u],\qquad
+  \mathcal S[\mathbf u]=
+  \begin{cases}\mathbf F^{*}\!\cdot\mathbf u(\mathbf x_s) & \text{force},\\
+  M^{*}_{pq}\,\partial_qu_p(\mathbf x_s) & \text{moment}.\end{cases}
+\end{equation}
+Split $\mathbf u$ into the direct field and the scattered field. The direct field contributes the
+whole-space power $W_0$, which can be computed with \eqref{eq:Wbody3} applied to the direct up- and
+down-going amplitudes. For a force it is also available analytically:
+$W_0=\omega^2|\mathbf F|^2(\alpha^{-3}+2\beta^{-3})/(24\pi\rho)$. For the scattered field (regular
+at $\mathbf x_s$), $\partial_q\to\kappa_q$ of each wave. For the lower solid the polarisation and wave
+vectors are
+\begin{align*}
+  &\text{P: } A\,e^{-\nu_\alpha z}(\ii k\hat{\mathbf l}-\nu_\alpha\hat{\mathbf z}),\ \
+  \bm\kappa=\ii k\hat{\mathbf l}-\nu_\alpha\hat{\mathbf z};\qquad
+  \text{SV: } B\,e^{-\nu_\beta z}(\nu_\beta\hat{\mathbf l}+\ii k\hat{\mathbf z}),\ \
+  \bm\kappa=\ii k\hat{\mathbf l}-\nu_\beta\hat{\mathbf z};\\
+  &\text{SH: } C\,e^{-\nu_\beta z}\,\hat{\mathbf t},\ \ \bm\kappa=\ii k\hat{\mathbf l}-\nu_\beta\hat{\mathbf z};
+  \qquad \mathcal S_{\mathbf M}=\textstyle\sum_{\text{waves}}\mathbf v^{\mathsf T}\mathbf M^{*}\bm\kappa .
+\end{align*}
+Sokhotski--Plemelj on the radial integral (a single pole at $k_p$, since $\varphi$ covers all
+directions) gives
+\begin{equation}
+  W_{\mathrm{src}}=W_0
+  +\frac{\omega}{8\pi^2}\,\mathrm{PV}\!\!\int_0^{2\pi}\!\!\!\int_0^{\infty}\IM\,\mathcal S[\tilde{\mathbf u}^{\mathrm{sc}}]\,k\,\dd k\,\dd\varphi
+  +\underbrace{\frac{\omega k_p}{8\pi}\int_0^{2\pi}\RE\,\mathcal S\bigl[\Res_{k_p}\tilde{\mathbf u}^{\mathrm{sc}}\bigr]\dd\varphi}_{=\,W_{\mathrm{IW}}}.
+  \label{eq:Wsrc3}
+\end{equation}
+The last term is a second, independent evaluation of \eqref{eq:WIW3}.
+
+\subsection{Verification (3D, numerical evaluation of this section)}
+
+Poisson solid, $\rho=\beta=\omega=1$, free-surface limit. The general moment tensor used is
+$\mathbf M=\left[\begin{smallmatrix}1&0.4&-0.7\\0.4&-0.3&0.5\\-0.7&0.5&0.6\end{smallmatrix}\right]$ and the
+oblique force is $\mathbf F=(0.3,-0.5,0.8)$.
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Test & Result & Reference\\
+\midrule
+Whole space, oblique $\mathbf F$: $W_0$ & $0.02849672$ & analytic $0.02849671$\\
+Whole space, force: $W_S/W_P$ & $10.3923$ & $2(\alpha/\beta)^3=10.3923$\\
+Whole space, double couple: $W_S/W_P$ & $23.3827$ & $\tfrac32(\alpha/\beta)^5=23.3827$\\
+Surface vertical force: P / S / R [\%] & $6.88$ / $25.75$ / $67.36$ & Miller--Pursey: $6.9$ / $25.8$ / $67.4$\\
+$\mathbf M$, $k_\beta h=0.5$: P/SV/SH/R [\%] & $2.69$ / $8.48$ / $62.02$ / $26.81$ & balance err.\ $1.8\times10^{-8}$\\
+$\mathbf F$, $k_\beta h=0.5$: P/SV/SH/R [\%] & $6.27$ / $21.63$ / $18.64$ / $53.46$ & balance err.\ $3.6\times10^{-8}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+In both buried cases, \eqref{eq:WIW3} (flux) and the last term of \eqref{eq:Wsrc3} (source side)
+agree to all printed digits.
+
+\subsection{Wavefield synthesis with the discrete wavenumber method}
+
+Sample $\varphi$ uniformly ($N_\varphi\ge8$). Take the FFT in $\varphi$ of each Cartesian component,
+$\tilde{\mathbf u}(k,\varphi,z)=\sum_n\tilde{\mathbf u}_n(k,z)e^{\ii n\varphi}$ with $|n|\le3$. The
+Jacobi--Anger identity $\int_0^{2\pi}e^{\ii n\varphi}e^{\ii kr\cos(\varphi-\theta)}\dd\varphi=2\pi\ii^nJ_n(kr)e^{\ii n\theta}$
+then gives
+\begin{equation}
+  \mathbf u(r,\theta,z)=\frac{1}{2\pi}\sum_{n=-3}^{3}\ii^n e^{\ii n\theta}
+  \int_0^\infty\tilde{\mathbf u}_n(k,z)\,J_n(kr)\,k\,\dd k
+  \;\approx\;\frac{\Delta k}{2\pi}\sum_{n}\ii^n e^{\ii n\theta}\sum_{j\ge1}\tilde{\mathbf u}_n(k_j,z)J_n(k_jr)\,k_j,
+\end{equation}
+with $k_j=j\,\Delta k$, $\Delta k=2\pi/L$ (Bouchon's DWN). $L$ must exceed $r+c_{\max}T$ so that the
+periodic images arrive after the time window $T$.
+
+\emph{Complex frequency.} With the $e^{-\ii\omega t}$ convention the contour is shifted \emph{upward},
+$\omega_c=\omega+\ii\epsilon$, and
+$u(t)=e^{\epsilon t}\,\frac{1}{2\pi}\int U(\omega_c)e^{-\ii\omega t}\dd\omega$. In MATLAB this synthesis is
+\texttt{fft} (kernel $e^{-\ii\omega t}$), not \texttt{ifft}. A typical choice is $\epsilon\approx\pi/T$ to
+$2\pi/T$.
+
+\emph{Energy partition is evaluated at real $\omega$.} The damping $\epsilon$ dissipates energy and
+moves $k_p$ off the real axis, which blurs the separation between body and interface waves. The
+energy module therefore removes the pole analytically through \eqref{eq:res}, and the body windows
+contain no poles. Optional cross-check: $W_{\mathrm{src}}(\omega+\ii\epsilon)\to W_{\mathrm{tot}}$ as
+$\epsilon\to0$, because the Lorentzian peak at $k_p$ integrates to the pole term.
+
+%======================================================================
+\section{Remarks for the MATLAB implementation}
+%======================================================================
+
+\begin{enumerate}
+  \item Scale the stress rows by $1/\mu_1$ (and $\mathbf S$ accordingly) and use
+  $\bar k=k/k_{\beta1}$. This keeps $\mathbf M$ well conditioned.
+  \item Find the root $k_p$ by scanning $k>\max_mk_m$ for sign changes of $\Delta(k)$, which is
+  real there up to a constant phase because all $\nu$ are real, and then refine with \texttt{fzero}.
+  The Scholte root lies beyond $k_f$ and can be far out when $\alpha_f$ is small.
+  \item Plane-wave check: for $|k|<k_{\alpha1}$ with incident P only,
+  $\sum_m\mathcal E_m|x_m|^2/(\mathcal E_{\alpha1}|P^0|^2)=1$ (energy reflection and transmission
+  coefficients).
+  \item Broadband partition: weight $W_m(\omega)$ by $|\hat s(\omega)|^2$ of the source wavelet and
+  integrate over $\omega$.
+  \item 3D: see Section~\ref{sec:3d}. The same $\mathbf M_1,\mathbf M_2$ are evaluated for each
+  $(k,\varphi)$, together with a scalar or $2\times2$ SH system.
+\end{enumerate}
+
+\end{document}
