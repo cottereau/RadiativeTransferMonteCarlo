@@ -27,6 +27,11 @@ function C = interfaceLameChannels(K, zlim, w, vp, vs, rho, rhoRef, cI, UI, Inor
 %   C.IK_lam,    C.IK_mu_P,  C.IK_mu_Sv,  C.IK_mu_Sh    depth integrals
 %
 %   See also INTERFACELAMEKERNELS, SCHOLTEMODEL, STONELEYMODEL.
+%
+%   References:
+%     - Xu, Z., Margerin, L. & Mikesell, T.D. (2021), Monte Carlo simulations of coupled
+%       body- and Rayleigh-wave multiple scattering in elastic media, Geophys. J. Int. 228,
+%       1213-1236. doi:10.1093/gji/ggab370
 
 mu  = rho*vs^2;
 lam = rho*vp^2 - 2*mu;

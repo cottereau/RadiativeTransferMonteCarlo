@@ -1,5 +1,13 @@
 function P = propagateParticleSmallDt(mat,geometry,P,T)
 
+% Exact unbounded lossless limit; acoustic attenuation is applied by solver.
+if all(isinf(mat.meanFreeTime(:))) && ...
+        (~isfield(geometry,'bnd') || isempty(geometry.bnd)) && ...
+        (mat.acoustics || isempty(mat.Q) || all(isinf(mat.Q(:))))
+    P = propagateParticle(mat,P,T);
+    return
+end
+
 % choice of time sub-step
 T = T-mean(P.t);
 

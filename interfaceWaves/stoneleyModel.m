@@ -93,6 +93,18 @@ function M = stoneleyModel(vp1, vs1, rho1, vp2, vs2, rho2, freq, het1, het2)
 %     .Sigma_total   : Total scattering rate (1/m)
 %     .meanFreePath  : Mean free path ell = 1/Sigma_total (m)
 %     .meanFreeTime  : Mean free time tau = ell / c_Stoneley (s)
+%
+%   References:
+%     - Stoneley, R. (1924), Elastic waves at the surface of separation of two solids, Proc.
+%       R. Soc. Lond. A 106, 416-428. doi:10.1098/rspa.1924.0079
+%     - Cagniard, L. (1962), Reflection and Refraction of Progressive Seismic Waves,
+%       McGraw-Hill (no DOI or ISBN)
+%     - Snieder, R. (1986), 3-D linearized scattering of surface waves and a formalism for
+%       surface wave holography, Geophys. J. Int. 84, 581-605.
+%       doi:10.1111/j.1365-246X.1986.tb04372.x
+%     - Xu, Z., Margerin, L. & Mikesell, T.D. (2021), Monte Carlo simulations of coupled
+%       body- and Rayleigh-wave multiple scattering in elastic media, Geophys. J. Int. 228,
+%       1213-1236. doi:10.1093/gji/ggab370
 
 if nargin < 7 || isempty(freq), freq = 1000; end
 validateStoneleyInputs(vp1, vs1, rho1, vp2, vs2, rho2, freq);

@@ -16,9 +16,9 @@ function out = ZoeppritzFluidIncident(thetaF, vpSolid,vsSolid,rhoSolid, vpFluid,
 %   reflected-SV term -- fine when that side is the solid, but singular if
 %   naively relabelled to make the fluid side "medium 1" (a fluid has no
 %   shear modulus to divide by). Re-deriving a differently-normalised
-%   matrix by hand carries real sign/normalisation risk (see the two
-%   independent typos MCRTE/todo.rtf documents having been found and fixed
-%   in ZoeppritzSolid.m's existing matrix this same way).
+%   matrix by hand carries real sign/normalisation risk (two
+%   independent typos were found and fixed in ZoeppritzSolid.m's matrix
+%   this same way).
 %
 %   Instead this uses energy-flux reciprocity, a general, rigorously
 %   established property of any linear, lossless wave-scattering interface
@@ -37,7 +37,7 @@ function out = ZoeppritzFluidIncident(thetaF, vpSolid,vsSolid,rhoSolid, vpFluid,
 %   reflected energy matches the elementary acoustic-impedance formula
 %   ((Z_solid-Z_fluid)/(Z_solid+Z_fluid))^2 to 6 digits, for a solid-slower
 %   and a solid-faster material pair, including across the fluid-side
-%   critical angle. See the validation transcript in this session's log.
+%   critical angle.
 %
 %   Output fields: E_R (fluid->fluid, reflected), E_Tp, E_Tsv (fluid->
 %   solid P, solid SV, transmitted), plus the Snell angles thetaSolidP,
@@ -47,6 +47,10 @@ function out = ZoeppritzFluidIncident(thetaF, vpSolid,vsSolid,rhoSolid, vpFluid,
 %   specific to this construction -- interpolate around them as usual).
 %
 %   See also MATERIALCLASS.ZOEPPRITZFLUID, MATERIALINTERFACESOLIDFLUID.
+%
+%   References:
+%     - Aki, K. & Richards, P.G. (2002), Quantitative Seismology, 2nd ed., University
+%       Science Books (no DOI; ISBN 978-0-935702-96-5)
 
 thetaF = thetaF(:).';
 p = sind(thetaF) / vpFluid;

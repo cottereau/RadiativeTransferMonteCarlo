@@ -13,18 +13,20 @@
 % Our code is compared to the results described in the following papers:
 % (1) J. C. J. Paasschens. Solution of the time-dependent Boltzmann equation,
 %     Phys. Rev. E 56(1), pp. 1135-1141 (1997).
+%     doi:10.1103/PhysRevE.56.1135
 % (2) M. Hoshiba. Simulation of multiple-scattered coda wave excitation
 %     based on the energy conservation law. Phys. Earth Planet. Int. 67,
-%     pp. 123-136 (1991).
+%     pp. 123-136 (1991). doi:10.1016/0031-9201(91)90066-Q
 % (3) H. Nakahara, K. Yoshimoto. Radiative transfer of elastic waves in
 %     two-dimensional isotropic scattering media: semi-analytical approach
 %     for isotropic source radiation. Earth Planets Space 63, pp. 459-468
-%     (2011).
+%     (2011). doi:10.5047/eps.2011.03.006
 % (4) H. Sato. Multiple isotropic scattering model including P-S conversions
 %     for the seismogram envelope formation. Geophys. J. Int 117,
-%     pp. 487-494 (1994).
+%     pp. 487-494 (1994). doi:10.1111/j.1365-246X.1994.tb03946.x
 % (5) K. Yoshimoto, Monte Carlo simulation of seismogram envelopes in
-%     scattering media. Journal of Geophysical Research: Solid Earth (2000)
+%     scattering media. J. Geophys. Res. 105, 6153-6161 (2000).
+%     doi:10.1029/1999JB900437
 % 
 % 
 clc

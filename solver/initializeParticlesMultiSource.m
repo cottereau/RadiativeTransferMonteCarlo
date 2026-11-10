@@ -19,11 +19,14 @@ function P = initializeParticlesMultiSource(sources, Ntotal, d, acoustics)
 %         plus P.sourceIdx indicating source attribution.
 %
 %   PARTICLE CONSERVATION:
-%     Ni = round(fraction_i * Ntotal), with the remainder absorbed by the
-%     last source so that sum(Ni) == Ntotal exactly.
+%     Largest-remainder allocation gives nonnegative counts summing to
+%     Ntotal. Fractional ties are resolved by source order.
 %
 %   See also INITIALIZEPARTICLE, RADIATIVETRANSFER.
 
+validateattributes(Ntotal, {'numeric'}, ...
+    {'real','finite','scalar','integer','nonnegative','<=',flintmax});
+Ntotal = double(Ntotal);
 if ~iscell(sources)
     error('sources must be a CELL array of source structures.');
 end
@@ -33,25 +36,13 @@ if Ns == 0
     error('sources cell array cannot be empty.');
 end
 
-% Extract fractions
-fractions = zeros(Ns, 1);
-for i = 1:Ns
-    if ~isfield(sources{i}, 'fraction') || isempty(sources{i}.fraction)
-        error('Source %d is missing the mandatory .fraction field.', i);
-    end
-    fractions(i) = sources{i}.fraction;
+counts = sourceParticleCounts(sources,Ntotal);
+if Ntotal == 0
+    P = struct('d',d,'N',0,'x',zeros(0,3),'dir',zeros(0,3), ...
+        'perp',zeros(0,3),'p',true(0,1),'t',zeros(0,1), ...
+        'alive',true(0,1),'dir0',zeros(0,3),'sourceIdx',zeros(0,1,'uint32'));
+    return
 end
-
-% Normalize fractions if they do not sum to 1
-sumFrac = sum(fractions);
-if abs(sumFrac - 1) > 1e-6
-    warning('Source fractions summed to %.4g; normalizing to 1.', sumFrac);
-    fractions = fractions / sumFrac;
-end
-
-% Compute exact particle count per source
-counts = round(fractions * Ntotal);
-counts(end) = Ntotal - sum(counts(1:end-1)); % Absorb any rounding remainder
 
 % Pre-allocate cells for concatenation
 P_cells = cell(Ns, 1);

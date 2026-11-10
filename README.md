@@ -39,7 +39,13 @@ cd RadiativeTransferMonteCarlo
 AddRTMCLib
 ```
 
-The `AddRTMCLib.m` script adds the repository to your MATLAB path, allowing access to functions from any working directory.
+`AddRTMCLib` adds the repository and all its subfolders to the MATLAB path and saves it (`savepath`). Packages (`+TMatrix`, `+Comparison`, `lamb/+lamb`) and class folders (`@MaterialClass`, `lamb/@LambModel`) are found through their parent folders. Scripts and tests call `AddRTMCLib(root, false)`, which adds the same folders without saving the path:
+
+```matlab
+AddRTMCLib('/path/to/RadiativeTransferMonteCarlo', false)   % this session only
+```
+
+Parallel runs (`parfor`) resolve classes through the saved path and the current folder. If another folder on your saved path also defines a `MaterialClass`, run the simulations from the repository root or remove that folder from the saved path.
 
 ### Basic Example: Acoustic Wave Propagation
 
@@ -107,6 +113,8 @@ grid on;
 
 ```
 ├── Examples/                 # Example scripts and validation cases
+│   ├── source/               # Physical-source cases (Ricker, sampled, multifrequency)
+│   ├── tmatrix/              # T-matrix medium study
 │   ├── mainAcoustics.m       # Acoustic wave examples
 │   ├── mainElastics.m        # Elastic wave examples
 │   └── RunAllTests.m         # Run all validation comparisons
@@ -115,9 +123,13 @@ grid on;
 ├── +Comparison/              # Comparison functions against literature
 ├── solver/                   # Particle initialization, propagation, observation, sources
 ├── postprocessing/           # Plotting and export of energy diagnostics
-├── interfaceWaves/           # Rayleigh, Scholte and Stoneley interface-wave models
-├── lamb/                     # Lamb (half-space Green's function) engine and studies
-├── tests/                    # Validation gates of the Lamb engine and solver benchmarks
+├── interfaceWaves/           # Rayleigh, Scholte and Stoneley interface-wave models (Xu et al. 2021)
+├── lamb/                     # Near-interface (Lamb) Monte Carlo engine
+│   ├── +lamb/                # f-k Green's functions of a planar interface, energy partition, DWN
+│   ├── @LambModel/           # Lamb Monte Carlo model (tables, emission, transport, observation)
+│   ├── studies/              # Case studies built on the Lamb engine
+│   └── doc/                  # Formulation (LambFK_Formulation.tex) and architecture notes
+├── tests/                    # Lamb engine gates, +lamb suite (tests/lambfk), source and solver checks
 ├── AddRTMCLib.m              # Setup and path configuration (adds all subfolders)
 └── radiativeTransfer.m       # Main solver
 ```
@@ -126,8 +138,11 @@ grid on;
 
 | Function | Purpose |
 |----------|---------|
-| `radiativeTransfer()` | Solver for bounded and unbounded domains |
+| `radiativeTransfer()` | Solver for bounded and unbounded domains, single or multiple materials |
 | `MaterialClass()` | Material specification and scattering properties |
+| `sourcePointForce()`, `sourceMomentTensor()`, `sourceAcoustic()` | Physical point sources (force, moment tensor, acoustic) |
+| `sourceTimeFunction()`, `sourceEnergySpectrum()`, `radiativeTransferBroadband()` | Physical energy of a source with a time function |
+| `LambModel()` / `lambRTEModel()` | Near-interface Lamb Monte Carlo model |
 | `Examples/RunAllTests` | Run validation against published results |
 
 ## Input Data Format
@@ -138,7 +153,18 @@ The main solver is called as
 obs = radiativeTransfer(geometry, source, material, observation);
 ```
 
-where `geometry`, `source`, and `observation` are MATLAB structures, and `material` is a `MaterialClass` object.
+where `geometry`, `source`, and `observation` are MATLAB structures, and `material` is a `MaterialClass` object (or a cell array of materials, see *Several materials*). An optional fifth argument sets solver options:
+
+```matlab
+opts = struct('eventTime', 0, ...             % source emission time; earlier output times are empty
+              'packetSize', 1e5, ...          % particles per packet
+              'scatteringAngleNodes', 1e6, ...% nodes of the scattering-angle CDFs
+              'binAverage', false, ...        % average over each output time bin (timeSteps = 1 or polarized)
+              'polarized', false);            % unbounded 3-D Born pure-state transport
+obs = radiativeTransfer(geometry, source, material, observation, opts);
+```
+
+Besides `obs.energyDensity` and `obs.energy` (captured energy, one column per mode), the output contains `obs.aliveEnergy` (surviving energy, including what lies outside the receiver grid), `obs.outsideObservationEnergy`, `obs.age` (time since the event), `obs.launchModeFraction` and `obs.modeLabels`.
 
 ### Geometry
 
@@ -177,7 +203,22 @@ Example:
 geometry.bnd(1) = struct('dir', 3, 'val', 0);
 ```
 
-defines a reflective plane boundary at `z = 0`.
+defines a reflective plane boundary at `z = 0`. For elastic waves a reflective boundary uses the Zoeppritz coefficients of the material against air (`MaterialClass.ZoeppritzVsAir`); the small energy transmitted into the air is given to the converted reflected mode, so the boundary conserves energy.
+
+#### Several materials
+
+Pass a cell array of materials and tag the interfaces with the two material indices they separate:
+
+```matlab
+material = {matCore, matShell};                     % particles start in material{1}
+geometry.bnd(1) = struct('dir', 5, 'val', 0.5, 'type', 'reflective', 'mat', [1 2]);   % sphere r = 0.5
+geometry.bnd(2) = struct('dir', 5, 'val', 1.0, 'type', 'reflective', 'mat', []);      % outer surface
+obs = radiativeTransfer(geometry, source, material, observation);
+```
+
+For elastic waves `obs.energy` has one row per time and two columns, P and S energy; `sum(obs.energy, 2)` is the total, which stays equal to 1 without absorbing boundaries or intrinsic attenuation.
+
+`dir` = 1, 2 or 3 gives a plane normal to x, y or z (layered media), 4 a cylinder around z, 5 a sphere (concentric shells). P, SV and SH particles are reflected or transmitted, with mode conversion, by the solid-solid or solid-fluid Zoeppritz coefficients. Boundaries without `mat` behave as in the single-material case.
 
 ### Source
 
@@ -222,6 +263,33 @@ source = struct('numberParticles', 1e6, ...
                 'lambda', 0.05);
 ```
 
+#### Physical sources: point force, moment tensor, acoustic source
+
+`sourcePointForce`, `sourceMomentTensor` and `sourceAcoustic` build 3-D point sources with the exact far-field radiation of a force, a seismic moment tensor (Aki & Richards 2002, Ch. 4) or an acoustic volume injection and/or force:
+
+```matlab
+opts   = struct('position', [0 0 0], 'lambda', 1e-3, 'numberParticles', 1e6);
+source = sourcePointForce([0 0 1], vp, vs, rho, opts);                  % force vector F [N]
+source = sourceMomentTensor(M, vp, vs, rho, opts);                      % symmetric 3x3 M [N m]
+source = sourceMomentTensor([strike dip rake M0], vp, vs, rho, opts);   % double couple (degrees, N m), x north, y east, z down
+source = sourceAcoustic(Q, F, c, rho, opts);                            % volume rate Q [m^3/s] and/or force F [N]
+obs = radiativeTransfer(geometry, source, material, observation);
+```
+
+`source.fP` and `source.fS` are the energy fractions radiated in P and S by the physical source. `opts.launchMode` selects `'mixed'` (default: each particle is P or S with these fractions), `'P'` or `'S'` (conditional launch of one mode with its own angular law). Directions follow the energy radiation pattern of the launched mode, S particles are polarized along the far-field S amplitude, and `lambda` is a numerical position jitter (the point-source limit is used). The acoustic source radiates as `(rho c Q + n.F)^2`: monopole, dipole, or their cardioid. Several sources can be combined as a cell array with `.fraction` fields; the particle counts are allocated once over all sources and modes before packetization.
+
+#### Broadband (physical energy)
+
+A monochromatic run is a unit-energy response. The physical P and S energy of a source with a time function follows from `sourceTimeFunction` (`'ricker'`, `'ormsby'`, `'toneburst'`, `'sampled'`), `sourceEnergySpectrum` (absolute energy per angular frequency) and `radiativeTransferBroadband`, which composes monochromatic responses over frequency bands (`materialFactory(f_Hz)` returns the material at each frequency):
+
+```matlab
+wave     = sourceTimeFunction('ricker', struct('f0', 10, 'delay', 0));
+spectrum = sourceEnergySpectrum(source, wave);
+out      = radiativeTransferBroadband(geometry, spectrum, @(f) makeMaterial(f), observation, opts);
+```
+
+`Examples/FontePointForceBroadband.m`, `Examples/FonteMomentTensorBroadband.m` and `Examples/source/` contain complete cases.
+
 ### Observation
 
 The observation structure defines the histogram bins used to record particle energy.
@@ -231,7 +299,7 @@ The observation structure defines the histogram bins used to record particle ene
 | `x`          | First spatial bin coordinate. Its meaning depends on `geometry.frame`.                    |
 | `y`          | Second spatial/angular bin coordinate.                                                    |
 | `z`          | Third spatial/angular bin coordinate, used in 3D.                                  |
-| `directions` | Bins for the angle between the propagation direction and the position vector. |
+| `directions` | Bins for the angle between the propagation direction and the position vector. When resolved, the density is per unit of cos(angle) in 3D and per radian in 2D. |
 | `time`       | Observation times.                                                                        |
 
 Only two variables among `x`, `y`, `z`, and `directions` should have more than one bin, because the code stores two-dimensional histograms. `directions` is an angle in `[0, pi]`. Use `directions = [0 pi]` when you want to integrate over all propagation directions.
@@ -441,9 +509,25 @@ Currently supported options include:
 | `'VonKarman'`          | von Kármán correlation model. Requires `material.SpectralParam.nu`. |
 | `'triangular'`         | Triangular spectral model.                                          |
 | `'low_pass'`           | Low-pass spectral model.                                            |
-| `'monodispersesphere'` | Microstructure-inspired model based on mono-disperse inclusions.    |
+| `'monodispersesphere'` | Randomly placed hard spheres/disks (Percus-Yevick). Parameters `SpectralParam.rhoS` (volume fraction) and `SpectralParam.Diam`. In 3D the PSDF is built directly in wavenumber space, so `Phi(0) = 1/(6 pi^2)`. |
 | `'image'`              | Spectrum estimated from an image or binary microstructure.          |
-| `'Imported'`           | User-imported autocorrelation function.                             |
+| `'Imported'`           | User-imported autocorrelation function, `material.ImportPSDF(R, r)`; `Lc` and `Phi` follow from `CalcLc` and `CalcPhi` in `material.d` dimensions. |
+| `'tmatrix'`            | Exact scattering by spheres (partial-wave T-matrix) instead of Born. See below. |
+
+#### Spheres: `'tmatrix'`
+
+For spherical inclusions with strong contrast, the DSCS can be computed from exact single-sphere scattering (`+TMatrix`) instead of the Born approximation:
+
+```matlab
+material.SpectralLaw   = 'tmatrix';
+material.SpectralParam = struct('SphereRadius', a, 'SphereVolumeFraction', phi, ...
+    'HostPhase',      struct('lam', lam1, 'mu', mu1, 'rho', rho1), ...
+    'InclusionPhase', struct('lam', lam2, 'mu', mu2, 'rho', rho2), ...
+    'StructureFactor', Sq);                % optional handle S(q); omitted = 1 (independent spheres)
+material.CalcSigma;
+```
+
+`sigma_ij(theta) = v_i n0 |f_ij(theta)|^2 S(q_ij)` with `n0` the number density of spheres. `TMatrix.structureFactor` estimates `S(q)` from files of sphere centres. The second and third outputs of `TMatrix.calcSigma(material)` are the effective velocities and scattering attenuations from Foldy's formula `K^2 = k^2 + 4 pi n0 f(0)`; they are informative only, transport uses `material.vp` and `material.vs`. Elastic media only.
 
 ### Autocorrelation Normalization
 
@@ -512,6 +596,13 @@ Results are validated against these key papers:
 3. **Nakahara, H. and Yoshimoto, K.**, 2011. *Radiative transfer of elastic waves in two-dimensional isotropic scattering media: Semi-analytical approach for isotropic source radiation*. Earth, Planets and Space, 63, pp. 459-468. [DOI](https://doi.org/10.5047/eps.2011.03.006)
 4. **Hoshiba, M.**, 1991. *Simulation of multiple-scattered coda wave excitation based on the energy conservation law*. Physics of the Earth and Planetary Interiors, 67(1-2), pp. 123-136. [DOI](https://doi.org/10.1016/0031-9201(91)90066-Q)
 5. **Sato, H.**, 1994. *Multiple isotropic scattering model including P-S conversions for the seismogram envelope formation*. Geophysical Journal International, 117(2), pp. 487-494. [DOI](https://doi.org/10.1111/j.1365-246X.1994.tb03946.x)
+
+Other models implemented in the code:
+
+- **Foldy, L.L.**, 1945. *The multiple scattering of waves. I. General theory of isotropic scattering by randomly distributed scatterers*. Physical Review, 67, pp. 107-119. [DOI](https://doi.org/10.1103/PhysRev.67.107)
+- **Linton, C.M. and Martin, P.A.**, 2006. *Multiple scattering by multiple spheres: a new proof of the Lloyd-Berry formula for the effective wavenumber*. SIAM Journal on Applied Mathematics, 66(5), pp. 1649-1668. [DOI](https://doi.org/10.1137/050636401)
+- **Xu, Z., Margerin, L. and Mikesell, T.D.**, 2021. *Monte Carlo simulations of coupled body- and Rayleigh-wave multiple scattering in elastic media*. Geophysical Journal International, 228, pp. 1213-1236. [DOI](https://doi.org/10.1093/gji/ggab370)
+- **Aki, K. and Richards, P.G.**, 2002. *Quantitative Seismology*, 2nd ed. University Science Books (ISBN 978-0-935702-96-5).
 
 ### Monte Carlo Method References
 

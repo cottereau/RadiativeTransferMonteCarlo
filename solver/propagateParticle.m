@@ -1,4 +1,15 @@
 function P = propagateParticle(mat,P,T)
+T = T+zeros(size(P.t));   % scalar or per-particle target time
+
+% Exact zero-collision limit: no random calls or angular CDF access.
+if all(isinf(mat.meanFreeTime(:)))
+    dt = max(0,T-P.t);
+    speed = mat.vp*ones(P.N,1); speed(~P.p) = mat.vs;
+    active = P.alive & dt>0;
+    P.x(active,:) = P.x(active,:)+(speed(active).*dt(active)).*P.dir(active,:);
+    P.t = max(P.t,T);
+    return
+end
 
 % initialization 
 dt = T-P.t;
@@ -26,8 +37,8 @@ while any(ind)
     end
 
     % propagate particles
-    P.x(p,:) = P.x(p,:) + (mat.vp.*dt(p)).*P.dir(p,:);
-    P.x(s,:) = P.x(s,:) + (mat.vs.*dt(s)).*P.dir(s,:);
+    P.x(p,:) = P.x(p,:) + (mat.vp.*reshape(dt(p),[],1)).*P.dir(p,:);
+    P.x(s,:) = P.x(s,:) + (mat.vs.*reshape(dt(s),[],1)).*P.dir(s,:);
 
     % scattering around direction of propagation
     if P.d==2
@@ -60,7 +71,7 @@ while any(ind)
         theta( ~P.p & p ) = mat.invcdf{1,2}( theta( ~P.p & p ) );
         theta(  P.p & s ) = mat.invcdf{2,1}( theta(  P.p & s ) );
         theta( ~P.p & s ) = mat.invcdf{2,2}( theta( ~P.p & s ) );
-        theta = theta(scat);
+        theta = reshape(theta(scat),[],1);
 
     end
 
@@ -73,7 +84,7 @@ while any(ind)
 
     % remaining jumping particles
     P.t(ind) = P.t(ind) + dt(ind);
-    dt(ind) = T - P.t(ind);
+    dt(ind) = T(ind) - P.t(ind);
     ind = dt>0;
 
 end

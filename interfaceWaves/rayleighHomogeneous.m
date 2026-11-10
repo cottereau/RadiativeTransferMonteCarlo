@@ -26,7 +26,7 @@ function R = rayleighHomogeneous(geometry,source,material,observation,opts)
 %   onto the neighbouring surface, a part reflected back and a part
 %   radiated into the bulk. The defaults are order-of-magnitude values for
 %   a right-angle edge in a metal (see e.g. Viktorov, I.A., 1967, Rayleigh
-%   and Lamb Waves, Plenum Press, ch. 1); they are not settled to better
+%   and Lamb Waves, Plenum Press, ch. 1, doi:10.1007/978-1-4899-5681-1); they are not settled to better
 %   than tens of per cent, so calibrate opts.edge against your own data.
 %   The radiated share is removed from the Rayleigh population and tallied
 %   in R.radiated rather than fed back into the body-wave field.
@@ -41,6 +41,11 @@ function R = rayleighHomogeneous(geometry,source,material,observation,opts)
 %     substeps         sub-steps per observation time step, default 4
 %
 %   See also RAYLEIGHMODEL, RADIATIVETRANSFER, TESTRAYLEIGHHOMOGENEOUS.
+%
+%   References:
+%     - Xu, Z., Margerin, L. & Mikesell, T.D. (2021), Monte Carlo simulations of coupled
+%       body- and Rayleigh-wave multiple scattering in elastic media, Geophys. J. Int. 228,
+%       1213-1236. doi:10.1093/gji/ggab370
 
 if nargin < 5, opts = struct; end
 

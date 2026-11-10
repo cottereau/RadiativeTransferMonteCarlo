@@ -1,5 +1,6 @@
 % Computation of normalized energy densities for 3D elastic isotropic 
 % scattering media, based on Sato 1994
+% (Geophys. J. Int. 117, 487-494, doi:10.1111/j.1365-246X.1994.tb03946.x)
 
 gama = sqrt(3);
 

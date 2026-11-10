@@ -1,4 +1,7 @@
 function out = ZoeppritzSolid(theta,vp1,vs1,rho1,vp2,vs2,rho2)
+% References:
+%   - Aki, K. & Richards, P.G. (1980), Quantitative Seismology, W. H. Freeman (no DOI; ISBN
+%     978-0-7167-1058-5)
 
 % close all
 % clear all
@@ -143,7 +146,7 @@ for iang = 1:numel(theta)
     % typos, E_P_Total = E_Rpp+E_Rpsv+E_Tpp+E_Tpsv ranged from 0.97 to 3.7
     % instead of 1 across incidence angle; with the fix it is 1.000000 to
     % machine precision (checked 0:0.5:89.5 deg, two material pairs, and
-    % through the P-P critical angle). See MCRTE/todo.rtf.
+    % through the P-P critical angle).
     M(4,1) = sin(2*phi1_p);
     M(4,2) = (vp1/vs1) * cos(2*psi1_p);
     M(4,3) = (rho2*vp1*vs2*vs2/(rho1*vp2*vs1*vs1))*sin(2*phi2_p);

@@ -3,7 +3,7 @@ function [E,E_diff] = analyticalPaasschens(material,observation,geometry)
 % in an isotropic scattering random medium excited by an isotropic (explosion) 
 % source with the Diffusion approx. in 2D & 3D based on :
 % J. C. J. Paasschens. Solution of the time-dependent Boltzmann equation,
-% Phys. Rev. E 56(1), pp. 1135-1141 (1997).
+% Phys. Rev. E 56(1), pp. 1135-1141 (1997). doi:10.1103/PhysRevE.56.1135
 
 % Note: the solution is exact for 2D and approximate for 3D.
 

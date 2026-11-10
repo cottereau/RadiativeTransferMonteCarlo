@@ -93,7 +93,10 @@ function M = scholteModel(vp_s, vs_s, rho_s, vf, rho_f, freq, het_s, het_f)
 %
 %   References:
 %     - Scholte, J.G. (1947), Mon. Not. R. Astron. Soc., Geophys. Suppl. 5, 120-126.
-%     - Xu, Z., Margerin, L. & Mikesell, T.D. (2021), Geophys. J. Int. 227, 1960-1980.
+%       doi:10.1111/j.1365-246X.1947.tb00347.x
+%     - Xu, Z., Margerin, L. & Mikesell, T.D. (2021), Geophys. J. Int. 228, 1213-1236.
+%       doi:10.1093/gji/ggab370
+%     - Snieder, R. (1986), Geophys. J. Int. 84, 581-605. doi:10.1111/j.1365-246X.1986.tb04372.x
 
 if nargin < 6 || isempty(freq), freq = 1000; end
 validateScholteInputs(vp_s, vs_s, rho_s, vf, rho_f, freq);

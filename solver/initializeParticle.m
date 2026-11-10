@@ -1,8 +1,21 @@
 function P = initializeParticle( N, d, acoustics, source )
 
+validateattributes(N, {'numeric'}, ...
+    {'real','finite','scalar','integer','nonnegative','<=',flintmax});
+N = double(N);
+if ~isstruct(source) || ~isscalar(source)
+    error('Fonte:InvalidSource', 'Source must be a scalar structure.');
+end
 % default source
 if ~isfield(source,'type')
     source.type = 'point';
+end
+% physical sources (sourcePointForce, sourceMomentTensor, sourceAcoustic) draw
+% their own particles
+if any(strcmp(source.type, {'point_force','moment_tensor','acoustic'}))
+    src = physicalSourceForContext(source,d,acoustics);
+    P = src.sampleParticles(N);
+    return
 end
 if ~isfield(source,'position')
     source.position = [0 0 0];
@@ -160,6 +173,8 @@ switch source.type
         theta = rand(N,1)*2*pi;
         perp = cos(theta).*u + sin(theta).*v;
 
+    otherwise
+        error('Fonte:UnknownSourceType', 'Unknown source type.');
 end
 
 % Optional half-space folding. A source sitting on a free surface radiates

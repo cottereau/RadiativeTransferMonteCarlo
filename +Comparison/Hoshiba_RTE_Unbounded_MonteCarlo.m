@@ -4,7 +4,8 @@ function E = Hoshiba_RTE_Unbounded_MonteCarlo(t,source_station_dists,source,mate
 % on a (2D or 3D) random isotropic scattering medium (fullspace), where the 
 % total scattering cross-section is a constant (direction-independent) based 
 % on Hoshiba 1991 (Simulation of multiple-scattered coda wave excitation based
-% on the energy conservation law). 
+% on the energy conservation law, Phys. Earth Planet. Inter. 67, 123-136,
+% doi:10.1016/0031-9201(91)90066-Q). 
 
 % Inputs 
 % t                    : time vector
@@ -28,7 +29,7 @@ dt = mean(diff(t));
 r = source_station_dists;
 [m,n] = size(r); if m>n, r=r'; end
 
-Sigma = prepareSigmaOne(material.sigma{1},d);
+Sigma = MaterialClass.prepareSigmaOne(material.sigma{1},d);
 meanFreePath = 1/Sigma;
 
 % Source position

@@ -1,3 +1,11 @@
+% References:
+%   - Nakahara, H. & Yoshimoto, K. (2011), Radiative transfer of elastic waves in
+%     two-dimensional isotropic scattering media: semi-analytical approach for isotropic
+%     source radiation, Earth Planets Space 63, 459-468. doi:10.5047/eps.2011.03.006
+%   - Sato, H. (1994), Multiple isotropic scattering model including P-S conversions for the
+%     seismogram envelope formation, Geophys. J. Int. 117, 487-494.
+%     doi:10.1111/j.1365-246X.1994.tb03946.x
+
 close all
 clearvars
 clc

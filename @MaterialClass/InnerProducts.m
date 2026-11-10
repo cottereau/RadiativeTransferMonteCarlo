@@ -26,6 +26,12 @@ function [L,M,N] = InnerProducts(Cloc)
 %   They were NOT transcribed or re-derived from the printed equations in
 %   Kube and Turner (2015), which contain known typographical errors.
 %   Keep corrections synchronized with the source implementation above.
+%
+%   References:
+%     - Kube, C.M. & Turner, J.A. (2015), Acoustic attenuation coefficients for
+%       polycrystalline materials containing crystallites of any symmetry class, J. Acoust.
+%       Soc. Am. 137, EL476-EL482. doi:10.1121/1.4921676; erratum: J. Acoust. Soc. Am. 138,
+%       976. doi:10.1121/1.4927692
 
 if nargin ~= 1
     error('MaterialClass:InvalidInnerProductInputCount', ...

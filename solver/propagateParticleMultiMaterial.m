@@ -71,8 +71,8 @@ if numel(Rvals) > 1, gaps(end+1) = min(diff(sort(Rvals))); end %#ok<AGROW>
 % point of closest approach. A substep long enough to cross deep into a
 % SMALL shell and back out within itself has both endpoints on the same
 % side of that shell's radius, so the endpoint sign-change test below
-% never sees the crossing at all (found by this session's own spherical
-% validation: a small but nonzero leak at the smallest, innermost shell).
+% never sees the crossing at all (seen in a spherical-shell validation as a
+% small but nonzero leak at the smallest, innermost shell).
 % Capping the step length against the smallest radius present too (not
 % just the gaps between radii) keeps that miss-probability negligible.
 allR = [rvals, Rvals];
@@ -179,8 +179,8 @@ for i1 = 1:Nt
         % has BOTH endpoints reported on the outside from then on, so the
         % sign-change test can never see the crossing again -- the event
         % is not deferred, it is lost, and the particle sails straight
-        % through every later boundary undetected). Found by this
-        % session's own 3-shell spherical validation (MCRTE/todo.rtf).
+        % through every later boundary undetected). Found in a
+        % 3-shell spherical validation.
         %
         % The fix is the opposite: ALWAYS resolve a tooClose particle as
         % crossed, right now. This is safe because the boundary decision
@@ -608,7 +608,7 @@ P.dir(idx,:) = d_new;
 % very next substep sees the same r0 == bnd.val again and re-triggers the
 % tooClose branch -- reprocessing the SAME event a second time, now with
 % the just-reflected (opposite) direction, which can talk it into a wrong
-% second decision (observed this session: a particle reflects correctly,
+% second decision (observed: a particle reflects correctly,
 % then gets "transmitted" on the immediately following substep purely
 % because it never numerically left the boundary). The nudge is along the
 % direction actually just computed, not a guess: it is now the one piece

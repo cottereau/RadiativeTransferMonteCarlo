@@ -10,7 +10,7 @@ function M = RayleighModel(alpha0,beta0,freq,V,drho,n,zmax)
 %
 %     Xu, Z., Margerin, L. & Mikesell, T.D. (2021), Monte Carlo simulations
 %     of coupled body- and Rayleigh-wave multiple scattering in elastic
-%     media, Geophys. J. Int. 227, 1960-1980.
+%     media, Geophys. J. Int. 228, 1213-1236. doi:10.1093/gji/ggab370
 %
 %   Modes are numbered   1 = P,  2 = Sv,  3 = Sh,  4 = Rayleigh.
 %   Depth z is positive downwards, the free surface is z = 0.

@@ -31,6 +31,11 @@ function K = interfaceLameKernels(ux, uz, dux, duz, k)
 %   scholteModel and stoneleyModel.
 %
 %   See also BORNKERNELS, BORNKERNELSRAYLEIGH.
+%
+%   References:
+%     - Xu, Z., Margerin, L. & Mikesell, T.D. (2021), Monte Carlo simulations of coupled
+%       body- and Rayleigh-wave multiple scattering in elastic media, Geophys. J. Int. 228,
+%       1213-1236. doi:10.1093/gji/ggab370
 
 exx = @(z) 1i*k*ux(z);
 ezz = @(z) duz(z);

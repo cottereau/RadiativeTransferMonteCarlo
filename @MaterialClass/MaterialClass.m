@@ -3,6 +3,38 @@
 % an acoustic or elastic medium. The class calculates the differential
 % scattering cross-sections (DSCSs) required by the radiative transfer
 % Monte Carlo solver for material parameter fluctuations and polycrystals.
+%
+% References:
+%   - Ryzhik, L., Papanicolaou, G. & Keller, J.B. (1996), Transport equations for elastic
+%     and other waves in random media, Wave Motion 24, 327-370.
+%     doi:10.1016/S0165-2125(96)00021-2
+%   - Turner, J.A. (1998), Scattering and diffusion of seismic waves, Bull. Seismol. Soc.
+%     Am. 88, 276-283. doi:10.1785/BSSA0880010276
+%   - Sato, H., Fehler, M.C. & Maeda, T. (2012), Seismic Wave Propagation and Scattering in
+%     the Heterogeneous Earth, 2nd ed., Springer. doi:10.1007/978-3-642-23029-5
+%   - Khazaie, S., Cottereau, R. & Clouteau, D. (2016), Influence of the spatial correlation
+%     structure of an elastic random medium on its scattering properties, J. Sound Vib. 370,
+%     132-148. doi:10.1016/j.jsv.2016.01.012
+%   - Goff, J.A. & Jordan, T.H. (1988), Stochastic modeling of seafloor morphology:
+%     inversion of Sea Beam data for second-order statistics, J. Geophys. Res. 93,
+%     13589-13608. doi:10.1029/JB093iB11p13589
+%   - Mandelbrot, B.B. (1983), The Fractal Geometry of Nature, W. H. Freeman (no DOI; ISBN
+%     978-0-7167-1186-5)
+%   - Mandelbrot, B.B. (1985), Self-affine fractals and fractal dimension, Phys. Scr. 32,
+%     257-260. doi:10.1088/0031-8949/32/4/001
+%   - Torquato, S. & Stell, G. (1985), Microstructure of two-phase random media. V. The
+%     n-point matrix probability functions for impenetrable spheres, J. Chem. Phys. 82,
+%     980-987. doi:10.1063/1.448475
+%   - Adda-Bedia, M., Katzav, E. & Vella, D. (2008), Solution of the Percus-Yevick equation
+%     for hard disks, J. Chem. Phys. 128, 184508. doi:10.1063/1.2919123
+%   - Torquato, S. (2002), Random Heterogeneous Materials: Microstructure and Macroscopic
+%     Properties, Springer. doi:10.1007/978-1-4757-6355-3
+%   - Weaver, R.L. (1990), Diffusivity of ultrasound in polycrystals, J. Mech. Phys. Solids
+%     38, 55-86. doi:10.1016/0022-5096(90)90021-U
+%   - Kube, C.M. & Turner, J.A. (2015), Acoustic attenuation coefficients for
+%     polycrystalline materials containing crystallites of any symmetry class, J. Acoust.
+%     Soc. Am. 137, EL476-EL482. doi:10.1121/1.4921676; erratum: J. Acoust. Soc. Am. 138,
+%     976. doi:10.1121/1.4927692
 classdef MaterialClass < handle
     properties
         % Wave physics and material description
@@ -201,7 +233,7 @@ classdef MaterialClass < handle
             % Output:
 
             % The formulas are based on
-            % L. Rhyzik, G. Papanicolaou, J. B. Keller. Transport equations for elastic
+            % L. Ryzhik, G. Papanicolaou, J. B. Keller. Transport equations for elastic
             % and other waves in random media. Wave Motion 24, pp. 327-370, 1996.
             % doi: 10.1016/S0165-2125(96)00021-2
 
@@ -704,6 +736,7 @@ classdef MaterialClass < handle
             % Khazaie et al 2016 - Influence of the spatial correlation
             % structure of an elastic random medium on its
             % scattering properties
+            % (J. Sound Vib. 370, 132-148, doi:10.1016/j.jsv.2016.01.012)
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'Exp';
@@ -741,6 +774,7 @@ classdef MaterialClass < handle
             % Khazaie et al 2016 - Influence of the spatial correlation
             % structure of an elastic random medium on its
             % scattering properties
+            % (J. Sound Vib. 370, 132-148, doi:10.1016/j.jsv.2016.01.012)
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'power_law';
@@ -778,6 +812,7 @@ classdef MaterialClass < handle
             % Khazaie et al 2016 - Influence of the spatial correlation
             % structure of an elastic random medium on its
             % scattering properties
+            % (J. Sound Vib. 370, 132-148, doi:10.1016/j.jsv.2016.01.012)
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'Gauss';
@@ -816,6 +851,7 @@ classdef MaterialClass < handle
             % Khazaie et al 2016 - Influence of the spatial correlation
             % structure of an elastic random medium on its
             % scattering properties
+            % (J. Sound Vib. 370, 132-148, doi:10.1016/j.jsv.2016.01.012)
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'Triangular';
@@ -847,6 +883,7 @@ classdef MaterialClass < handle
             % Khazaie et al 2016 - Influence of the spatial correlation
             % structure of an elastic random medium on its
             % scattering properties
+            % (J. Sound Vib. 370, 132-148, doi:10.1016/j.jsv.2016.01.012)
             obj.SpectralParam = struct('correlationLength',lc);
             obj.CorrelationLength = lc;
             obj.SpectralLaw = 'low_pass';
@@ -876,14 +913,13 @@ classdef MaterialClass < handle
             %
             % Output:
 
-            % https://reproducibility.org/RSF/book/sep/fractal/paper_html/node4.html
             % Goff, J. A., and T. H. Jordan, 1988, Stochastic modeling of
             % seafloor morphology: Inversion of sea beam data for
             % second-order statistics: Journal of Geophysical Research,
-            % 93, 13,589-13,608.
+            % 93, 13,589-13,608. doi:10.1029/JB093iB11p13589
 
             % $K_\nu$ is the modified Bessel function of order $\nu $,
-            % where $0.0<\nu<1.0$ is the Hurst number (Mandelbrot, 1985,1983).
+            % where $0.0<\nu<1.0$ is the Hurst number (Mandelbrot 1983, 1985; see the class References).
 
             obj.SpectralParam = struct('correlationLength',lc,'nu',nu);
             obj.SpectralLaw = 'VonKarman';
@@ -920,9 +956,9 @@ classdef MaterialClass < handle
             % from g(r)/S(k) following the Torquato spectral route.
             %
             % References:
-            %   Torquato & Stell (1985) J. Chem. Phys. 82(2), 980-987  [3D]
-            %   Adda-Bedia, Katzav & Vella (2008) J. Chem. Phys. 128, 184508  [2D]
-            %   Torquato, Random Heterogeneous Materials, Springer (2002)
+            %   Torquato & Stell (1985) J. Chem. Phys. 82(2), 980-987, doi:10.1063/1.448475  [3D]
+            %   Adda-Bedia, Katzav & Vella (2008) J. Chem. Phys. 128, 184508, doi:10.1063/1.2919123  [2D]
+            %   Torquato, Random Heterogeneous Materials, Springer (2002), doi:10.1007/978-1-4757-6355-3
             %
             % Syntax:
             %   out = MonoDisperseSphere(obj, eta, D)
@@ -1058,7 +1094,7 @@ classdef MaterialClass < handle
                         %   Using h = gamma + c and PY => c = (h+1)*[exp(-bu)-1]/(...
                         %   Correct hard-disk PY outside core:
                         %     c(r) = -gamma(r)  * [g(r)=1+gamma(r)+c(r)]/(...)
-                        %   Simplest consistent form (Lado 1968):
+                        %   Simplest consistent form:
                         %     c(r) = (1 + gamma_r) - 1 - gamma_r = 0   ... NO
                         %   The exact PY closure is: c(r) = exp(-beta*u(r)) * (1 + gamma(r)) - 1 - gamma(r)
                         %   For hard disks outside (u=0): c(r) = (1+gamma) - 1 - gamma = 0 ???
@@ -1118,7 +1154,7 @@ classdef MaterialClass < handle
                     %
                     %    chi(r) = S2(r) - phi^2  = phi*(1-phi)*[rho*h_hat convolved with m_hat^2 / V]
                     %
-                    %    The "spectral density" approach (Torquato & Lu):
+                    %    The "spectral density" approach (Torquato 2002):
                     %    chi_hat(k) = rho * |m_hat(k)|^2 * S(k)
                     %    where m_hat(k) is the 2D Fourier transform of a single disk indicator:
                     %    m_hat(k) = pi*D^2/4 * J1(k*D/2) / (k*D/4)  = A_disk * 2*J1(kR)/(kR)
@@ -2665,7 +2701,7 @@ classdef MaterialClass < handle
                 f_r(i0:i1) = C * fw;
             end
         end
-        function mat = prepareSigma(mat,d)
+        function mat = prepareSigma(mat,d,Nth)
             %% prepareSigma
             % Prepare scattering cross-sections and derived quantities
             %
@@ -2676,12 +2712,14 @@ classdef MaterialClass < handle
             %   mat : MaterialClass object
             %   d   : dimension of the problem
 
+            % Nth: angular nodes of the scattering-angle CDF (default 1e6)
+            if nargin < 3, Nth = 1e6; end
             if isempty(mat.sigma)
                 mat.CalcSigma;
             end
 
             if mat.acoustics
-                [mat.Sigma,mat.Sigmapr,mat.invcdf] = MaterialClass.prepareSigmaOne(mat.sigma{1},d);
+                [mat.Sigma,mat.Sigmapr,mat.invcdf] = MaterialClass.prepareSigmaOne(mat.sigma{1},d,Nth);
 
                 if mat.Sigma == 0
                     % Homogeneous acoustic medium: propagation is ballistic.
@@ -2717,10 +2755,10 @@ classdef MaterialClass < handle
                 mat.Sigmapr = zeros(2);
                 mat.invcdf = cell(2);
 
-                [mat.Sigma(1,1),mat.Sigmapr(1,1),mat.invcdf{1,1}] = MaterialClass.prepareSigmaOne(mat.sigma{1,1},d);
-                [mat.Sigma(1,2),mat.Sigmapr(1,2),mat.invcdf{1,2}] = MaterialClass.prepareSigmaOne(mat.sigma{1,2},d);
-                [mat.Sigma(2,1),mat.Sigmapr(2,1),mat.invcdf{2,1}] = MaterialClass.prepareSigmaOne(mat.sigma{2,1},d);
-                [mat.Sigma(2,2),mat.Sigmapr(2,2),mat.invcdf{2,2}] = MaterialClass.prepareSigmaOne(mat.sigma{2,2},d);
+                [mat.Sigma(1,1),mat.Sigmapr(1,1),mat.invcdf{1,1}] = MaterialClass.prepareSigmaOne(mat.sigma{1,1},d,Nth);
+                [mat.Sigma(1,2),mat.Sigmapr(1,2),mat.invcdf{1,2}] = MaterialClass.prepareSigmaOne(mat.sigma{1,2},d,Nth);
+                [mat.Sigma(2,1),mat.Sigmapr(2,1),mat.invcdf{2,1}] = MaterialClass.prepareSigmaOne(mat.sigma{2,1},d,Nth);
+                [mat.Sigma(2,2),mat.Sigmapr(2,2),mat.invcdf{2,2}] = MaterialClass.prepareSigmaOne(mat.sigma{2,2},d,Nth);
                 SigmaP = mat.Sigma(1,1) + mat.Sigma(1,2);
                 SigmaS = mat.Sigma(2,1) + mat.Sigma(2,2);
                 mat.meanFreeTime = 1./[SigmaP SigmaS];
@@ -2767,7 +2805,9 @@ classdef MaterialClass < handle
                 end
             end
         end
-        function [Sigma,Sigma_prime,invcdf] = prepareSigmaOne(sigma,d)
+        function [Sigma,Sigma_prime,invcdf] = prepareSigmaOne(sigma,d,Nth)
+            if nargin < 3, Nth = 1e6; end
+            validateattributes(Nth,{'numeric'},{'scalar','integer','finite','>=',16});
             if d==2
                 Sigma = 2*integral(sigma,0,pi);
                 Sigma_prime = 2*integral(@(th)sigma(th).*cos(th),0,pi);
@@ -2799,14 +2839,14 @@ classdef MaterialClass < handle
                 sigmaNorm = @(th) (2*pi/Sigma)*sin(th).*sigma(th);
             end
 
-            Nth = 1e6;
             xth = linspace(0,pi,Nth);
             pdf = sigmaNorm(xth);
             if any(isnan(pdf))
                 warning('There is a NaN inside the probability density function')
+                pdf(isnan(pdf)) = 0;
             end
-            % Build the scattering-angle CDF.
-            cdf = cumsum(pdf,"omitnan")*mean(diff(xth));
+            % Build the scattering-angle CDF (trapezoidal rule).
+            cdf = cumtrapz(xth,pdf);
 
             % Normalize the scattering-angle CDF.
             cdfTotal = cdf(end);

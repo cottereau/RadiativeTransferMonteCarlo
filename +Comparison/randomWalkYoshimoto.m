@@ -2,7 +2,7 @@ function energyDensity = randomWalkYoshimoto(geometry, source, material, observa
 % This function computes energy densities of acoustic/elastic waves assuming
 % isotropic scatter_indsing based on a random walk introduced in:
 % K. Yoshimoto, Monte Carlo simulation of seismogram envelopes in
-% scatter_indsing media. Journal of Geophysical Research: Solid Earth (2000)
+% scattering media. J. Geophys. Res. 105, 6153-6161 (2000). doi:10.1029/1999JB900437
 
 % input parameters are the same as those for the radiative transfer solver
 % put movie as 'true' to get a video showing the propagating particles

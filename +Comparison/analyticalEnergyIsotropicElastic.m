@@ -5,8 +5,13 @@ function E = analyticalEnergyIsotropicElastic(geometry, material, observation, r
 % (1) H. Nakahara, K. Yoshimoto. Radiative transfer of elastic waves in
 %     two-dimensional isotropic scattering media: semi-analytical approach
 %     for isotropic source radiation. Earth Planets Space 63, pp. 459-468 (2011).
+%     doi:10.5047/eps.2011.03.006
 % (2) H. Sato. Multiple isotropic scattering model including P-S conversions
 %     for the seismogram envelope formation. Geophys. J. Int 117, pp. 487-494 (1994).
+%     doi:10.1111/j.1365-246X.1994.tb03946.x
+% (3) Bessel-function zeros: R. Piessens. Chebyshev series approximations for the
+%     zeros of the Bessel functions. J. Comput. Phys. 53, pp. 188-192 (1984).
+%     doi:10.1016/0021-9991(84)90060-3
 
 % Inputs
 % geometry, material, obvervation 

@@ -7,7 +7,8 @@ function [sigma, vEff, alphaEff] = calcSigma(mat)
 % spherical inclusions only. Replaces the Born approximation of
 % calcSigmaIsotropicCorrelation in the strong-contrast / resonant regime.
 %
-% Motivation: Born (Ryzhik et al. 1996) assumes weak fluctuations. In the
+% Motivation: Born (Ryzhik et al. 1996, doi:10.1016/S0165-2125(96)00021-2)
+% assumes weak fluctuations. In the
 % two-phase case of the Manda data set the coefficients of variation of
 % lambda and mu are 42% and 50%, and k*Lc ranges from 1.3 to 3.5 (resonant
 % region). Measured: Born overestimates the frequency dependence of Sigma*
@@ -94,10 +95,10 @@ g = {vpH*n0*sc.dsig_PP.*Sf(qPP), vpH*n0*sc.dsig_PS.*Sf(qPS); ...
 %
 % Reference: L. L. Foldy, "The multiple scattering of waves. I. General
 % theory of isotropic scattering by randomly distributed scatterers",
-% Phys. Rev. 67 (1945) 107-119. In the notation of C. M. Linton and
+% Phys. Rev. 67 (1945) 107-119, doi:10.1103/PhysRev.67.107. In the notation of C. M. Linton and
 % P. A. Martin, "Multiple scattering by multiple spheres: a new proof of
 % the Lloyd-Berry formula for the effective wavenumber", SIAM J. Appl.
-% Math. 66(5) (2006) 1649-1668, Foldy's formula is their Eq. (1.1); the
+% Math. 66(5) (2006) 1649-1668, doi:10.1137/050636401, Foldy's formula is their Eq. (1.1); the
 % same first-order term written with the far-field pattern is
 % delta_1 = -(4*pi*i/k) f_LM(0) in their Eqs. (1.2), (1.4)-(1.5), with
 % f_LM defined by their Eq. (1.3), u_sc ~ (ikr)^-1 exp(ikr) f_LM(Theta).

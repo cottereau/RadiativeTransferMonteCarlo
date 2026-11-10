@@ -1,3 +1,9 @@
+% References:
+%   - Yoshimoto, K. (2000), Monte Carlo simulation of seismogram envelopes in scattering
+%     media, J. Geophys. Res. 105, 6153-6161. doi:10.1029/1999JB900437
+%   - Paasschens, J.C.J. (1997), Solution of the time-dependent Boltzmann equation, Phys.
+%     Rev. E 56, 1135-1141. doi:10.1103/PhysRevE.56.1135
+
 close all
 clearvars
 clc
