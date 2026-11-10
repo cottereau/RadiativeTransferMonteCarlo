@@ -1,6 +1,14 @@
 function obs = radiativeTransfer( geometry, source, material, observation )
 
 simulationTimer = tic;
+% multi-material: material = {mat1, mat2, ...} with geometry.bnd(k).mat = [i j]
+% interfaces (propagateParticleMultiMaterial); particles start in material{1};
+% material{1} also supplies acoustics/Frequency/Q/timeSteps below.
+matArray = {};
+if iscell(material)
+    matArray = material;
+    material = matArray{1};
+end
 
 % physics
 d = geometry.dimension;
@@ -41,7 +49,15 @@ hasParallelToolbox = ~isempty(ver('parallel'));
 
 % discretization in packets of particles for optimal vectorization
 Npk = 1e5;
-Ntotal = source.numberParticles;
+if iscell(source)
+    if isfield(source{1}, 'numberParticles')
+        Ntotal = source{1}.numberParticles;
+    else
+        Ntotal = 1e5;
+    end
+else
+    Ntotal = source.numberParticles;
+end
 Np = ceil(Ntotal/Npk); % number of packets
 particlesPerPacket = Npk * ones(1,Np);
 particlesPerPacket(end) = Ntotal - Npk*(Np-1);
@@ -51,7 +67,14 @@ particlesPerPacket(end) = Ntotal - Npk*(Np-1);
     initializeObservation( geometry, acoustics, observation, Ntotal );
 
 % prepare scattering cross sections
-material = MaterialClass.prepareSigma( material, d );
+if isempty(matArray)
+    material = MaterialClass.prepareSigma( material, d );
+else
+    for k = 1:numel(matArray)
+        matArray{k} = prepareRegion( matArray{k}, d );
+    end
+    material = matArray{1};
+end
 
 printSimulationSummary(geometry,source,material,Ntotal,Np, ...
     hasParallelToolbox);
@@ -91,7 +114,11 @@ if hasParallelToolbox
         E_local = zeros(szE, classE);
 
         % initialize particles
-        P = initializeParticle( Npacket, d, acoustics, source );
+        if iscell(source)
+            P = initializeParticlesMultiSource( source, Npacket, d, acoustics );
+        else
+            P = initializeParticle( Npacket, d, acoustics, source );
+        end
 
         % The propagation loop starts at it = 2. Record the normalized
         % initial condition in the first frame (t = 0+, after injection).
@@ -99,7 +126,14 @@ if hasParallelToolbox
             P.x, P.p, P.dir, bins, ibins, vals, P.alive );
 
         % loop on time
-        if matLocal.timeSteps == 0
+        if ~isempty(matArray)
+            for it = 2:Nt
+                t_val = t_start + (it-1)*dt;
+                P = propagateParticleMultiMaterial( matArray, geoLocal, P, t_val );
+                E_local(:,:,it,:) = E_local(:,:,it,:) + observeTime( geoLocal, acoustics, ...
+                    P.x, P.p, P.dir, bins, ibins, vals, P.alive );
+            end
+        elseif matLocal.timeSteps == 0
             for it = 2:Nt
                 t_val = t_start + (it-1)*dt;
                 P = propagateParticleSmallDt( matLocal, geoLocal, P, t_val );
@@ -137,7 +171,11 @@ else
         Npacket = particlesPerPacket(ip);
 
         % initialize particles
-        P = initializeParticle( Npacket, d, acoustics, source );
+        if iscell(source)
+            P = initializeParticlesMultiSource( source, Npacket, d, acoustics );
+        else
+            P = initializeParticle( Npacket, d, acoustics, source );
+        end
 
         % The propagation loop starts at it = 2. Record the normalized
         % initial condition in the first frame (t = 0+, after injection).
@@ -147,24 +185,28 @@ else
         % NOTE: In serial, we do NOT need E_local.
         % We can write directly to E, saving memory and overhead.
 
-        % loop on time
-        for it = 2:Nt
-
-            % Calculate time locally
-            t_val = t_start + (it-1)*dt;
-
-            % propagate particles
-            if material.timeSteps==0
-                P = propagateParticleSmallDt( material, geometry, P, t_val );
-            elseif material.timeSteps==1
-                P = propagateParticle( material, P, t_val );
+        % loop on time (propagator chosen once, outside the loop, as in parfor)
+        if ~isempty(matArray)
+            for it = 2:Nt
+                t_val = t_start + (it-1)*dt;
+                P = propagateParticleMultiMaterial( matArray, geometry, P, t_val );
+                E(:,:,it,:) = E(:,:,it,:) + observeTime( geometry, acoustics, ...
+                    P.x, P.p, P.dir, bins, ibins, vals, P.alive );
             end
-
-            % observe energies - DIRECT UPDATE
-            E(:,:,it,:) = E(:,:,it,:) + observeTime( geometry, acoustics, ...
-                P.x, P.p, P.dir, bins, ibins, vals, P.alive );
-
-            % end of loop on time
+        elseif material.timeSteps == 0
+            for it = 2:Nt
+                t_val = t_start + (it-1)*dt;
+                P = propagateParticleSmallDt( material, geometry, P, t_val );
+                E(:,:,it,:) = E(:,:,it,:) + observeTime( geometry, acoustics, ...
+                    P.x, P.p, P.dir, bins, ibins, vals, P.alive );
+            end
+        else
+            for it = 2:Nt
+                t_val = t_start + (it-1)*dt;
+                P = propagateParticle( material, P, t_val );
+                E(:,:,it,:) = E(:,:,it,:) + observeTime( geometry, acoustics, ...
+                    P.x, P.p, P.dir, bins, ibins, vals, P.alive );
+            end
         end
 
         % end of loop on packages
@@ -385,5 +427,19 @@ else
         material.transportMeanFreePath);
 end
 fprintf('------------------------------------------------------------\n\n');
+end
 
+% -------------------------------------------------------------------------
+function mat = prepareRegion( mat, d )
+% A region with zero coefficients of variation (e.g. a homogeneous water
+% layer) does not scatter: prepareSigma cannot build a CDF from sigma == 0,
+% so it gets an infinite mean free time directly.
+if isempty(mat.sigma) && mat.acoustics && ~any(mat.coefficients_of_variation)
+    mat.vp = mat.v; mat.vs = 0;
+    mat.Sigma = 0; mat.Sigmapr = 0;
+    mat.meanFreeTime = Inf; mat.meanFreePath = Inf;
+    mat.invcdf = @(u) zeros(size(u)); % never drawn
+else
+    mat = MaterialClass.prepareSigma( mat, d );
+end
 end
