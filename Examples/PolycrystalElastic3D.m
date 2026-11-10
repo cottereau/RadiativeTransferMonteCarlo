@@ -18,7 +18,7 @@ clc
 % All material and geometrical quantities below use SI units.
 
 repoRoot = fileparts(fileparts(mfilename('fullpath')));
-addpath(repoRoot);
+addpath(genpath(repoRoot));
 rng(1); % Reproducible Monte Carlo realization
 
 %% 1. Numerical and display controls
