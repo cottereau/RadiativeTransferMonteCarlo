@@ -14,13 +14,16 @@ dt = T/Nt;
 % Pre-calculate Zoeppritz coefficients for elastic mode
 % We do this outside the loop to avoid re-computing it at every sub-step
 if ~mat.acoustics && isfield(geometry,'bnd')
-    % Check if any boundary is cylindrical (dir==4) to skip
-    hasCyl = false;
+    % Check if any boundary is curved (cylindrical dir==4 or spherical dir==5)
+    hasCurved = false;
     for i2 = 1:length(geometry.bnd)
-        if geometry.bnd(i2).dir == 4, hasCyl = true; break; end
+        if geometry.bnd(i2).dir == 4 || geometry.bnd(i2).dir == 5
+            hasCurved = true;
+            break;
+        end
     end
     
-    if hasCyl
+    if hasCurved
         % Fetch the reflection coefficients cached on the material object.
         [out_Z, ~] = mat.getZoeppritzCached();
         
@@ -171,6 +174,7 @@ for i1 = 1:Nt
                     % Acoustic: specular reflection
                     P.x(ind,bnd.dir) = (2*bnd.val)-P.x(ind,bnd.dir);
                     P.dir(ind,bnd.dir) = -P.dir(ind,bnd.dir);
+                    P.perp(ind,bnd.dir) = -P.perp(ind,bnd.dir);   % keep perp orthogonal to dir
                 else
                     % Elastic with plane boundary
                     n_plane = zeros(1, P.d); 
@@ -307,14 +311,18 @@ for i1 = 1:Nt
                     end
                 end
 
-            % boundary along cylindrical radius
-            elseif bnd.dir==4
+            % boundary along cylindrical (dir==4) or spherical (dir==5) radius
+            elseif bnd.dir == 4 || bnd.dir == 5
 
-                % distance to z axis
-                radial_coords = P.x(:, 1:2);
-                r = sqrt(sum(radial_coords.^2, 2));
+                if bnd.dir == 4
+                    % distance to z axis (x-y plane)
+                    r = hypot(P.x(:, 1), P.x(:, 2));
+                else
+                    % distance to origin (3D sphere)
+                    r = sqrt(sum(P.x.^2, 2));
+                end
 
-                % which particles have moved outside the cylinder radius
+                % which particles have moved outside the boundary radius
                 overshoot_dist = r - bnd.val;
 
                 ind = alive & (overshoot_dist > 0);
@@ -328,11 +336,15 @@ for i1 = 1:Nt
                     end
 
                     pos_outside = P.x(ind, :);
-                    r_outside = r(ind);
+                    r_outside = max(r(ind), eps);
             
-                    % unit (outward) normal vector in x-y plane
+                    % unit (outward) normal vector
                     n = zeros(size(pos_outside));
-                    n(:, 1:2) = pos_outside(:, 1:2) ./ r_outside;
+                    if bnd.dir == 4
+                        n(:, 1:2) = pos_outside(:, 1:2) ./ r_outside;
+                    else
+                        n = pos_outside ./ r_outside;
+                    end
 
                     % update position (Geometric Mirroring - Same for Acoustic/Elastic)
                     P.x(ind, :) = pos_outside - 2 * overshoot_dist(ind) .* n;
@@ -343,6 +355,8 @@ for i1 = 1:Nt
                         dir_outside = P.dir(ind, :);
                         dot_prod = sum(dir_outside .* n, 2);
                         P.dir(ind,:) = dir_outside - 2 * dot_prod .* n;
+                        P.perp(ind,:) = P.perp(ind,:) - 2 * sum(P.perp(ind,:) .* n, 2) .* n;   % keep perp orthogonal to dir
+                        P.x(ind,:) = P.x(ind,:) + (1e-9*max(1,vecnorm(P.x(ind,:),2,2))) .* P.dir(ind,:);
                     else
                         % Elastic: Curved Boundary Reflection
                         % Note: We cannot simply use mat.MaterialInterface because 
@@ -392,6 +406,7 @@ for i1 = 1:Nt
                                 % Reflect Perp (keep orthogonal)
                                 pt_n = sum(p_sub .* n_sub, 2);
                                 P.perp(g_idx, :) = p_sub - 2 * pt_n .* n_sub;
+                                P.x(g_idx,:) = P.x(g_idx,:) + (1e-9*max(1,vecnorm(P.x(g_idx,:),2,2))) .* P.dir(g_idx,:);
                             end
                             
                             % B. Mode Conversion (P->S)
@@ -423,6 +438,7 @@ for i1 = 1:Nt
                                 d_new = d_new_t - cos_val .* n_sub;
                                 d_new = d_new ./ vecnorm(d_new, 2, 2);
                                 P.dir(g_idx, :) = d_new;
+                                P.x(g_idx,:) = P.x(g_idx,:) + (1e-9*max(1,vecnorm(P.x(g_idx,:),2,2))) .* P.dir(g_idx,:);
                                 
                                 % Update Perp (SV polarization in plane of incidence)
                                 % Plane defined by (d_new, n). 
@@ -492,6 +508,7 @@ for i1 = 1:Nt
                                 % Reflect p
                                 pt_n = sum(p_sub .* n_sub, 2);
                                 P.perp(g_idx, :) = p_sub - 2 * pt_n .* n_sub;
+                                P.x(g_idx,:) = P.x(g_idx,:) + (1e-9*max(1,vecnorm(P.x(g_idx,:),2,2))) .* P.dir(g_idx,:);
                             end
                             
                             % B. SV Particles (Specular or Conversion)
@@ -523,6 +540,7 @@ for i1 = 1:Nt
                                     
                                     pt_n = sum(p_fin .* n_fin, 2);
                                     P.perp(g_fin, :) = p_fin - 2 * pt_n .* n_fin;
+                                    P.x(g_fin,:) = P.x(g_fin,:) + (1e-9*max(1,vecnorm(P.x(g_fin,:),2,2))) .* P.dir(g_fin,:);
                                 end
                                 
                                 % SV->P (Conversion)
@@ -553,6 +571,7 @@ for i1 = 1:Nt
                                         
                                         d_new = d_t_val - cos_val .* n_val;
                                         P.dir(g_val, :) = d_new ./ vecnorm(d_new, 2, 2);
+                                        P.x(g_val,:) = P.x(g_val,:) + (1e-9*max(1,vecnorm(P.x(g_val,:),2,2))) .* P.dir(g_val,:);
                                         
                                         % P polarization (usually ignored, but good to set)
                                         % Just keep perp orthogonal or rotate it
@@ -572,6 +591,7 @@ for i1 = 1:Nt
                                         
                                         pt_n = sum(p_inv .* n_inv, 2);
                                         P.perp(g_inv, :) = p_inv - 2 * pt_n .* n_inv;
+                                        P.x(g_inv,:) = P.x(g_inv,:) + (1e-9*max(1,vecnorm(P.x(g_inv,:),2,2))) .* P.dir(g_inv,:);
                                     end
                                 end
                             end
