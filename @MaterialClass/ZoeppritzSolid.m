@@ -4,7 +4,7 @@ function out = ZoeppritzSolid(theta,vp1,vs1,rho1,vp2,vs2,rho2)
 % clear all
 % clc
 %
-% % --- Propriedades do Material ---
+% % --- Material properties ---
 % % Material A (Shale)
 % vp1 = 2500; % m/s
 % vs1 = 1100; % m/s
@@ -17,7 +17,7 @@ function out = ZoeppritzSolid(theta,vp1,vs1,rho1,vp2,vs2,rho2)
 % theta = linspace(0, 90, 2*181);
 theta_rad = theta * pi / 180;
 
-% --- Inicializar Coeficientes de Amplitude ---
+% --- Initialise amplitude coefficients ---
 Rpp = zeros(size(theta));
 Rpsv = Rpp;
 Tpp = Rpp;
@@ -91,7 +91,7 @@ for iang = 1:numel(theta)
     M(4,3) = rho2*vs2^2/vp1^2 * sin(2*psi2_p);
     M(4,4) = -rho2*vs2/vp1 * cos(2*psi2_p);
 
-    % Vetor F para incidência P
+    % Vector F for P incidence
     % The original F vector was based on a different normalization, which is fine if M is consistent.
     % Let's use the standard Aki & Richards F vector for consistency with the corrected M.
     % The original M(3,1) and M(4,1) were normalized by rho1*vp1, so we need to adjust the F vector.
@@ -131,12 +131,25 @@ for iang = 1:numel(theta)
     M(3,3) = (rho2*vp2/(rho1*vp1))*cos(2*psi2_p);
     M(3,4) = (rho2*vs2/(rho1*vp1))*sin(2*psi2_p);
 
-    M(4,1) = sin(2*psi1_p);
-    M(4,2) = vp1/vs1 * sin(2*phi1_p);
+    % FIX (validated below): M(4,1) and M(4,2) must use the same angle
+    % variables as the already-validated SV-incidence block a few dozen
+    % lines down (M is the same welded-interface boundary-condition
+    % matrix for both incidences, expressed in i1=P1 angle, j1=S1 angle,
+    % i2=P2 angle, j2=S2 angle -- only the ray parameter p that sets those
+    % angles differs between P and SV incidence). The two lines below used
+    % to read "M(4,1) = sin(2*psi1_p)" (wrong angle, j1 instead of i1) and
+    % "M(4,2) = vp1/vs1 * sin(2*phi1_p)" (wrong angle AND wrong trig
+    % function -- should mirror the SV block's cos(2*j1)). With those two
+    % typos, E_P_Total = E_Rpp+E_Rpsv+E_Tpp+E_Tpsv ranged from 0.97 to 3.7
+    % instead of 1 across incidence angle; with the fix it is 1.000000 to
+    % machine precision (checked 0:0.5:89.5 deg, two material pairs, and
+    % through the P-P critical angle). See MCRTE/todo.rtf.
+    M(4,1) = sin(2*phi1_p);
+    M(4,2) = (vp1/vs1) * cos(2*psi1_p);
     M(4,3) = (rho2*vp1*vs2*vs2/(rho1*vp2*vs1*vs1))*sin(2*phi2_p);
     M(4,4) = -((rho2*vp1*vs2)/(rho1*vs1*vs1))*cos(2*psi2_p);
 
-    % Vetor F para incidência P (Lines 70-74)
+    % Vector F for P incidence (Lines 70-74)
     psi0_p = asin(vs1*sin(phi0_p)/vp1); % angulo SV incidente correspondente
     FP(1) = cos(phi0_p);
     FP(2) = sin(phi0_p);
@@ -150,7 +163,7 @@ for iang = 1:numel(theta)
     Tpp(iang) = Ap(3);
     Tpsv(iang) = Ap(4);
 
-    % --- CALCULO DE ENERGIA (Incidência P) ---
+    % --- ENERGY COMPUTATION (P incidence) ---
     E_Rpp(iang)  = abs(Rpp(iang))^2;
     E_Rpsv(iang) = (rho1 * vs1 * real(cpsi1_p)) / (rho1 * vp1 * real(cphi1_p)) * abs(Rpsv(iang))^2;
     E_Tpp(iang)  = (rho2 * vp2 * real(cphi2_p)) / (rho1 * vp1 * real(cphi1_p)) * abs(Tpp(iang))^2;
@@ -176,7 +189,7 @@ for iang = 1:numel(theta)
     cphi2_sv = cos(phi2_sv);
     cpsi2_sv = cos(psi2_sv);
 
-    % Matriz M para incidência SV (mesma matriz, ângulos diferentes)
+    % Matrix M for SV incidence (same matrix, different angles)
     % Reverting M for SV-wave to user's original (Lines 110-129)
     M(1,1) = cphi1_sv;
     M(1,2) = -sin(psi1_sv);
@@ -198,7 +211,7 @@ for iang = 1:numel(theta)
     M(4,3) = (rho2*vp1*vs2*vs2/(rho1*vp2*vs1*vs1))*sin(2*phi2_sv);
     M(4,4) = -((rho2*vp1*vs2)/(rho1*vs1*vs1))*cos(2*psi2_sv);
 
-    % Vetor F para incidência SV (CORREÇÃO APLICADA AQUI)
+    % Vector F for SV incidence (CORRECTION APPLIED HERE)
     % Original:
     % FS(1) = -sin(psi0_sv);
     % FS(2) = cos(psi0_sv);
@@ -328,7 +341,7 @@ for iang = 1:numel(theta)
     M(4,3) = (rho2*vp1*vs2*vs2/(rho1*vp2*vs1*vs1))*sin(2*phi2_sv);
     M(4,4) = -((rho2*vp1*vs2)/(rho1*vs1*vs1))*cos(2*psi2_sv);
 
-    % Vetor F para incidência SV (CORREÇÃO APLICADA AQUI)
+    % Vector F for SV incidence (CORRECTION APPLIED HERE)
     % The user's M matrix is non-standard. The F vector must be consistent with M.
     % Let's use the standard F vector for SV incidence (Aki & Richards, normalized by 1/rho1*vp1 in rows 3-4)
     % F1 = -sin(psi0_sv)
@@ -374,7 +387,7 @@ for iang = 1:numel(theta)
 
     M(4,2) = (vp1/vs1) * cos(2*psi1_sv); % <--- CORRECTION 1: sin(2*psi1_sv) -> cos(2*psi1_sv)
 
-    % Vetor F para incidência SV (User's original, which is correct for the standard M)
+    % Vector F for SV incidence (User's original, which is correct for the standard M)
     FS(1) = -sin(psi0_sv);
     FS(2) = cos(psi0_sv);
     FS(3) = -vs1*sin(2*psi0_sv)/vp1;
@@ -387,7 +400,7 @@ for iang = 1:numel(theta)
     Tsp(iang) = As(3);
     Tsvsv(iang) = As(4);
 
-    % --- CÁLCULO DE ENERGIA (Incidência SV) ---
+    % --- ENERGY COMPUTATION (SV incidence) ---
     % The user's original energy calculation (Lines 144-147) was:
     % E_Rsp(iang)   = (rho1 * vp1 * real(cphi1_sv)) / (rho1 * vs1 * real(cpsi1_sv)) * abs(Rsp(iang))^2;
     % E_Rsvsv(iang) = abs(Rsvsv(iang))^2;
@@ -438,13 +451,13 @@ for iang = 1:numel(theta)
     cpsi1_sh = cos(psi1_sh);
     cpsi2_sh = cos(psi2_sh);
 
-    % Matriz N para incidência SH (corrigindo sua definição)
+    % Matrix N for SH incidence (with its definition corrected)
     N(1,1) = 1;
     N(1,2) = -1;
     N(2,1) = rho1*vs1*cpsi1_sh;
     N(2,2) = rho2*vs2*cpsi2_sh;
 
-    % Vetor F para incidência SH
+    % Vector F for SH incidence
     Fsh(1) = -1;
     Fsh(2) = rho1*vs1*cpsi1_sh;
 
@@ -453,7 +466,7 @@ for iang = 1:numel(theta)
     Rsh(iang) = Ash(1);
     Tsh(iang) = Ash(2);
 
-    % --- CÁLCULO DE ENERGIA (Incidência SH) ---
+    % --- ENERGY COMPUTATION (SH incidence) ---
     E_Rsh(iang) = abs(Rsh(iang))^2;
     E_Tsh(iang) = (rho2 * vs2 * real(cpsi2_sh)) / (rho1 * vs1 * real(cpsi1_sh)) * abs(Tsh(iang))^2;
 
@@ -487,7 +500,7 @@ if 0
     hold on;
     plot(theta, abs(Tsh), 'r', 'LineWidth', 1.5);
     title('Amplitudes (SH-Incidence)');
-    xlabel('Ângulo de Incidência (graus)');
+    xlabel('Incidence angle (deg)');
     ylabel('Magnitude da Amplitude');
     legend('Rsh', 'Tsh');
     grid on;
@@ -500,7 +513,7 @@ if 0
     plot(theta, abs(Tsvsv), 'g', 'LineWidth', 1.5);
     plot(theta, abs(Tsp), 'm', 'LineWidth', 1.5);
     title('Amplitudes (SV-Incidence)');
-    xlabel('Ângulo de Incidência (graus)');
+    xlabel('Incidence angle (deg)');
     ylabel('Magnitude da Amplitude');
     legend('Rsvsv', 'Rsp', 'Tsvsv', 'Tsp');
     grid on;
@@ -513,51 +526,51 @@ if 0
     plot(theta, abs(Tpp), 'g', 'LineWidth', 1.5);
     plot(theta, abs(Tpsv), 'm', 'LineWidth', 1.5);
     title('Amplitudes (P-Incidence)');
-    xlabel('Ângulo de Incidência (graus)');
+    xlabel('Incidence angle (deg)');
     ylabel('Magnitude da Amplitude');
     legend('Rpp', 'Rpsv', 'Tpp', 'Tpsv');
     grid on;
     hold off;
 
     % --- NOVOS PLOTS DE ENERGIA ---
-    figure('Name', 'Energia (Incidência P)');
+    figure('Name', 'Energy (P incidence)');
     plot(theta, E_Rpp, 'b', 'LineWidth', 1.5);
     hold on;
     plot(theta, E_Rpsv, 'r', 'LineWidth', 1.5);
     plot(theta, E_Tpp, 'g', 'LineWidth', 1.5);
     plot(theta, E_Tpsv, 'm', 'LineWidth', 1.5);
     plot(theta, E_P_Total, 'k--', 'LineWidth', 2.5); % Soma total
-    title('Particionamento de Energia (Incidência P)');
-    xlabel('Ângulo de Incidência (graus)');
-    ylabel('Coeficiente de Energia');
+    title('Energy partitioning (P incidence)');
+    xlabel('Incidence angle (deg)');
+    ylabel('Energy coefficient');
     legend('E_{Rpp}', 'E_{Rpsv}', 'E_{Tpp}', 'E_{Tpsv}', 'E_{Total}');
     ylim([-0.1 1.1]);
     grid on;
     hold off;
 
-    figure('Name', 'Energia (Incidência SV)');
+    figure('Name', 'Energy (SV incidence)');
     plot(theta, E_Rsvsv, 'b', 'LineWidth', 1.5);
     hold on;
     plot(theta, E_Rsp, 'r', 'LineWidth', 1.5);
     plot(theta, E_Tsvsv, 'g', 'LineWidth', 1.5);
     plot(theta, E_Tsp, 'm', 'LineWidth', 1.5);
     plot(theta, E_SV_Total, 'k--', 'LineWidth', 2.5); % Soma total
-    title('Particionamento de Energia (Incidência SV)');
-    xlabel('Ângulo de Incidência (graus)');
-    ylabel('Coeficiente de Energia');
+    title('Energy partitioning (SV incidence)');
+    xlabel('Incidence angle (deg)');
+    ylabel('Energy coefficient');
     legend('E_{Rsvsv}', 'E_{Rsp}', 'E_{Tsvsv}', 'E_{Tsp}', 'E_{Total}');
     ylim([-0.1 1.1]);
     grid on;
     hold off;
 
-    figure('Name', 'Energia (Incidência SH)');
+    figure('Name', 'Energy (SH incidence)');
     plot(theta, E_Rsh, 'b', 'LineWidth', 1.5);
     hold on;
     plot(theta, E_Tsh, 'r', 'LineWidth', 1.5);
     plot(theta, E_SH_Total, 'k--', 'LineWidth', 2.5); % Soma total
-    title('Particionamento de Energia (Incidência SH)');
-    xlabel('Ângulo de Incidência (graus)');
-    ylabel('Coeficiente de Energia');
+    title('Energy partitioning (SH incidence)');
+    xlabel('Incidence angle (deg)');
+    ylabel('Energy coefficient');
     legend('E_{Rsh}', 'E_{Tsh}', 'E_{Total}');
     ylim([-0.1 1.1]);
     grid on;

@@ -1,21 +1,21 @@
 function out = ZoeppritzFluid(theta,vp1,vs1,rho1,vp2,vs2,rho2)
 
-% --- Propriedades do Material ---
-% Material A (Sólido - ex: Shale)
+% --- Material properties ---
+% Material A (solid, e.g. shale)
 % vp1 = 2500; % m/s
 % vs1 = 1100; % m/s
 % rho1 = 2200; % kg/m^3
-% % Material B (Fluido - ex: Água/Gás)
-% vp2 = 1500; % m/s (Velocidade do fluido)
-% vs2 = 0;    % <--- MUDANÇA: Fluido não suporta onda S
-% rho2 = 1000; % kg/m^3 (Densidade do fluido)
+% % Material B (fluid, e.g. water/gas)
+% vp2 = 1500; % m/s (fluid velocity)
+% vs2 = 0;    % <--- CHANGE: a fluid carries no S wave
+% rho2 = 1000; % kg/m^3 (fluid density)
 % vp2 = 343
 % rho2 = 1
 
 %theta = linspace(0, 90, 2*181);
 theta_rad = theta * pi / 180;
 
-% --- Inicializar Coeficientes de Amplitude ---
+% --- Initialise amplitude coefficients ---
 Rpp = zeros(size(theta));
 Rpsv = Rpp;
 Tpp = Rpp;
@@ -48,7 +48,7 @@ for iang = 1:numel(theta)
 
     % --- P-WAVE INCIDENCE ---
     phi0_p = theta_rad(iang);
-    p = sin(phi0_p) / vp1; % Parâmetro de Ray (slowness)
+    p = sin(phi0_p) / vp1; % ray parameter (slowness)
 
     phi1_p = phi0_p;
     psi1_p = asin(vs1 * p);
@@ -60,7 +60,7 @@ for iang = 1:numel(theta)
     cphi2_p = cos(phi2_p);
     cpsi2_p = cos(psi2_p); % Isso será 1
 
-    % Matriz M (4x4) como no Sólido-Sólido (alguns termos zerarão)
+    % Matrix M (4x4) as in the solid-solid case (some terms vanish)
     M(1,1) = cphi1_p;
     M(1,2) = -sin(psi1_p);
     M(1,3) = cphi2_p;
@@ -77,26 +77,26 @@ for iang = 1:numel(theta)
     M(3,4) = (rho2*vs2/(rho1*vp1))*sin(2*psi2_p); % 0
 
     M(4,1) = sin(2*phi1_p);
-    M(4,2) = vp1/vs1 * cos(2*psi1_p); % Usando a correção de M(4,2) do prompt
+    M(4,2) = vp1/vs1 * cos(2*psi1_p); % using the corrected M(4,2)
     M(4,3) = (rho2*vp1*vs2*vs2/(rho1*vp2*vs1*vs1))*sin(2*phi2_p); % 0
     M(4,4) = -((rho2*vp1*vs2)/(rho1*vs1*vs1))*cos(2*psi2_p); % 0
 
-    % Vetor F para incidência P
+    % Vector F for P incidence
     psi0_p = asin(vs1*sin(phi0_p)/vp1);
     FP(1) = cos(phi0_p);
     FP(2) = sin(phi0_p);
     FP(3) = cos(2*psi0_p);
     FP(4) = sin(2*phi0_p);
 
-    % --- MUDANÇA: Resolver sistema Sólido-Fluido 3x3 (Rpp, Rpsv, Tpp) ---
-    % Remove a 2a linha (continuidade de u_x, que não se aplica)
-    % Remove a 4a coluna (Tpsv, que é 0)
-    % As incógnitas são [Rpp; Rpsv; Tpp]
-    % As equações são (1) u_z, (3) tau_zz, (4) tau_xz = 0
+    % --- CHANGE: solve the 3x3 solid-fluid system (Rpp, Rpsv, Tpp) ---
+    % Remove the 2nd row (continuity of u_x, which does not apply)
+    % Remove the 4th column (Tpsv, which is 0)
+    % Unknowns are [Rpp; Rpsv; Tpp]
+    % Equations are (1) u_z, (3) tau_zz, (4) tau_xz = 0
 
     M_3x3 = [ M(1,1) M(1,2) M(1,3);
         M(3,1) M(3,2) M(3,3);
-        M(4,1) M(4,2) M(4,3) ]; % M(4,3) será 0, o que é correto
+        M(4,1) M(4,2) M(4,3) ]; % M(4,3) will be 0, which is correct
 
     FP_3x1 = [ FP(1); FP(3); FP(4) ];
 
@@ -106,9 +106,9 @@ for iang = 1:numel(theta)
     Rpp(iang) = Ap_3x1(1);
     Rpsv(iang) = Ap_3x1(2);
     Tpp(iang) = Ap_3x1(3);
-    Tpsv(iang) = 0; % Por definição
+    Tpsv(iang) = 0; % By definition
 
-    % --- CALCULO DE ENERGIA (Incidência P) ---
+    % --- ENERGY COMPUTATION (P incidence) ---
     E_Rpp(iang)  = abs(Rpp(iang))^2;
     E_Rpsv(iang) = (rho1 * vs1 * real(cpsi1_p)) / (rho1 * vp1 * real(cphi1_p)) * abs(Rpsv(iang))^2;
     E_Tpp(iang)  = (rho2 * vp2 * real(cphi2_p)) / (rho1 * vp1 * real(cphi1_p)) * abs(Tpp(iang))^2;
@@ -134,7 +134,7 @@ for iang = 1:numel(theta)
     cphi2_sv = cos(phi2_sv);
     cpsi2_sv = cos(psi2_sv); % 1
 
-    % Matriz M para incidência SV
+    % Matrix M for SV incidence
     M(1,1) = cphi1_sv;
     M(1,2) = -sin(psi1_sv);
     M(1,3) = cphi2_sv;
@@ -151,18 +151,18 @@ for iang = 1:numel(theta)
     M(3,4) = (rho2*vs2/(rho1*vp1))*sin(2*psi2_sv); % 0
 
     M(4,1) = sin(2*phi1_sv);
-    M(4,2) = (vp1/vs1) * cos(2*psi1_sv); % <--- CORREÇÃO MANTIDA
+    M(4,2) = (vp1/vs1) * cos(2*psi1_sv); % <--- CORRECTION KEPT
     M(4,3) = (rho2*vp1*vs2*vs2/(rho1*vp2*vs1*vs1))*sin(2*phi2_sv); % 0
     M(4,4) = -((rho2*vp1*vs2)/(rho1*vs1*vs1))*cos(2*psi2_sv); % 0
 
-    % Vetor F para incidência SV
+    % Vector F for SV incidence
     FS(1) = -sin(psi0_sv);
     FS(2) = cos(psi0_sv);
     FS(3) = -vs1*sin(2*psi0_sv)/vp1;
     FS(4) = vp1*cos(2*psi0_sv)/vs1;
 
-    % --- MUDANÇA: Resolver sistema Sólido-Fluido 3x3 (Rsp, Rsvsv, Tsp) ---
-    % Remove a 2a linha (continuidade de u_x) e 4a coluna (Tsvsv)
+    % --- CHANGE: solve the 3x3 solid-fluid system (Rsp, Rsvsv, Tsp) ---
+    % Remove the 2nd row (continuity of u_x) and the 4th column (Tsvsv)
     M_3x3 = [ M(1,1) M(1,2) M(1,3);
         M(3,1) M(3,2) M(3,3);
         M(4,1) M(4,2) M(4,3) ]; % M(4,3) será 0
@@ -175,9 +175,9 @@ for iang = 1:numel(theta)
     Rsp(iang) = As_3x1(1);
     Rsvsv(iang) = As_3x1(2);
     Tsp(iang) = As_3x1(3);
-    Tsvsv(iang) = 0; % Por definição
+    Tsvsv(iang) = 0; % By definition
 
-    % --- CÁLCULO DE ENERGIA (Incidência SV) ---
+    % --- ENERGY COMPUTATION (SV incidence) ---
     E_Rsp(iang)   = (rho1 * vp1 * real(cphi1_sv)) / (rho1 * vs1 * real(cpsi1_sv)) * abs(Rsp(iang))^2;
     E_Rsvsv(iang) = abs(Rsvsv(iang))^2;
     E_Tsp(iang)   = (rho2 * vp2 * real(cphi2_sv)) / (rho1 * vs1 * real(cpsi1_sv)) * abs(Tsp(iang))^2;
@@ -197,23 +197,23 @@ for iang = 1:numel(theta)
     cpsi1_sh = cos(psi1_sh);
     cpsi2_sh = cos(psi2_sh); % 1
 
-    % --- MUDANÇA: Sólido-Fluido para SH ---
-    % O fluido não suporta onda SH (vs2 = 0).
-    % A condição de contorno é que a tensão de cisalhamento (tau_yz)
-    % na interface é zero.
+    % --- CHANGE: solid-fluid for SH ---
+    % The fluid carries no SH wave (vs2 = 0).
+    % The boundary condition is that the shear traction (tau_yz)
+    % vanishes at the interface.
     % tau_yz(inc) + tau_yz(ref) = 0
-    % Z1 * (1 - Rsh) = 0, onde Z1 = rho1*vs1*cpsi1_sh
-    % Isso força Rsh = 1 (reflexão total) e Tsh = 0 (sem transmissão).
+    % Z1 * (1 - Rsh) = 0, where Z1 = rho1*vs1*cpsi1_sh
+    % This forces Rsh = 1 (total reflection) and Tsh = 0 (no transmission).
 
     Rsh(iang) = 1.0;
     Tsh(iang) = 0.0;
 
-    % Lidar com a divisão por zero em 90 graus (cpsi1_sh = 0) na energia
+    % Handle the division by zero at 90 deg (cpsi1_sh = 0) in the energy
     if abs(cpsi1_sh) < 1e-10
         E_Rsh(iang) = 1.0;
         E_Tsh(iang) = 0.0;
     else
-        % --- CÁLCULO DE ENERGIA (Incidência SH) ---
+        % --- ENERGY COMPUTATION (SH incidence) ---
         E_Rsh(iang) = abs(Rsh(iang))^2;
         E_Tsh(iang) = (rho2 * vs2 * real(cpsi2_sh)) / (rho1 * vs1 * real(cpsi1_sh)) * abs(Tsh(iang))^2; % Será 0
     end
@@ -245,16 +245,16 @@ out.A_Tsh   = Tsh;
 
 if 0
     % --- PLOTS ---
-    % (Os plots de amplitude e energia são mantidos como no original)
-    % Os coeficientes zerados (Tpsv, Tsvsv, Tsh) aparecerão como uma linha em 0.
-    % O coeficiente Rsh aparecerá como uma linha em 1.
+    % (Amplitude and energy plots kept as in the original)
+    % Zeroed coefficients (Tpsv, Tsvsv, Tsh) appear as a line at 0.
+    % Coefficient Rsh appears as a line at 1.
 
     figure('Name', 'SH');
     plot(theta, abs(Rsh), 'b', 'LineWidth', 1.5);
     hold on;
     plot(theta, abs(Tsh), 'r', 'LineWidth', 1.5);
-    title('Amplitudes (SH-Incidence) - Sólido-Fluido');
-    xlabel('Ângulo de Incidência (graus)');
+    title('Amplitudes (SH-Incidence) - Solid-Fluid');
+    xlabel('Incidence angle (deg)');
     ylabel('Magnitude da Amplitude');
     legend('Rsh', 'Tsh');
     grid on;
@@ -266,8 +266,8 @@ if 0
     plot(theta, abs(Rsp), 'r', 'LineWidth', 1.5);
     plot(theta, abs(Tsvsv), 'g', 'LineWidth', 1.5);
     plot(theta, abs(Tsp), 'm', 'LineWidth', 1.5);
-    title('Amplitudes (SV-Incidence) - Sólido-Fluido');
-    xlabel('Ângulo de Incidência (graus)');
+    title('Amplitudes (SV-Incidence) - Solid-Fluid');
+    xlabel('Incidence angle (deg)');
     ylabel('Magnitude da Amplitude');
     legend('Rsvsv', 'Rsp', 'Tsvsv', 'Tsp');
     grid on;
@@ -279,8 +279,8 @@ if 0
     plot(theta, abs(Rpsv), 'r', 'LineWidth', 1.5);
     plot(theta, abs(Tpp), 'g', 'LineWidth', 1.5);
     plot(theta, abs(Tpsv), 'm', 'LineWidth', 1.5);
-    title('Amplitudes (P-Incidence) - Sólido-Fluido');
-    xlabel('Ângulo de Incidência (graus)');
+    title('Amplitudes (P-Incidence) - Solid-Fluid');
+    xlabel('Incidence angle (deg)');
     ylabel('Magnitude da Amplitude');
     legend('Rpp', 'Rpsv', 'Tpp', 'Tpsv');
     grid on;
@@ -288,44 +288,44 @@ if 0
 
     
     % --- NOVOS PLOTS DE ENERGIA ---
-    figure('Name', 'Energia (Incidência P)');
+    figure('Name', 'Energy (P incidence)');
     plot(theta, E_Rpp, 'b', 'LineWidth', 1.5);
     hold on;
     plot(theta, E_Rpsv, 'r', 'LineWidth', 1.5);
     plot(theta, E_Tpp, 'g', 'LineWidth', 1.5);
     plot(theta, E_Tpsv, 'm', 'LineWidth', 1.5);
     plot(theta, E_P_Total, 'k--', 'LineWidth', 2.5); % Soma total
-    title('Particionamento de Energia (Incidência P) - Sólido-Fluido');
-    xlabel('Ângulo de Incidência (graus)');
-    ylabel('Coeficiente de Energia');
+    title('Energy partitioning (P incidence) - Solid-Fluid');
+    xlabel('Incidence angle (deg)');
+    ylabel('Energy coefficient');
     legend('E_{Rpp}', 'E_{Rpsv}', 'E_{Tpp}', 'E_{Tpsv}', 'E_{Total}');
     ylim([-0.1 1.1]);
     grid on;
     hold off;
 
-    figure('Name', 'Energia (Incidência SV)');
+    figure('Name', 'Energy (SV incidence)');
     plot(theta, E_Rsvsv, 'b', 'LineWidth', 1.5);
     hold on;
     plot(theta, E_Rsp, 'r', 'LineWidth', 1.5);
     plot(theta, E_Tsvsv, 'g', 'LineWidth', 1.5);
     plot(theta, E_Tsp, 'm', 'LineWidth', 1.5);
     plot(theta, E_SV_Total, 'k--', 'LineWidth', 2.5); % Soma total
-    title('Particionamento de Energia (Incidência SV) - Sólido-Fluido');
-    xlabel('Ângulo de Incidência (graus)');
-    ylabel('Coeficiente de Energia');
+    title('Energy partitioning (SV incidence) - Solid-Fluid');
+    xlabel('Incidence angle (deg)');
+    ylabel('Energy coefficient');
     legend('E_{Rsvsv}', 'E_{Rsp}', 'E_{Tsvsv}', 'E_{Tsp}', 'E_{Total}');
     ylim([-0.1 1.1]);
     grid on;
     hold off;
 
-    figure('Name', 'Energia (Incidência SH)');
+    figure('Name', 'Energy (SH incidence)');
     plot(theta, E_Rsh, 'b', 'LineWidth', 1.5);
     hold on;
     plot(theta, E_Tsh, 'r', 'LineWidth', 1.5);
     plot(theta, E_SH_Total, 'k--', 'LineWidth', 2.5); % Soma total
-    title('Particionamento de Energia (Incidência SH) - Sólido-Fluido');
-    xlabel('Ângulo de Incidência (graus)');
-    ylabel('Coeficiente de Energia');
+    title('Energy partitioning (SH incidence) - Solid-Fluid');
+    xlabel('Incidence angle (deg)');
+    ylabel('Energy coefficient');
     legend('E_{Rsh}', 'E_{Tsh}', 'E_{Total}');
     ylim([-0.1 1.1]);
     grid on;
